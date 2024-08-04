@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>腓利門雲POS</title>
-    <link rel="icon" href="favicon.ico"> <!-- 确保favicon.ico文件已正确放置在根目录 -->
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -45,7 +44,7 @@
         .search-results button {
             align-self: flex-end;
             padding: 5px;
-            background-color: #DEB887; 
+            background-color: #DEB887;
             border: none;
             border-radius: 4px;
             color: #fff;
@@ -60,15 +59,18 @@
             border-radius: 4px;
             margin-bottom: 20px;
         }
+
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
+
         .header span, .table-title {
             font-size: 1em;
             color: #8B4513;
         }
+
         .header button {
             padding: 5px 10px;
             cursor: pointer;
@@ -78,11 +80,13 @@
             color: #fff;
             font-size: 0.8em;
         }
+
         .form-group label {
             display: block;
             margin-bottom: 5px;
             color: #8B4513;
         }
+
         .form-group input {
             width: calc(100% - 20px);
             padding: 10px;
@@ -91,35 +95,43 @@
             border-radius: 4px;
             background-color: #E6E2B2;
         }
+
         .table-container {
             overflow-x: auto;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
         }
+
         th, td {
             padding: 5px;
             text-align: left;
             border-bottom: 1px solid #D2B48C;
         }
+
         th {
             font-size: 0.9em;
             color: #8B4513;
         }
+
         td {
             font-size: 0.8em;
         }
+
         .total {
             font-size: 1.2em;
             text-align: right;
             color: #8B4513;
         }
+
         .btn-group {
             display: flex;
             justify-content: space-between;
         }
+
         .btn-group button {
             padding: 5px 10px;
             font-size: 0.8em;
@@ -129,22 +141,27 @@
             border-radius: 4px;
             color: #fff;
         }
+
         .payment-info {
             text-align: right;
         }
+
         .payment-info span {
             margin-right: 10px;
             color: #8B4513;
         }
+
         #product-info {
             margin-bottom: 10px;
             color: #8B4513;
         }
+
         .csv-validation {
             font-size: 0.8em;
             color: green;
             margin-bottom: 10px;
         }
+
         .notes-container textarea {
             width: 100%;
             max-width: 100%;
@@ -157,23 +174,16 @@
             background-color: #E6E2B2;
             box-sizing: border-box;
         }
-        /* 在屏幕宽度小于768px时，为手机用户提供确认按钮 */
-        @media (max-width: 768px) {
-            #confirm-button {
-                display: block;
-                margin-top: 10px;
-                padding: 10px;
-                background-color: #DEB887;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 1em;
-                cursor: pointer;
-            }
+
+        /* 修改数量输入框的宽度 */
+        input[type="number"] {
+            width: 60px; /* 调整为合适的宽度 */
         }
-        @media (min-width: 769px) {
-            #confirm-button {
-                display: none;
+
+        /* 针对小屏幕设备的调整 */
+        @media (max-width: 768px) {
+            input[type="number"] {
+                width: 45px; /* 针对小屏幕进一步缩小宽度 */
             }
         }
     </style>
@@ -196,8 +206,7 @@
         <div class="form-group">
             <label for="product-code">請輸入商品代碼/條碼：</label>
             <input type="text" id="product-code" placeholder="請輸入商品代碼/條碼">
-            <div id="product-info"></div>
-            <button id="confirm-button">送出</button> <!-- 添加确认按钮 -->
+            <div id="product-info"></div> <!-- 顯示商品信息 -->
         </div>
         <div class="form-group search-container">
             <label for="keyword-search">請輸入關鍵字搜尋商品：</label>
@@ -294,7 +303,6 @@
             const currentClientElement = document.getElementById('current-client');
             const orderSummaryElement = document.getElementById('order-summary');
             const notesElement = document.getElementById('notes');
-            const confirmButton = document.getElementById('confirm-button');
             let cart = JSON.parse(localStorage.getItem('cart')) || [];
             let products = {}; 
             let clients = JSON.parse(localStorage.getItem('clients')) || {};
@@ -393,21 +401,6 @@
                 });
             });
 
-            // 確認按钮的事件监听（手机使用）
-            confirmButton.addEventListener('click', () => {
-                const codeOrBarcode = productCodeInput.value.trim();
-                if (codeOrBarcode) {
-                    const product = Object.values(products).find(product => product.code === codeOrBarcode || product.barcode === codeOrBarcode);
-                    if (product) {
-                        addProductToCart(product.code);
-                        productCodeInput.value = '';
-                        productInfoElement.textContent = '';
-                    } else {
-                        alert('找不到商品');
-                    }
-                }
-            });
-
             // 添加商品到購物車
             productCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
@@ -420,6 +413,37 @@
                     } else {
                         alert('找不到商品');
                     }
+                }
+            });
+
+            // 手機設備顯示確認按鈕
+            const isMobileDevice = () => window.innerWidth <= 768;
+
+            const addMobileConfirmButton = () => {
+                const confirmButton = document.createElement('button');
+                confirmButton.textContent = '確認';
+                confirmButton.style.display = isMobileDevice() ? 'block' : 'none';
+                confirmButton.addEventListener('click', () => {
+                    const codeOrBarcode = productCodeInput.value.trim();
+                    const product = Object.values(products).find(product => product.code === codeOrBarcode || product.barcode === codeOrBarcode);
+                    if (product) {
+                        addProductToCart(product.code);
+                        productCodeInput.value = '';
+                        productInfoElement.textContent = '';
+                    } else {
+                        alert('找不到商品');
+                    }
+                });
+                productCodeInput.insertAdjacentElement('afterend', confirmButton);
+            };
+
+            addMobileConfirmButton();
+
+            // 监听窗口大小变化以切换按钮显示
+            window.addEventListener('resize', () => {
+                const confirmButton = productCodeInput.nextElementSibling;
+                if (confirmButton.tagName.toLowerCase() === 'button') {
+                    confirmButton.style.display = isMobileDevice() ? 'block' : 'none';
                 }
             });
 
