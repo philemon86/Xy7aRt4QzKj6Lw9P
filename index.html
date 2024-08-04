@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>腓利門雲POS</title>
+    <link rel="icon" href="favicon.ico"> <!-- 确保favicon.ico文件已正确放置在根目录 -->
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -17,12 +17,11 @@
             height: 100vh;
             background-color: #F5F5DC;
         }
-
         .container {
             background-color: #fff;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
             width: 80%;
             max-width: 600px;
             margin-bottom: 20px;
@@ -46,7 +45,7 @@
         .search-results button {
             align-self: flex-end;
             padding: 5px;
-            background-color: #DEB887;
+            background-color: #DEB887; 
             border: none;
             border-radius: 4px;
             color: #fff;
@@ -55,29 +54,21 @@
             margin-top: 5px;
         }
 
-        .header,
-        .form-group,
-        .table-container,
-        .payment-info,
-        .notes-container {
+        .header, .form-group, .table-container, .payment-info, .notes-container {
             border: 1px solid #D2B48C;
             padding: 10px;
             border-radius: 4px;
             margin-bottom: 20px;
         }
-
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-
-        .header span,
-        .table-title {
+        .header span, .table-title {
             font-size: 1em;
             color: #8B4513;
         }
-
         .header button {
             padding: 5px 10px;
             cursor: pointer;
@@ -87,13 +78,11 @@
             color: #fff;
             font-size: 0.8em;
         }
-
         .form-group label {
             display: block;
             margin-bottom: 5px;
             color: #8B4513;
         }
-
         .form-group input {
             width: calc(100% - 20px);
             padding: 10px;
@@ -102,44 +91,35 @@
             border-radius: 4px;
             background-color: #E6E2B2;
         }
-
         .table-container {
             overflow-x: auto;
         }
-
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
         }
-
-        th,
-        td {
+        th, td {
             padding: 5px;
             text-align: left;
             border-bottom: 1px solid #D2B48C;
         }
-
         th {
             font-size: 0.9em;
             color: #8B4513;
         }
-
         td {
             font-size: 0.8em;
         }
-
         .total {
             font-size: 1.2em;
             text-align: right;
             color: #8B4513;
         }
-
         .btn-group {
             display: flex;
             justify-content: space-between;
         }
-
         .btn-group button {
             padding: 5px 10px;
             font-size: 0.8em;
@@ -149,27 +129,22 @@
             border-radius: 4px;
             color: #fff;
         }
-
         .payment-info {
             text-align: right;
         }
-
         .payment-info span {
             margin-right: 10px;
             color: #8B4513;
         }
-
         #product-info {
             margin-bottom: 10px;
             color: #8B4513;
         }
-
         .csv-validation {
             font-size: 0.8em;
             color: green;
             margin-bottom: 10px;
         }
-
         .notes-container textarea {
             width: 100%;
             max-width: 100%;
@@ -182,33 +157,31 @@
             background-color: #E6E2B2;
             box-sizing: border-box;
         }
-
-        #add-product-btn {
-            display: none;
-            margin-top: 10px;
-            background-color: #DEB887;
-            border: none;
-            border-radius: 4px;
-            color: #fff;
-            cursor: pointer;
-            padding: 10px;
-            font-size: 1em;
-            width: 100%;
-        }
-
+        /* 在屏幕宽度小于768px时，为手机用户提供确认按钮 */
         @media (max-width: 768px) {
-            #add-product-btn {
+            #confirm-button {
                 display: block;
+                margin-top: 10px;
+                padding: 10px;
+                background-color: #DEB887;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 1em;
+                cursor: pointer;
+            }
+        }
+        @media (min-width: 769px) {
+            #confirm-button {
+                display: none;
             }
         }
     </style>
 </head>
-
 <body>
     <div class="csv-validation" id="csv-validation"></div>
     <div class="container">
         <div class="header">
-            <!-- 添加這一行以插入Logo -->
             <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
             <span id="title">腓利門雲POS</span>
         </div>
@@ -223,8 +196,8 @@
         <div class="form-group">
             <label for="product-code">請輸入商品代碼/條碼：</label>
             <input type="text" id="product-code" placeholder="請輸入商品代碼/條碼">
-            <button id="add-product-btn">添加商品</button> <!-- 按钮仅在小屏幕上显示 -->
             <div id="product-info"></div>
+            <button id="confirm-button">送出</button> <!-- 添加确认按钮 -->
         </div>
         <div class="form-group search-container">
             <label for="keyword-search">請輸入關鍵字搜尋商品：</label>
@@ -306,7 +279,6 @@
             const keywordSearchInput = document.getElementById('keyword-search');
             const searchResultsElement = document.getElementById('search-results');
             const productCodeInput = document.getElementById('product-code');
-            const addProductBtn = document.getElementById('add-product-btn');
             const paidAmountInput = document.getElementById('paid-amount');
             const productInfoElement = document.getElementById('product-info');
             const csvValidationElement = document.getElementById('csv-validation');
@@ -322,6 +294,7 @@
             const currentClientElement = document.getElementById('current-client');
             const orderSummaryElement = document.getElementById('order-summary');
             const notesElement = document.getElementById('notes');
+            const confirmButton = document.getElementById('confirm-button');
             let cart = JSON.parse(localStorage.getItem('cart')) || [];
             let products = {}; 
             let clients = JSON.parse(localStorage.getItem('clients')) || {};
@@ -420,22 +393,8 @@
                 });
             });
 
-            // 添加商品到購物車
-            const addProductToCart = (code) => {
-                const product = products[code];
-                const existingItem = cart.find(item => item.code === code);
-                if (existingItem) {
-                    existingItem.quantity += 1;
-                } else {
-                    cart.push({ ...product, quantity: 1, discount: 80 });
-                }
-                updateCartDisplay();
-                calculateTotal();
-                saveCart();
-            };
-
-            // 使用按鈕提交商品添加（适用于小屏幕设备）
-            addProductBtn.addEventListener('click', () => {
+            // 確認按钮的事件监听（手机使用）
+            confirmButton.addEventListener('click', () => {
                 const codeOrBarcode = productCodeInput.value.trim();
                 if (codeOrBarcode) {
                     const product = Object.values(products).find(product => product.code === codeOrBarcode || product.barcode === codeOrBarcode);
@@ -449,7 +408,7 @@
                 }
             });
 
-            // 使用回车键提交商品添加（适用于大屏幕设备）
+            // 添加商品到購物車
             productCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     const codeOrBarcode = e.target.value.trim();
@@ -486,6 +445,20 @@
             // 監聽實付金額變化，自動計算找錢
             paidAmountInput.addEventListener('input', calculateChange);
 
+            // 添加商品到購物車並更新顯示
+            const addProductToCart = (code) => {
+                const product = products[code];
+                const existingItem = cart.find(item => item.code === code);
+                if (existingItem) {
+                    existingItem.quantity += 1;
+                } else {
+                    cart.push({ ...product, quantity: 1, discount: 80 });
+                }
+                updateCartDisplay();
+                calculateTotal();
+                saveCart();
+            };
+
             // 更新購物車顯示
             const updateCartDisplay = () => {
                 cartTableBody.innerHTML = '';
@@ -498,6 +471,7 @@
                         <td><input type="number" value="${item.quantity}" min="0" class="quantity-input" data-code="${item.code}"></td>
                         <td><input type="number" value="${item.discount}" min="0" max="100" class="discount-input" data-code="${item.code}"></td>
                         <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
+                    `;
                     cartTableBody.appendChild(row);
                 });
 
@@ -711,5 +685,4 @@
         });
     </script>
 </body>
-
 </html>
