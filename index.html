@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,67 +17,58 @@
             height: 100vh;
             background-color: #F5F5DC;
         }
-
         .container {
             background-color: #fff;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
             width: 80%;
             max-width: 600px;
             margin-bottom: 20px;
             margin-top: 20px;
         }
 
-        .search-results div {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #D2B48C;
-            padding-bottom: 10px;
-        }
+.search-results div {
+    display: flex;
+    flex-direction: column; /* 先垂直排列以適應手機小屏幕 */
+    margin-bottom: 10px; /* 增加搜尋結果之間的間距 */
+    border-bottom: 1px solid #D2B48C; /* 增加分隔線使結果更分明 */
+    padding-bottom: 10px;
+}
 
-        .search-results div span {
-            font-size: 0.9em;
-            color: #8B4513;
-            margin-bottom: 5px;
-        }
+.search-results div span {
+    font-size: 0.9em; /* 調整字體大小適應小屏幕 */
+    color: #8B4513;
+    margin-bottom: 5px;
+}
 
-        .search-results button {
-            align-self: flex-end;
-            padding: 5px;
-            background-color: #DEB887;
-            border: none;
-            border-radius: 4px;
-            color: #fff;
-            cursor: pointer;
-            font-size: 0.8em;
-            margin-top: 5px;
-        }
+.search-results button {
+    align-self: flex-end; /* 將按鈕放在每個結果項目的右下角 */
+    padding: 5px;
+    background-color: #DEB887; 
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.8em; /* 調整按鈕字體大小 */
+    margin-top: 5px;
+}
 
-        .header,
-        .form-group,
-        .table-container,
-        .payment-info,
-        .notes-container {
+        .header, .form-group, .table-container, .payment-info, .notes-container {
             border: 1px solid #D2B48C;
             padding: 10px;
             border-radius: 4px;
             margin-bottom: 20px;
         }
-
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-
-        .header span,
-        .table-title {
+        .header span, .table-title {
             font-size: 1em;
             color: #8B4513;
         }
-
         .header button {
             padding: 5px 10px;
             cursor: pointer;
@@ -88,13 +78,11 @@
             color: #fff;
             font-size: 0.8em;
         }
-
         .form-group label {
             display: block;
             margin-bottom: 5px;
             color: #8B4513;
         }
-
         .form-group input {
             width: calc(100% - 20px);
             padding: 10px;
@@ -103,44 +91,35 @@
             border-radius: 4px;
             background-color: #E6E2B2;
         }
-
         .table-container {
             overflow-x: auto;
         }
-
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
         }
-
-        th,
-        td {
+        th, td {
             padding: 5px;
             text-align: left;
             border-bottom: 1px solid #D2B48C;
         }
-
         th {
             font-size: 0.9em;
             color: #8B4513;
         }
-
         td {
             font-size: 0.8em;
         }
-
         .total {
             font-size: 1.2em;
             text-align: right;
             color: #8B4513;
         }
-
         .btn-group {
             display: flex;
             justify-content: space-between;
         }
-
         .btn-group button {
             padding: 5px 10px;
             font-size: 0.8em;
@@ -150,46 +129,41 @@
             border-radius: 4px;
             color: #fff;
         }
-
         .payment-info {
             text-align: right;
         }
-
         .payment-info span {
             margin-right: 10px;
             color: #8B4513;
         }
-
         #product-info {
             margin-bottom: 10px;
             color: #8B4513;
         }
-
         .csv-validation {
             font-size: 0.8em;
             color: green;
             margin-bottom: 10px;
         }
-
-        .notes-container textarea {
-            width: 100%;
-            height: 140px;
-            padding: 10px;
-            font-size: 0.9em;
-            border: 1px solid #D2B48C;
-            border-radius: 4px;
-            resize: none;
-            background-color: #E6E2B2;
-            box-sizing: border-box;
-            max-width: 100%;
-        }
+.notes-container textarea {
+    width: 100%;
+    max-width: 100%; /* 確保不會超出容器的最大寬度 */
+    height: 100px;
+    padding: 10px;
+    font-size: 0.9em;
+    border: 1px solid #D2B48C;
+    border-radius: 4px;
+    resize: none;
+    background-color: #E6E2B2;
+    box-sizing: border-box; /* 確保 padding 不會導致寬度溢出 */
+}
     </style>
 </head>
-
 <body>
     <div class="csv-validation" id="csv-validation"></div>
     <div class="container">
         <div class="header">
+            <!-- 添加這一行以插入Logo -->
             <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
             <span id="title">腓利門雲POS</span>
         </div>
@@ -203,9 +177,8 @@
         </div>
         <div class="form-group">
             <label for="product-code">請輸入商品代碼/條碼：</label>
-            <input type="text" id="product-code" placeholder="請輸入商品代碼/條碼" onkeyup="if(event.keyCode === 13) document.getElementById('add-product-btn').click()">
-            <button id="add-product-btn" style="display: none;"></button>
-            <div id="product-info"></div>
+            <input type="text" id="product-code" placeholder="請輸入商品代碼/條碼">
+            <div id="product-info"></div> <!-- 顯示商品信息 -->
         </div>
         <div class="form-group search-container">
             <label for="keyword-search">請輸入關鍵字搜尋商品：</label>
@@ -239,14 +212,53 @@
             </div>
         </div>
     </div>
+    <div class="container">
+        <div class="table-title">
+            單筆消費明細 
+            <span id="order-summary">統計訂單總數: 0 | 訂單平均消費: 0元</span>
+        </div>
+        <div class="table-container">
+            <table id="summary-table">
+                <thead>
+                    <tr>
+                        <th>客戶名稱</th>
+                        <th>消費金額</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 統計數據將動態添加到這裡 -->
+                </tbody>
+            </table>
+        </div>
+        <div class="table-title">總消費統計</div>
+        <div class="table-container">
+            <table id="overall-summary-table">
+                <thead>
+                    <tr>
+                        <th>商品代碼</th>
+                        <th>名稱</th>
+                        <th>總數量</th>
+                        <th>總金額</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 整體統計數據將動態添加到這裡 -->
+                </tbody>
+            </table>
+        </div>
+        <div class="total">結帳周期總金額：<span id="overall-total-amount">0</span> 元</div>
+    </div>
     <div class="container notes-container">
         <label for="notes">備註：</label>
         <textarea id="notes"></textarea>
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // 獲取 URL 中的 session 參數，若無則自動生成一個
             const urlParams = new URLSearchParams(window.location.search);
             const sessionId = urlParams.get('session') || Date.now().toString();
+            window.history.replaceState(null, null, `?session=${sessionId}`);
 
             const currentDateElement = document.getElementById('current-date');
             const billingCycleElement = document.getElementById('billing-cycle');
@@ -268,10 +280,8 @@
             const currentClientElement = document.getElementById('current-client');
             const orderSummaryElement = document.getElementById('order-summary');
             const notesElement = document.getElementById('notes');
-            const addProductBtn = document.getElementById('add-product-btn');
-
             let cart = JSON.parse(localStorage.getItem(`cart_${sessionId}`)) || [];
-            let products = {};
+            let products = {}; 
             let clients = JSON.parse(localStorage.getItem(`clients_${sessionId}`)) || {};
             let overallSummary = JSON.parse(localStorage.getItem(`overallSummary_${sessionId}`)) || {};
             let clientCounter = JSON.parse(localStorage.getItem(`clientCounter_${sessionId}`)) || 1;
@@ -323,7 +333,7 @@
                                 name: product['CNAME'],
                                 barcode: product['BARCODE'],
                                 qty: parseInt(product['CQTY']),
-                                price: parseFloat(product['PRICE']) || 0
+                                price: parseFloat(product['PRICE']) || 0 
                             };
                         }
                     });
@@ -348,9 +358,9 @@
             // 關鍵字搜尋商品
             keywordSearchInput.addEventListener('input', (e) => {
                 const keywords = e.target.value.trim().toLowerCase().split(' ');
-                const matchedProducts = Object.values(products).filter(product =>
+                const matchedProducts = Object.values(products).filter(product => 
                     keywords.every(keyword => product.name.toLowerCase().includes(keyword))
-                ).slice(0, 3);
+                ).slice(0, 3); 
                 searchResultsElement.innerHTML = '';
                 matchedProducts.forEach(product => {
                     const resultItem = document.createElement('div');
@@ -369,36 +379,24 @@
             });
 
             // 添加商品到購物車
-            const addProductToCart = (code) => {
-                const product = products[code];
-                const existingItem = cart.find(item => item.code === code);
-                if (existingItem) {
-                    existingItem.quantity += 1;
-                } else {
-                    cart.push({ ...product, quantity: 1, discount: 80 });
-                }
-                updateCartDisplay();
-                calculateTotal();
-                saveCart();
-            };
-
-            // 手機端點擊添加商品
-            addProductBtn.addEventListener('click', () => {
-                const codeOrBarcode = productCodeInput.value.trim();
-                const product = Object.values(products).find(product => product.code === codeOrBarcode || product.barcode === codeOrBarcode);
-                if (product) {
-                    addProductToCart(product.code);
-                    productCodeInput.value = '';
-                    productInfoElement.textContent = '';
-                } else {
-                    alert('找不到商品');
+            productCodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const codeOrBarcode = e.target.value.trim();
+                    const product = Object.values(products).find(product => product.code === codeOrBarcode || product.barcode === codeOrBarcode);
+                    if (product) {
+                        addProductToCart(product.code);
+                        e.target.value = '';
+                        productInfoElement.textContent = '';
+                    } else {
+                        alert('找不到商品');
+                    }
                 }
             });
 
             // 計算總金額
             const calculateTotal = () => {
                 let total = 0;
-                cart = cart.filter(item => item.quantity !== 0);
+                cart = cart.filter(item => item.quantity !== 0); 
                 cart.forEach(item => {
                     total += item.price * item.quantity * (item.discount / 100);
                 });
@@ -416,6 +414,20 @@
 
             // 監聽實付金額變化，自動計算找錢
             paidAmountInput.addEventListener('input', calculateChange);
+
+            // 添加商品到購物車並更新顯示
+            const addProductToCart = (code) => {
+                const product = products[code];
+                const existingItem = cart.find(item => item.code === code);
+                if (existingItem) {
+                    existingItem.quantity += 1;
+                } else {
+                    cart.push({ ...product, quantity: 1, discount: 80 });
+                }
+                updateCartDisplay();
+                calculateTotal();
+                saveCart();
+            };
 
             // 更新購物車顯示
             const updateCartDisplay = () => {
@@ -604,7 +616,7 @@
                     [notes]
                 ];
 
-                let csvContent = "data:text/csv;charset=utf-8,\ufeff"
+                let csvContent = "data:text/csv;charset=utf-8,\ufeff" 
                     + rows.map(e => e.join(",")).join("\n");
 
                 const encodedUri = encodeURI(csvContent);
@@ -643,9 +655,8 @@
                 updateSummaryTable();
             });
 
-            calculateChange();
+            calculateChange(); 
         });
     </script>
 </body>
-
 </html>
