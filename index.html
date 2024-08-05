@@ -157,6 +157,10 @@
             background-color: #E6E2B2;
             box-sizing: border-box; /* 確保 padding 不會導致寬度溢出 */
         }
+        /* 新增隱藏行的樣式 */
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -290,7 +294,7 @@
             if (rows.length > maxVisibleRows) {
                 // 隐藏超过10笔的记录
                 for (let i = maxVisibleRows; i < rows.length; i++) {
-                    rows[i].style.display = 'none';
+                    rows[i].classList.add('hidden');
                 }
 
                 // 创建展开/折叠按钮
@@ -311,13 +315,13 @@
                     if (expanded) {
                         // 展开全部
                         rows.forEach(row => {
-                            row.style.display = '';
+                            row.classList.remove('hidden');
                         });
                         toggleButton.textContent = '折疊';
                     } else {
                         // 隐藏超过10笔的记录
                         for (let i = maxVisibleRows; i < rows.length; i++) {
-                            rows[i].style.display = 'none';
+                            rows[i].classList.add('hidden');
                         }
                         toggleButton.textContent = '展開全部';
                     }
