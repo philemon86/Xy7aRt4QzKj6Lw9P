@@ -157,9 +157,29 @@
             background-color: #E6E2B2;
             box-sizing: border-box; /* 確保 padding 不會導致寬度溢出 */
         }
-        /* 新增隱藏行的樣式 */
-        .hidden {
-            display: none;
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .pagination button {
+            padding: 5px 10px;
+            margin: 0 5px;
+            cursor: pointer;
+            background-color: #DEB887;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+        }
+        .pagination input {
+            width: 50px;
+            padding: 5px;
+            text-align: center;
+            font-size: 1em;
+            border: 1px solid #D2B48C;
+            border-radius: 4px;
+            margin-left: 5px;
         }
     </style>
 </head>
@@ -235,6 +255,11 @@
                 </tbody>
             </table>
         </div>
+        <div class="pagination">
+            <button id="prev-page">上一頁</button>
+            <span>頁碼: <input type="number" id="current-page" value="1" min="1"></span>
+            <button id="next-page">下一頁</button>
+        </div>
         <div class="table-title">
             總消費統計
         </div>
@@ -287,50 +312,60 @@
             let overallSummary = JSON.parse(localStorage.getItem('overallSummary')) || {};
             let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
 
-            // 折叠功能：处理超過10筆的记录
-            const rows = summaryTableBody.querySelectorAll('tr');
-            const maxVisibleRows = 10;
+            // 初始化分页
+            const rowsPerPage = 10;
+            let currentPage = 1;
 
-            if (rows.length > maxVisibleRows) {
-                // 隐藏超过10笔的记录
-                for (let i = maxVisibleRows; i < rows.length; i++) {
-                    rows[i].classList.add('hidden');
-                }
+            const renderSummaryTable = () => {
+                summaryTableBody.innerHTML = '';
+                const clientsList = Object.values(clients);
+                const start = (currentPage - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+                const rows = clientsList.slice(start, end);
 
-                // 创建展开/折叠按钮
-                const toggleButton = document.createElement('button');
-                toggleButton.textContent = '展開全部';
-                toggleButton.style.marginTop = '10px';
-                toggleButton.style.backgroundColor = '#DEB887';
-                toggleButton.style.border = 'none';
-                toggleButton.style.borderRadius = '4px';
-                toggleButton.style.color = '#fff';
-                toggleButton.style.cursor = 'pointer';
-                toggleButton.style.padding = '5px';
-
-                let expanded = false;
-
-                toggleButton.addEventListener('click', () => {
-                    expanded = !expanded;
-                    if (expanded) {
-                        // 展开全部
-                        rows.forEach(row => {
-                            row.classList.remove('hidden');
-                        });
-                        toggleButton.textContent = '折疊';
-                    } else {
-                        // 隐藏超过10笔的记录
-                        for (let i = maxVisibleRows; i < rows.length; i++) {
-                            rows[i].classList.add('hidden');
-                        }
-                        toggleButton.textContent = '展開全部';
-                    }
+                rows.forEach(client => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><a href="#" class="client-link" data-client-id="${client.id}">${client.id}</td>
+                        <td>${Math.round(client.amount)}</td>
+                        <td><button class="delete-client-btn" data-client-id="${client.id}">刪除</button></td>
+                    `;
+                    summaryTableBody.appendChild(row);
                 });
 
-                summaryTableBody.parentElement.appendChild(toggleButton);
-            }
+                // 禁用/启用分页按钮
+                document.getElementById('prev-page').disabled = currentPage === 1;
+                document.getElementById('next-page').disabled = end >= clientsList.length;
+            };
 
-            // 設置當前日期
+            // 分页按钮事件监听
+            document.getElementById('prev-page').addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderSummaryTable();
+                }
+            });
+
+            document.getElementById('next-page').addEventListener('click', () => {
+                const clientsList = Object.values(clients);
+                if (currentPage * rowsPerPage < clientsList.length) {
+                    currentPage++;
+                    renderSummaryTable();
+                }
+            });
+
+            document.getElementById('current-page').addEventListener('change', (e) => {
+                const clientsList = Object.values(clients);
+                const newPage = parseInt(e.target.value, 10);
+                if (newPage >= 1 && newPage <= Math.ceil(clientsList.length / rowsPerPage)) {
+                    currentPage = newPage;
+                    renderSummaryTable();
+                } else {
+                    e.target.value = currentPage;
+                }
+            });
+
+            // 初始化日期
             const currentDate = new Date().toISOString().split('T')[0];
             currentDateElement.textContent = `今日日期：${currentDate}`;
 
@@ -600,18 +635,7 @@
 
             // 更新統計表格
             const updateSummaryTable = () => {
-                summaryTableBody.innerHTML = '';
-                overallSummaryTableBody.innerHTML = '';
-
-                Object.values(clients).forEach(client => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td><a href="#" class="client-link" data-client-id="${client.id}">${client.id}</td>
-                        <td>${Math.round(client.amount)}</td>
-                        <td><button class="delete-client-btn" data-client-id="${client.id}">刪除</button></td>
-                    `;
-                    summaryTableBody.appendChild(row);
-                });
+                renderSummaryTable();
 
                 Object.values(overallSummary).forEach(item => {
                     const row = document.createElement('tr');
