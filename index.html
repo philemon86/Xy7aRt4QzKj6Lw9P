@@ -28,31 +28,31 @@
             margin-top: 20px;
         }
 
-        .search-results div {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #D2B48C;
-            padding-bottom: 10px;
-        }
+.search-results div {
+    display: flex;
+    flex-direction: column; /* 先垂直排列以適應手機小螢幕 */
+    margin-bottom: 10px; /* 增加搜尋結果之間的間距 */
+    border-bottom: 1px solid #D2B48C; /* 增加分隔線使結果更分明 */
+    padding-bottom: 10px;
+}
 
-        .search-results div span {
-            font-size: 0.9em;
-            color: #8B4513;
-            margin-bottom: 5px;
-        }
+.search-results div span {
+    font-size: 0.9em; /* 調整字體大小適應小螢幕 */
+    color: #8B4513;
+    margin-bottom: 5px;
+}
 
-        .search-results button {
-            align-self: flex-end;
-            padding: 5px;
-            background-color: #DEB887; 
-            border: none;
-            border-radius: 4px;
-            color: #fff;
-            cursor: pointer;
-            font-size: 0.8em;
-            margin-top: 5px;
-        }
+.search-results button {
+    align-self: flex-end; /* 將按鈕放在每個結果項目的右下角 */
+    padding: 5px;
+    background-color: #DEB887; 
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.8em; /* 調整按鈕字體大小 */
+    margin-top: 5px;
+}
 
         .header, .form-group, .table-container, .payment-info, .notes-container {
             border: 1px solid #D2B48C;
@@ -145,52 +145,28 @@
             color: green;
             margin-bottom: 10px;
         }
-        .notes-container textarea {
-            width: calc(100% - 20px);
-            max-width: 100%;
-            height: 130px;
-            padding: 10px;
-            font-size: 1em;
-            border: 1px solid #D2B48C;
-            border-radius: 4px;
-            resize: none;
-            background-color: #E6E2B2;
-            box-sizing: border-box;
-        }
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 10px;
-        }
-        .pagination button {
-            padding: 5px 10px;
-            margin: 0 5px;
-            cursor: pointer;
-            background-color: #DEB887;
-            border: none;
-            border-radius: 4px;
-            color: #fff;
-        }
-        .pagination input {
-            width: 50px;
-            padding: 5px;
-            text-align: center;
-            font-size: 1em;
-            border: 1px solid #D2B48C;
-            border-radius: 4px;
-            margin-left: 5px;
-        }
+.notes-container textarea {
+    width: calc(100% - 20px); /* 確保 textarea 有適當的內邊距 */
+    max-width: 100%; /* 確保不會超出容器的最大寬度 */
+    height: 130px; /* 原高度的基礎上增加30% */
+    padding: 10px;
+    font-size: 1em; /* 增加字體大小 */
+    border: 1px solid #D2B48C;
+    border-radius: 4px;
+    resize: none;
+    background-color: #E6E2B2;
+    box-sizing: border-box; /* 確保 padding 不會導致寬度溢出 */
+}
     </style>
 </head>
 <body>
     <div class="csv-validation" id="csv-validation"></div>
     <div class="container">
-        <div class="header">
-            <!-- 添加這一行以插入Logo -->
-            <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
-            <span id="title">腓利門雲POS</span>
-        </div>
+<div class="header">
+    <!-- 添加這一行以插入Logo -->
+    <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
+    <span id="title">腓利門雲POS</span>
+</div>
         <div class="header">
             <span id="current-date"></span>
             <span>結帳週期：<input type="number" id="billing-cycle" value="1" min="1" max="7"> 天</span>
@@ -255,14 +231,8 @@
                 </tbody>
             </table>
         </div>
-        <div class="pagination">
-            <button id="prev-page">上一頁</button>
-            <span>頁碼: <input type="number" id="current-page" value="1" min="1"></span>
-            <button id="next-page">下一頁</button>
-        </div>
         <div class="table-title">
-            總消費統計
-        </div>
+        <div class="table-title">總消費統計</div>
         <div class="table-container">
             <table id="overall-summary-table">
                 <thead>
@@ -312,60 +282,7 @@
             let overallSummary = JSON.parse(localStorage.getItem('overallSummary')) || {};
             let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
 
-            // 初始化分页
-            const rowsPerPage = 10;
-            let currentPage = 1;
-
-            const renderSummaryTable = () => {
-                summaryTableBody.innerHTML = '';
-                const clientsList = Object.values(clients).sort((a, b) => b.id.localeCompare(a.id)); // 按ID降序排列
-                const start = (currentPage - 1) * rowsPerPage;
-                const end = start + rowsPerPage;
-                const rows = clientsList.slice(start, end);
-
-                rows.forEach(client => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td><a href="#" class="client-link" data-client-id="${client.id}">${client.id}</td>
-                        <td>${Math.round(client.amount)}</td>
-                        <td><button class="delete-client-btn" data-client-id="${client.id}">刪除</button></td>
-                    `;
-                    summaryTableBody.appendChild(row);
-                });
-
-                // 禁用/启用分页按钮
-                document.getElementById('prev-page').disabled = currentPage === 1;
-                document.getElementById('next-page').disabled = end >= clientsList.length;
-            };
-
-            // 分页按钮事件监听
-            document.getElementById('prev-page').addEventListener('click', () => {
-                if (currentPage > 1) {
-                    currentPage--;
-                    renderSummaryTable();
-                }
-            });
-
-            document.getElementById('next-page').addEventListener('click', () => {
-                const clientsList = Object.values(clients);
-                if (currentPage * rowsPerPage < clientsList.length) {
-                    currentPage++;
-                    renderSummaryTable();
-                }
-            });
-
-            document.getElementById('current-page').addEventListener('change', (e) => {
-                const clientsList = Object.values(clients);
-                const newPage = parseInt(e.target.value, 10);
-                if (newPage >= 1 && newPage <= Math.ceil(clientsList.length / rowsPerPage)) {
-                    currentPage = newPage;
-                    renderSummaryTable();
-                } else {
-                    e.target.value = currentPage;
-                }
-            });
-
-            // 初始化日期
+            // 設置當前日期
             const currentDate = new Date().toISOString().split('T')[0];
             currentDateElement.textContent = `今日日期：${currentDate}`;
 
@@ -533,7 +450,7 @@
                 saveSummary();
                 clientCounter++;
                 localStorage.removeItem('cart');
-                productCodeInput.focus();
+                productCodeInput.focus(); // 在結账后将焦点返回到输入框
             });
 
             // 計算總金額
@@ -635,7 +552,18 @@
 
             // 更新統計表格
             const updateSummaryTable = () => {
-                renderSummaryTable();
+                summaryTableBody.innerHTML = '';
+                overallSummaryTableBody.innerHTML = '';
+
+                Object.values(clients).forEach(client => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><a href="#" class="client-link" data-client-id="${client.id}">${client.id}</td>
+                        <td>${Math.round(client.amount)}</td>
+                        <td><button class="delete-client-btn" data-client-id="${client.id}">刪除</button></td>
+                    `;
+                    summaryTableBody.appendChild(row);
+                });
 
                 Object.values(overallSummary).forEach(item => {
                     const row = document.createElement('tr');
