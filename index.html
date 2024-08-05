@@ -149,7 +149,7 @@
     max-width: 100%; /* 確保不會超出容器的最大寬度 */
     height: 100px;
     padding: 10px;
-    font-size: 0.9em;
+    font-size: 1.2em;
     border: 1px solid #D2B48C;
     border-radius: 4px;
     resize: none;
@@ -180,8 +180,8 @@
             <div id="product-info"></div> <!-- 顯示商品信息 -->
         </div>
         <div class="form-group search-container">
-            <label for="keyword-search">請輸入關鍵字搜尋商品：</label>
-            <input type="text" id="keyword-search" placeholder="輸入關鍵字">
+            <label for="keyword-search">輸入關鍵字搜尋商品：</label>
+            <input type="text" id="keyword-search" placeholder="僅限商品名稱">
             <div id="search-results" class="search-results"></div>
         </div>
         <div class="table-container">
@@ -247,10 +247,10 @@
                 </tbody>
             </table>
         </div>
-        <div class="total">結帳周期總金額：<span id="overall-total-amount">0</span> 元</div>
+        <div class="total">總金額：<span id="overall-total-amount">0</span> 元</div>
     </div>
     <div class="container notes-container">
-        <label for="notes">備註：</label>
+        <label for="notes">訂單備註：</label>
         <textarea id="notes"></textarea>
     </div>
     <script>
@@ -639,7 +639,7 @@
                     ['商品代碼', '名稱', '總數量', '總金額'],
                     ...Object.values(overallSummary).map(item => [item.code, item.name, item.totalQuantity, Math.round(item.totalAmount)]),
                     [],
-                    ['結帳周期總金額', Math.round(overallTotalAmountElement.textContent)],
+                    ['總金額', Math.round(overallTotalAmountElement.textContent)],
                     [],
                     ['備註'],
                     [notes]
