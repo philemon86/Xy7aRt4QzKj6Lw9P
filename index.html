@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>腓利門雲POS</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -29,14 +30,14 @@
 
 .search-results div {
     display: flex;
-    flex-direction: column; /* 先垂直排列以適應手機小屏幕 */
+    flex-direction: column; /* 先垂直排列以適應手機小螢幕 */
     margin-bottom: 10px; /* 增加搜尋結果之間的間距 */
     border-bottom: 1px solid #D2B48C; /* 增加分隔線使結果更分明 */
     padding-bottom: 10px;
 }
 
 .search-results div span {
-    font-size: 0.9em; /* 調整字體大小適應小屏幕 */
+    font-size: 0.9em; /* 調整字體大小適應小螢幕 */
     color: #8B4513;
     margin-bottom: 5px;
 }
@@ -145,11 +146,11 @@
             margin-bottom: 10px;
         }
 .notes-container textarea {
-    width: 100%;
+    width: calc(100% - 20px); /* 確保 textarea 有適當的內邊距 */
     max-width: 100%; /* 確保不會超出容器的最大寬度 */
-    height: 100px;
+    height: 130px; /* 原高度的基礎上增加30% */
     padding: 10px;
-    font-size: 1.2em;
+    font-size: 1em; /* 增加字體大小 */
     border: 1px solid #D2B48C;
     border-radius: 4px;
     resize: none;
@@ -177,7 +178,7 @@
         <div class="form-group">
             <label for="product-code">請輸入商品代碼/條碼：</label>
             <input type="text" id="product-code" placeholder="請輸入商品代碼/條碼">
-            <div id="product-info"></div> <!-- 顯示商品信息 -->
+            <div id="product-info"></div> <!-- 顯示商品資訊 -->
         </div>
         <div class="form-group search-container">
             <label for="keyword-search">輸入關鍵字搜尋商品：</label>
@@ -299,7 +300,7 @@
                 return `${dayOfYear}-${String(clientCounter).padStart(3, '0')}`;
             };
 
-            // 加载產品資料
+            // 載入產品資料
             const loadProducts = async () => {
                 try {
                     const response = await fetch('products.csv');
@@ -333,7 +334,7 @@
                         }
                     });
 
-                    csvValidationElement.textContent = "CSV文件讀取成功";
+                    csvValidationElement.textContent = "CSV檔讀取成功";
                 } catch (error) {
                     csvValidationElement.textContent = `CSV文件讀取失敗: ${error.message}`;
                 }
@@ -388,7 +389,7 @@
                 }
             });
 
-            // 在小於768px的屏幕上添加確認按鈕
+            // 在小於768px的螢幕上添加確認按鈕
             if (window.innerWidth < 768) {
                 const confirmButton = document.createElement('button');
                 confirmButton.textContent = '確認送出';
