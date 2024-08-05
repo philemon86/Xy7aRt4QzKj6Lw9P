@@ -450,6 +450,7 @@
                 saveSummary();
                 clientCounter++;
                 localStorage.removeItem('cart');
+                productCodeInput.focus(); // 在結账后将焦点返回到输入框
             });
 
             // 計算總金額
