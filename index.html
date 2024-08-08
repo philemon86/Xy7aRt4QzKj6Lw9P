@@ -28,31 +28,31 @@
             margin-top: 20px;
         }
 
-.search-results div {
-    display: flex;
-    flex-direction: column; /* 先垂直排列以適應手機小螢幕 */
-    margin-bottom: 10px; /* 增加搜尋結果之間的間距 */
-    border-bottom: 1px solid #D2B48C; /* 增加分隔線使結果更分明 */
-    padding-bottom: 10px;
-}
+        .search-results div {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #D2B48C;
+            padding-bottom: 10px;
+        }
 
-.search-results div span {
-    font-size: 0.9em; /* 調整字體大小適應小螢幕 */
-    color: #8B4513;
-    margin-bottom: 5px;
-}
+        .search-results div span {
+            font-size: 0.9em;
+            color: #8B4513;
+            margin-bottom: 5px;
+        }
 
-.search-results button {
-    align-self: flex-end; /* 將按鈕放在每個結果項目的右下角 */
-    padding: 5px;
-    background-color: #DEB887; 
-    border: none;
-    border-radius: 4px;
-    color: #fff;
-    cursor: pointer;
-    font-size: 0.8em; /* 調整按鈕字體大小 */
-    margin-top: 5px;
-}
+        .search-results button {
+            align-self: flex-end;
+            padding: 5px;
+            background-color: #DEB887;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
 
         .header, .form-group, .table-container, .payment-info, .notes-container {
             border: 1px solid #D2B48C;
@@ -145,28 +145,27 @@
             color: green;
             margin-bottom: 10px;
         }
-.notes-container textarea {
-    width: calc(100% - 20px); /* 確保 textarea 有適當的內邊距 */
-    max-width: 100%; /* 確保不會超出容器的最大寬度 */
-    height: 130px; /* 原高度的基礎上增加30% */
-    padding: 10px;
-    font-size: 1em; /* 增加字體大小 */
-    border: 1px solid #D2B48C;
-    border-radius: 4px;
-    resize: none;
-    background-color: #E6E2B2;
-    box-sizing: border-box; /* 確保 padding 不會導致寬度溢出 */
-}
+        .notes-container textarea {
+            width: calc(100% - 20px);
+            max-width: 100%;
+            height: 130px;
+            padding: 10px;
+            font-size: 1em;
+            border: 1px solid #D2B48C;
+            border-radius: 4px;
+            resize: none;
+            background-color: #E6E2B2;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body>
     <div class="csv-validation" id="csv-validation"></div>
-    <div class="container">
-<div class="header">
-    <!-- 添加這一行以插入Logo -->
-    <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
-    <span id="title">腓利門雲POS</span>
-</div>
+    <div class="container main-container">
+        <div class="header">
+            <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
+            <span id="title">腓利門雲POS</span>
+        </div>
         <div class="header">
             <span id="current-date"></span>
             <span>結帳週期：<input type="number" id="billing-cycle" value="1" min="1" max="7"> 天</span>
@@ -212,7 +211,7 @@
             </div>
         </div>
     </div>
-    <div class="container">
+    <div class="container summary-container">
         <div class="table-title">
             單筆消費明細 <br>
             統計訂單總數: <span id="total-orders">0</span> | 訂單平均消費: <span id="average-amount">0</span> 元
@@ -231,7 +230,6 @@
                 </tbody>
             </table>
         </div>
-        <div class="table-title">
         <div class="table-title">總消費統計</div>
         <div class="table-container">
             <table id="overall-summary-table">
@@ -282,25 +280,21 @@
             let overallSummary = JSON.parse(localStorage.getItem('overallSummary')) || {};
             let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
 
-            // 設置當前日期
-            const currentDate = new Date().toISOString().split('T')[0];
+            const currentDate = new Date().toISOString().split('T')[0].replace(/-/g, '/');
             currentDateElement.textContent = `今日日期：${currentDate}`;
 
-            // 初始化記事本
             notesElement.value = localStorage.getItem('notes') || '';
 
             notesElement.addEventListener('input', () => {
                 localStorage.setItem('notes', notesElement.value);
             });
 
-            // 生成客戶ID
             const generateClientId = () => {
                 const date = new Date();
                 const dayOfYear = `${date.getMonth() + 1}${date.getDate()}`;
                 return `${dayOfYear}-${String(clientCounter).padStart(3, '0')}`;
             };
 
-            // 載入產品資料
             const loadProducts = async () => {
                 try {
                     const response = await fetch('products.csv');
@@ -340,7 +334,6 @@
                 }
             };
 
-            // 顯示商品資訊
             productCodeInput.addEventListener('input', (e) => {
                 const codeOrBarcode = e.target.value.trim();
                 const product = Object.values(products).find(product => product.code === codeOrBarcode || product.barcode === codeOrBarcode);
@@ -351,7 +344,6 @@
                 }
             });
 
-            // 關鍵字搜尋商品
             keywordSearchInput.addEventListener('input', (e) => {
                 const keywords = e.target.value.trim().toLowerCase().split(' ');
                 const matchedProducts = Object.values(products).filter(product => 
@@ -374,7 +366,6 @@
                 });
             });
 
-            // 添加商品到購物車
             productCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     const codeOrBarcode = e.target.value.trim();
@@ -389,7 +380,6 @@
                 }
             });
 
-            // 在小於768px的螢幕上添加確認按鈕
             if (window.innerWidth < 768) {
                 const confirmButton = document.createElement('button');
                 confirmButton.textContent = '確認送出';
@@ -416,7 +406,6 @@
                 document.querySelector('.form-group').appendChild(confirmButton);
             }
 
-            // 防止提交空訂單
             checkoutBtn.addEventListener('click', () => {
                 if (cart.length === 0) {
                     alert('購物車為空，無法結帳');
@@ -450,10 +439,9 @@
                 saveSummary();
                 clientCounter++;
                 localStorage.removeItem('cart');
-                productCodeInput.focus(); // 在結账后将焦点返回到输入框
+                productCodeInput.focus(); 
             });
 
-            // 計算總金額
             const calculateTotal = () => {
                 let total = 0;
                 cart = cart.filter(item => item.quantity !== 0); 
@@ -464,7 +452,6 @@
                 calculateChange();
             };
 
-            // 計算找錢
             const calculateChange = () => {
                 const totalAmount = parseFloat(totalAmountElement.textContent);
                 const paidAmount = parseFloat(paidAmountInput.value);
@@ -472,10 +459,8 @@
                 changeAmountElement.textContent = isNaN(change) ? "0" : Math.round(change);
             };
 
-            // 監聽實付金額變化，自動計算找錢
             paidAmountInput.addEventListener('input', calculateChange);
 
-            // 添加商品到購物車並更新顯示
             const addProductToCart = (code) => {
                 const product = products[code];
                 const existingItem = cart.find(item => item.code === code);
@@ -489,7 +474,6 @@
                 saveCart();
             };
 
-            // 更新購物車顯示
             const updateCartDisplay = () => {
                 cartTableBody.innerHTML = '';
                 cart.forEach(item => {
@@ -525,6 +509,7 @@
                         const newDiscount = parseInt(e.target.value);
                         if (newDiscount < 0) {
                             alert('折扣不能為負值');
+                            input.value = 0;
                         } else {
                             const item = cart.find(item => item.code === code);
                             if (item) {
@@ -538,19 +523,16 @@
                 });
             };
 
-            // 保存購物車到本地存儲
             const saveCart = () => {
                 localStorage.setItem('cart', JSON.stringify(cart));
             };
 
-            // 保存統計數據到本地存儲
             const saveSummary = () => {
                 localStorage.setItem('clients', JSON.stringify(clients));
                 localStorage.setItem('overallSummary', JSON.stringify(overallSummary));
                 localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
             };
 
-            // 更新統計表格
             const updateSummaryTable = () => {
                 summaryTableBody.innerHTML = '';
                 overallSummaryTableBody.innerHTML = '';
@@ -602,7 +584,6 @@
                 });
             };
 
-            // 顯示客戶購買詳細信息
             const showClientDetails = (clientId) => {
                 const client = clients[clientId];
                 if (client) {
@@ -611,7 +592,6 @@
                 }
             };
 
-            // 刪除客戶及其相關統計數據
             const deleteClient = (clientId) => {
                 const client = clients[clientId];
                 if (client) {
@@ -631,7 +611,6 @@
                 }
             };
 
-            // 匯出CSV功能
             exportCsvBtn.addEventListener('click', () => {
                 const notes = localStorage.getItem('notes') || '無備註';
                 const rows = [
@@ -659,7 +638,6 @@
                 document.body.removeChild(link);
             });
 
-            // 清空所有數據
             clearAllBtn.addEventListener('click', () => {
                 if (confirm('確定要刪除全部訂單？此操作無法撤銷。')) {
                     if (confirm('再次確認，確定要刪除全部訂單嗎？')) {
@@ -676,7 +654,6 @@
                 }
             });
 
-            // 初始化
             loadProducts().then(() => {
                 updateCartDisplay();
                 updateSummaryTable();
