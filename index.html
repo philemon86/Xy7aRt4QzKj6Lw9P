@@ -165,6 +165,10 @@
         <div class="header">
             <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
             <span id="title">腓利門雲POS</span>
+            <div class="btn-group">
+                <button id="export-stksale1-btn">匯出 STKSALE1</button>
+                <button id="export-stksale2-btn">匯出 STKSALE2</button>
+            </div>
         </div>
         <div class="header">
             <span id="current-date"></span>
@@ -237,7 +241,7 @@
                     <tr>
                         <th>商品代碼</th>
                         <th>名稱</th>
-                        <th>總數量</th>
+                        <th>總數量                        </th>
                         <th>總金額</th>
                     </tr>
                 </thead>
@@ -270,6 +274,8 @@
             const overallTotalAmountElement = document.getElementById('overall-total-amount');
             const checkoutBtn = document.getElementById('checkout-btn');
             const exportCsvBtn = document.getElementById('export-csv-btn');
+            const exportStksale1Btn = document.getElementById('export-stksale1-btn');
+            const exportStksale2Btn = document.getElementById('export-stksale2-btn');
             const clearAllBtn = document.getElementById('clear-all-btn');
             const totalOrdersElement = document.getElementById('total-orders');
             const averageAmountElement = document.getElementById('average-amount');
@@ -465,7 +471,7 @@
                 const product = products[code];
                 const existingItem = cart.find(item => item.code === code);
                 if (existingItem) {
-                    existingItem.quantity += 1;
+                    existingItem.quantity += 1
                 } else {
                     cart.push({ ...product, quantity: 1, discount: 80 });
                 }
@@ -638,6 +644,14 @@
                 document.body.removeChild(link);
             });
 
+            exportStksale1Btn.addEventListener('click', () => {
+                exportCSV(cart, 'STKSALE1.csv', stksale1Format);
+            });
+
+            exportStksale2Btn.addEventListener('click', () => {
+                exportCSV(cart, 'STKSALE2.csv', stksale2Format);
+            });
+
             clearAllBtn.addEventListener('click', () => {
                 if (confirm('確定要刪除全部訂單？此操作無法撤銷。')) {
                     if (confirm('再次確認，確定要刪除全部訂單嗎？')) {
@@ -654,6 +668,71 @@
                 }
             });
 
+            const stksale1Format = (item) => {
+                return {
+                    ERI: '0H50010LEWHW5F8O',
+                    CODE: item.code,
+                    STAFF: '2',
+                    CUST: '2',
+                    SDATE: new Date().toISOString().split('T')[0],
+                    CURR: 'NTD',
+                    RATE: '1',
+                    PROJNO: '',
+                    GWN: '0',
+                    ADDR: '',
+                    NORCV: '0',
+                    CONTACT: '',
+                    TEL: '',
+                    EINVFLAG: '0',
+                    APCODE: '',
+                    LASTUPD: new Date().toISOString().slice(0, 14).replace(/[^0-9]/g, ''),
+                    POSCODE: '',
+                    POSREMARK1: '',
+                    POSREMARK2: '',
+                    STIME: ''
+                };
+            };
+
+            const stksale2Format = (item) => {
+                return {
+                    ERI: '0H80010LEWHW5F8P',
+                    MASTERI: '0H50010LEWHW5F8O',
+                    SRCERI: '',
+                    STAFF: '2',
+                    CUST: '2',
+                    GWN: '0',
+                    PROD: item.code,
+                    SDATE: new Date().toISOString().split('T')[0],
+                    TYPE: '0',
+                    CODE: item.code,
+                    INVPRC: '0',
+                    INVAMT: '0',
+                    INVAMT1: '0',
+                    GIFT: '0',
+                    MFLAG: '0',
+                    SUBAMT: '0',
+                    APCODE: '',
+                    LASTUPD: new Date().toISOString().slice(0, 14).replace(/[^0-9]/g, ''),
+                    POSREMARK1: '',
+                    POSREMARK2: ''
+                };
+            };
+
+            const exportCSV = (data, filename, formatFunction) => {
+                const rows = data.map(formatFunction);
+                const csvContent = "data:text/csv;charset=utf-8,\ufeff" 
+                    + Object.keys(rows[0]).join(",") + "\n"
+                    + rows.map(e => Object.values(e).join(",")).join("\n");
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
             loadProducts().then(() => {
                 updateCartDisplay();
                 updateSummaryTable();
@@ -664,3 +743,4 @@
     </script>
 </body>
 </html>
+
