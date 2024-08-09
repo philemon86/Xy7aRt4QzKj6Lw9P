@@ -406,27 +406,38 @@
                 confirmButton.style.padding = '10px';
 
 productCodeInput.addEventListener('input', (e) => {
-    const codeOrBarcode = e.target.value.trim().toLowerCase(); // 將輸入轉換為小寫
-    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-    if (product) {
-        productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`; // 即時顯示產品資訊
-    } else {
-        productInfoElement.textContent = ''; // 如果沒有找到，清空顯示
-    }
-});
+document.addEventListener('DOMContentLoaded', () => {
+    const productCodeInput = document.getElementById('product-code');
+    const productInfoElement = document.getElementById('product-info');
+    let products = {}; // 假設此變數已經通過其他代碼填充
 
-productCodeInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
+    // 处理输入事件
+    productCodeInput.addEventListener('input', (e) => {
         const codeOrBarcode = e.target.value.trim().toLowerCase(); // 將輸入轉換為小寫
         const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
         if (product) {
-            addProductToCart(product.code); // 將產品加入購物車
-            e.target.value = ''; // 清空輸入框
-            productInfoElement.textContent = ''; // 清空產品資訊顯示
+            productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`; // 即時顯示產品資訊
         } else {
-            alert('找不到商品'); // 找不到商品時給出提示
+            productInfoElement.textContent = ''; // 如果沒有找到，清空顯示
         }
-    }
+    });
+
+    // 处理按下 Enter 键事件
+    productCodeInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const codeOrBarcode = e.target.value.trim().toLowerCase(); // 將輸入轉換為小寫
+            const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+            if (product) {
+                addProductToCart(product.code); // 將產品加入購物車
+                e.target.value = ''; // 清空輸入框
+                productInfoElement.textContent = ''; // 清空產品資訊顯示
+            } else {
+                alert('找不到商品'); // 找不到商品時給出提示
+            }
+        }
+    });
+
+    // 其他代碼，例如 loadProducts(), addProductToCart(), 等...
 });
 
                 document.querySelector('.form-group').appendChild(confirmButton);
