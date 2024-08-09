@@ -189,7 +189,7 @@
             <table id="cart-table">
                 <thead>
                     <tr>
-                        <th>商品代碼</th>
+                        <!-- <th>商品代碼</th> 移除 -->
                         <th>名稱</th>
                         <th>單價</th>
                         <th>數量</th>
@@ -307,46 +307,46 @@
                 };
             };
 
-const loadProducts = async () => {
-    try {
-        const response = await fetch('products.csv');
-        const data = await response.text();
-        const lines = data.split('\n');
-        let headers = [];
-        let isHeader = true;
+            const loadProducts = async () => {
+                try {
+                    const response = await fetch('products.csv');
+                    const data = await response.text();
+                    const lines = data.split('\n');
+                    let headers = [];
+                    let isHeader = true;
 
-        lines.forEach(line => {
-            const columns = line.split(',');
+                    lines.forEach(line => {
+                        const columns = line.split(',');
 
-            if (isHeader) {
-                headers = columns.map(header => header.trim());
-                isHeader = false;
-                return;
-            }
+                        if (isHeader) {
+                            headers = columns.map(header => header.trim());
+                            isHeader = false;
+                            return;
+                        }
 
-            const product = {};
-            headers.forEach((header, index) => {
-                product[header] = columns[index]?.trim();
-            });
+                        const product = {};
+                        headers.forEach((header, index) => {
+                            product[header] = columns[index]?.trim();
+                        });
 
-            if (product['CODE'] && product['CNAME'] && product['BARCODE'] && !isNaN(parseInt(product['CQTY']))) {
-                const discount = discountRates[product['CLAS']] || 100; // 根據分類應用折扣
-                products[product['CODE']] = {
-                    code: product['CODE'],
-                    name: product['CNAME'],
-                    barcode: product['BARCODE'],
-                    qty: parseInt(product['CQTY']),
-                    price: parseFloat(product['PRICE']) || 0,
-                    discount: discount // 直接在這裡設定折扣
-                };
-            }
-        });
+                        if (product['CODE'] && product['CNAME'] && product['BARCODE'] && !isNaN(parseInt(product['CQTY']))) {
+                            const discount = discountRates[product['CLAS']] || 100; // 根據分類應用折扣
+                            products[product['CODE']] = {
+                                code: product['CODE'],
+                                name: product['CNAME'],
+                                barcode: product['BARCODE'],
+                                qty: parseInt(product['CQTY']),
+                                price: parseFloat(product['PRICE']) || 0,
+                                discount: discount // 直接在這裡設定折扣
+                            };
+                        }
+                    });
 
-        csvValidationElement.textContent = "CSV檔讀取成功";
-    } catch (error) {
-        csvValidationElement.textContent = `CSV文件讀取失敗: ${error.message}`;
-    }
-};
+                    csvValidationElement.textContent = "CSV檔讀取成功";
+                } catch (error) {
+                    csvValidationElement.textContent = `CSV文件讀取失敗: ${error.message}`;
+                }
+            };
 
             productCodeInput.addEventListener('input', (e) => {
                 const codeOrBarcode = e.target.value.trim();
@@ -447,7 +447,7 @@ const loadProducts = async () => {
                 });
 
                 cart = [];
-                 updateCartDisplay();
+                updateCartDisplay();
                 calculateTotal();
                 updateSummaryTable();
                 saveSummary();
@@ -493,11 +493,10 @@ const loadProducts = async () => {
                 cart.forEach(item => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>${item.code}</td>
                         <td>${item.name.substring(0, 10)}</td>
                         <td>${Math.round(item.price)}</td>
-                        <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="0" class="quantity-input" data-code="${item.code}"></td>
-                        <td><input type="number" name="discount-${item.code}" value="${item.discount}" min="0" max="100" class="discount-input" data-code="${item.code}"></td>
+                        <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="0" class="quantity-input" data-code="${item.code}" style="width: 60px;"></td>
+                        <td><input type="number" name="discount-${item.code}" value="${item.discount}" min="0" max="100" class="discount-input" data-code="${item.code}" style="width: 60px;"></td>
                         <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
                     `;
                     cartTableBody.appendChild(row);
@@ -679,5 +678,3 @@ const loadProducts = async () => {
     </script>
 </body>
 </html>
-              
-
