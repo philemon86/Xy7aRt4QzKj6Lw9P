@@ -297,7 +297,7 @@
 
             const loadProducts = async () => {
                 try {
-                    const response = await fetch('products.csv');
+                    const response = await fetch('products_with_discount.csv');
                     const data = await response.text();
                     const lines = data.split('\n');
                     let headers = [];
@@ -323,7 +323,8 @@
                                 name: product['CNAME'],
                                 barcode: product['BARCODE'],
                                 qty: parseInt(product['CQTY']),
-                                price: parseFloat(product['PRICE']) || 0 
+                                price: parseFloat(product['PRICE']) || 0,
+                                discount: parseFloat(product['DISCOUNT']) || 100 
                             };
                         }
                     });
@@ -467,7 +468,7 @@
                 if (existingItem) {
                     existingItem.quantity += 1;
                 } else {
-                    cart.push({ ...product, quantity: 1, discount: 80 });
+                    cart.push({ ...product, quantity: 1, discount: product.discount });
                 }
                 updateCartDisplay();
                 calculateTotal();
@@ -482,7 +483,7 @@
                         <td>${item.code}</td>
                         <td>${item.name.substring(0, 10)}</td>
                         <td>${Math.round(item.price)}</td>
-                        <td><input type="number" value="${item.quantity}" min="0" class="quantity-input" data-code="${item.code}"></td>
+                        <td><input type="number" value="${item.quantity}" min="0" class="quantity-input" data-code="${item.code}"></td
                         <td><input type="number" value="${item.discount}" min="0" max="100" class="discount-input" data-code="${item.code}"></td>
                         <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
                     `;
@@ -664,3 +665,4 @@
     </script>
 </body>
 </html>
+
