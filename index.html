@@ -405,16 +405,27 @@
                 confirmButton.style.cursor = 'pointer';
                 confirmButton.style.padding = '10px';
 
-confirmButton.addEventListener('click', () => {
-    const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); // 将输入转换为小写
+productCodeInput.addEventListener('input', (e) => {
+    const codeOrBarcode = e.target.value.trim().toLowerCase(); // 將輸入轉換為小寫
     const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
     if (product) {
-        addProductToCart(product.code);
-        productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`; // 更新產品資訊顯示
-        productCodeInput.value = '';
+        productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`; // 即時顯示產品資訊
     } else {
-        alert('找不到商品');
-        productInfoElement.textContent = ''; // 清空產品資訊顯示
+        productInfoElement.textContent = ''; // 如果沒有找到，清空顯示
+    }
+});
+
+productCodeInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const codeOrBarcode = e.target.value.trim().toLowerCase(); // 將輸入轉換為小寫
+        const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+        if (product) {
+            addProductToCart(product.code); // 將產品加入購物車
+            e.target.value = ''; // 清空輸入框
+            productInfoElement.textContent = ''; // 清空產品資訊顯示
+        } else {
+            alert('找不到商品'); // 找不到商品時給出提示
+        }
     }
 });
 
