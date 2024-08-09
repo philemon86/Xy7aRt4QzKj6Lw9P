@@ -410,10 +410,11 @@ confirmButton.addEventListener('click', () => {
     const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
     if (product) {
         addProductToCart(product.code);
+        productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`; // 更新產品資訊顯示
         productCodeInput.value = '';
-        productInfoElement.textContent = '';
     } else {
         alert('找不到商品');
+        productInfoElement.textContent = ''; // 清空產品資訊顯示
     }
 });
 
