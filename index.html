@@ -405,17 +405,17 @@
                 confirmButton.style.cursor = 'pointer';
                 confirmButton.style.padding = '10px';
 
-                confirmButton.addEventListener('click', () => {
-                    const codeOrBarcode = productCodeInput.value.trim();
-                    const product = Object.values(products).find(product => product.code === codeOrBarcode || product.barcode === codeOrBarcode);
-                    if (product) {
-                        addProductToCart(product.code);
-                        productCodeInput.value = '';
-                        productInfoElement.textContent = '';
-                    } else {
-                        alert('找不到商品');
-                    }
-                });
+confirmButton.addEventListener('click', () => {
+    const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); // 将输入转换为小写
+    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+    if (product) {
+        addProductToCart(product.code);
+        productCodeInput.value = '';
+        productInfoElement.textContent = '';
+    } else {
+        alert('找不到商品');
+    }
+});
 
                 document.querySelector('.form-group').appendChild(confirmButton);
             }
