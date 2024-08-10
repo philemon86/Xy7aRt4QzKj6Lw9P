@@ -349,8 +349,8 @@
             };
 
             productCodeInput.addEventListener('input', (e) => {
-                const codeOrBarcode = e.target.value.trim();
-                const product = Object.values(products).find(product => product.code === codeOrBarcode || product.barcode === codeOrBarcode);
+                const codeOrBarcode = e.target.value.trim().toLowerCase(); // 将输入转换为小写
+                const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
                 if (product) {
                     productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
                 } else {
@@ -382,8 +382,8 @@
 
             productCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    const codeOrBarcode = e.target.value.trim();
-                    const product = Object.values(products).find(product => product.code === codeOrBarcode || product.barcode === codeOrBarcode);
+                    const codeOrBarcode = e.target.value.trim().toLowerCase(); // 将输入转换为小写
+                    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
                     if (product) {
                         addProductToCart(product.code);
                         e.target.value = '';
@@ -405,40 +405,17 @@
                 confirmButton.style.cursor = 'pointer';
                 confirmButton.style.padding = '10px';
 
-productCodeInput.addEventListener('input', (e) => {
-document.addEventListener('DOMContentLoaded', () => {
-    const productCodeInput = document.getElementById('product-code');
-    const productInfoElement = document.getElementById('product-info');
-    let products = {}; // 假設此變數已經通過其他代碼填充
-
-    // 处理输入事件
-    productCodeInput.addEventListener('input', (e) => {
-        const codeOrBarcode = e.target.value.trim().toLowerCase(); // 將輸入轉換為小寫
-        const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-        if (product) {
-            productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`; // 即時顯示產品資訊
-        } else {
-            productInfoElement.textContent = ''; // 如果沒有找到，清空顯示
-        }
-    });
-
-    // 处理按下 Enter 键事件
-    productCodeInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            const codeOrBarcode = e.target.value.trim().toLowerCase(); // 將輸入轉換為小寫
-            const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-            if (product) {
-                addProductToCart(product.code); // 將產品加入購物車
-                e.target.value = ''; // 清空輸入框
-                productInfoElement.textContent = ''; // 清空產品資訊顯示
-            } else {
-                alert('找不到商品'); // 找不到商品時給出提示
-            }
-        }
-    });
-
-    // 其他代碼，例如 loadProducts(), addProductToCart(), 等...
-});
+                confirmButton.addEventListener('click', () => {
+                    const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); // 将输入转换为小写
+                    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+                    if (product) {
+                        addProductToCart(product.code);
+                        productCodeInput.value = '';
+                        productInfoElement.textContent = '';
+                    } else {
+                        alert('找不到商品');
+                    }
+                });
 
                 document.querySelector('.form-group').appendChild(confirmButton);
             }
@@ -518,8 +495,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.innerHTML = `
                         <td>${item.name.substring(0, 10)}</td>
                         <td>${Math.round(item.price)}</td>
-                        <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="0" class="quantity-input" data-code="${item.code}" style="width: 60px;"></td>
-                        <td><input type="number" name="discount-${item.code}" value="${item.discount}" min="0" max="100" class="discount-input" data-code="${item.code}" style="width: 60px;"></td>
+                        <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="0" class="quantity-input" data-code="${item.code}"></td>
+                        <td><input type="number" name="discount-${item.code}" value="${item.discount}" min="0" max="100" class="discount-input" data-code="${item.code}"></td>
                         <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
                     `;
                     cartTableBody.appendChild(row);
