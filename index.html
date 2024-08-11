@@ -548,11 +548,10 @@ const calculateTotal = () => {
     let total = 0;
     cart = cart.filter(item => item.quantity !== 0); 
     cart.forEach(item => {
-        // 先計算折扣後的金額
+        // 這裡不要對折扣進行四捨五入，保留其精度
         const discountedPrice = item.price * item.quantity * (item.discount / 100);
-        // 將計算結果四捨五入
-        const roundedDiscountedPrice = Math.round(discountedPrice);
-        total += roundedDiscountedPrice;
+        // 直接將結果加到總額
+        total += discountedPrice;
     });
     totalAmountElement.textContent = Math.round(total);
     calculateChange();
@@ -624,13 +623,13 @@ document.querySelectorAll('.quantity-input').forEach(input => {
 document.querySelectorAll('.discount-input').forEach(input => {
     input.addEventListener('input', debounce((e) => {
         const code = e.target.dataset.code;
-        const newDiscount = parseInt(e.target.value);
+        const newDiscount = parseFloat(e.target.value); // 使用 parseFloat 確保接收小數點
 
-        // 确保用户输入了有效的折扣值
+        // 確保用戶輸入的折扣值能夠保留小數點部分
         if (!isNaN(newDiscount) && newDiscount >= 0) {
             const item = cart.find(item => item.code === code);
             if (item) {
-                item.discount = newDiscount;
+                item.discount = newDiscount; // 保留用戶輸入的小數點
                 calculateTotal();
                 updateCartDisplay();
                 saveCart();
