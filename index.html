@@ -611,6 +611,13 @@ keywordSearchInput.addEventListener('input', (e) => {
                 summaryTableBody.innerHTML = '';
                 overallSummaryTableBody.innerHTML = '';
 
+    // 依照商品代碼進行排序
+    const sortedSummary = Object.values(overallSummary).sort((a, b) => {
+        if (a.code < b.code) return -1;
+        if (a.code > b.code) return 1;
+        return 0;
+    });
+
                 Object.values(clients).forEach(client => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
