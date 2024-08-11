@@ -121,22 +121,14 @@
     color: #F5F5DC; /* 字体颜色设为米色 */
     background-color: #8A6739; /* 背景颜色设为咖啡色 */
     padding: 10px; /* 增加内边距以突出显示 */
-    border-radius: 8px 8px 0 0; /* 保留上方圆角，去掉底部圆角 */
     text-align: right; /* 文字对齐到右边 */
 }
-        .btn-group {
-            display: flex;
-            justify-content: space-between;
-        }
-        .btn-group button {
-            padding: 5px 10px;
-            font-size: 0.8em;
-            cursor: pointer;
-            background-color: #DEB887;
-            border: none;
-            border-radius: 4px;
-            color: #fff;
-        }
+
+/* 仅应用于底部“總金額”区域的样式 */
+.bottom-total {
+    border-radius: 8px; /* 设置四个角都为圆角 */
+    margin-top: 20px; /* 添加顶部间距 */
+}
 .payment-info {
     text-align: right;
     background-color: #FFFFFF; 
@@ -272,9 +264,9 @@
                 <thead>
                     <tr>
                         <th>商品代碼</th>
-                        <th>名稱</th>
-                        <th>總數量</th>
-                        <th>總金額</th>
+                        <th>產品名稱</th>
+                        <th>數量小計</th>
+                        <th>金額小計</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -282,7 +274,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="total">總金額：<span id="overall-total-amount">0</span> 元</div>
+<div class="total bottom-total">總金額：<span id="overall-total-amount">0</span> 元</div>
     </div>
     <div class="container notes-container">
         <label for="notes">訂單備註：</label>
