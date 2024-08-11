@@ -561,38 +561,40 @@ keywordSearchInput.addEventListener('input', (e) => {
                     cartTableBody.appendChild(row);
                 });
 
-document.querySelectorAll('.quantity-input').forEach(input => {
-    input.addEventListener('input', debounce((e) => {
-        const code = e.target.dataset.code;
-        const newQuantity = parseInt(e.target.value);
-        const item = cart.find(item => item.code === code);
-        if (item) {
-            item.quantity = newQuantity;
-            calculateTotal();
-            updateCartDisplay();
-            saveCart();
-        }
-    }, 500));  // 延迟500毫秒后进行计算
-});
+                document.querySelectorAll('.quantity-input').forEach(input => {
+                    input.addEventListener('input', throttle((e) => {
+                        const code = e.target.dataset.code;
+                        const newQuantity = parseInt(e.target.value);
+                        const item = cart.find(item => item.code === code);
+                        if (item) {
+                            item.quantity = newQuantity;
+                            calculateTotal();
+                            updateCartDisplay();
+                            saveCart();
+                        }
+                    }, 500));
+                });
 
-document.querySelectorAll('.discount-input').forEach(input => {
-    input.addEventListener('input', debounce((e) => {
-        const code = e.target.dataset.code;
-        const newDiscount = parseInt(e.target.value);
-        if (newDiscount < 0) {
-            alert('折扣不能為負值');
-            input.value = 0;
-        } else {
-            const item = cart.find(item => item.code === code);
-            if (item) {
-                item.discount = newDiscount;
-                calculateTotal();
-                updateCartDisplay();
-                saveCart();
-            }
-        }
-    }, 500));  // 延迟500毫秒后进行计算
-});
+                document.querySelectorAll('.discount-input').forEach(input => {
+                    input.addEventListener('input', throttle((e) => {
+                        const code = e.target.dataset.code;
+                        const newDiscount = parseInt(e.target.value);
+                        if (newDiscount < 0) {
+                            alert('折扣不能為負值');
+                            input.value = 0;
+                        } else {
+                            const item = cart.find(item => item.code === code);
+                            if (item) {
+                                item.discount = newDiscount;
+                                calculateTotal();
+                                updateCartDisplay();
+                                saveCart();
+                            }
+                        }
+                    }, 500));
+                });
+            };
+
             const saveCart = () => {
                 localStorage.setItem('cart', JSON.stringify(cart));
             };
