@@ -562,12 +562,12 @@ keywordSearchInput.addEventListener('input', (e) => {
                 });
 
 document.querySelectorAll('.quantity-input').forEach(input => {
-    input.addEventListener('input', throttle((e) => {
+    input.addEventListener('input', debounce((e) => {
         const code = e.target.dataset.code;
         const newQuantity = parseInt(e.target.value);
 
-        // 确保用户输入了一个完整的数字
-        if (!isNaN(newQuantity) && newQuantity >= 0) {
+        // 确保用户输入了有效的数字
+        if (!isNaN(newQuantity) && newQuantity > 0) {
             const item = cart.find(item => item.code === code);
             if (item) {
                 item.quantity = newQuantity;
@@ -576,16 +576,16 @@ document.querySelectorAll('.quantity-input').forEach(input => {
                 saveCart();
             }
         }
-    }, 1000));  // 延长 throttle 时间间隔到 1000 毫秒
+    }, 500));  // 延迟500毫秒后进行计算
 });
 
 document.querySelectorAll('.discount-input').forEach(input => {
-    input.addEventListener('input', throttle((e) => {
+    input.addEventListener('input', debounce((e) => {
         const code = e.target.dataset.code;
         const newDiscount = parseInt(e.target.value);
 
-        // 确保折扣输入合法
-        if (!isNaN(newDiscount) && newDiscount >= 0 && newDiscount <= 100) {
+        // 确保用户输入了有效的折扣值
+        if (!isNaN(newDiscount) && newDiscount >= 0) {
             const item = cart.find(item => item.code === code);
             if (item) {
                 item.discount = newDiscount;
@@ -593,10 +593,8 @@ document.querySelectorAll('.discount-input').forEach(input => {
                 updateCartDisplay();
                 saveCart();
             }
-        } else {
-            alert('折扣必须在 0 到 100 之间');
         }
-    }, 1000));  // 延长 throttle 时间间隔到 1000 毫秒
+    }, 500));  // 延迟500毫秒后进行计算
 });
             };
 
