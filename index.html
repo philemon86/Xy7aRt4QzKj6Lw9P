@@ -119,7 +119,7 @@
     font-size: 1.5em; /* 字体增大1.5倍 */
     font-weight: bold; /* 加粗字体 */
     color: #F5F5DC; /* 字体颜色设为米色 */
-    background-color: #6F4E37; /* 背景颜色设为咖啡色 */
+    background-color: #8A6739; /* 背景颜色设为咖啡色 */
     padding: 10px; /* 增加内边距以突出显示 */
     border-radius: 8px; /* 使边框圆润 */
     text-align: right; /* 文字对齐到右边 */
@@ -137,13 +137,21 @@
             border-radius: 4px;
             color: #fff;
         }
-        .payment-info {
-            text-align: right;
-        }
-        .payment-info span {
-            margin-right: 10px;
-            color: #8B4513;
-        }
+.payment-info {
+    text-align: right;
+}
+
+.payment-info span {
+    margin-right: 10px;
+    color: #8B4513;
+}
+
+/* 新增样式，调整实付金额输入框的大小 */
+.payment-info input#paid-amount {
+    max-width: 80px; /* 将输入框宽度缩小到80px */
+    padding: 5px; /* 增加适当的内边距 */
+    font-size: 1em; /* 确保字体大小与周围文字一致 */
+}
         #product-info {
             margin-bottom: 10px;
             color: #8B4513;
@@ -482,41 +490,44 @@ keywordSearchInput.addEventListener('input', (e) => {
                 document.querySelector('.form-group').appendChild(confirmButton);
             }
 
-            checkoutBtn.addEventListener('click', () => {
-                if (cart.length === 0) {
-                    alert('購物車為空，無法結帳');
-                    return;
-                }
-                const totalAmount = parseFloat(totalAmountElement.textContent);
-                const clientId = generateClientId();
-                clients[clientId] = {
-                    id: clientId,
-                    amount: totalAmount,
-                    items: [...cart]
-                };
+checkoutBtn.addEventListener('click', () => {
+    if (cart.length === 0) {
+        alert('購物車為空，無法結帳');
+        return;
+    }
+    const totalAmount = parseFloat(totalAmountElement.textContent);
+    const clientId = generateClientId();
+    clients[clientId] = {
+        id: clientId,
+        amount: totalAmount,
+        items: [...cart]
+    };
 
-                cart.forEach(item => {
-                    if (!overallSummary[item.code]) {
-                        overallSummary[item.code] = {
-                            code: item.code,
-                            name: item.name,
-                            totalQuantity: 0,
-                            totalAmount: 0
-                        };
-                    }
-                    overallSummary[item.code].totalQuantity += item.quantity;
-                    overallSummary[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);
-                });
+    cart.forEach(item => {
+        if (!overallSummary[item.code]) {
+            overallSummary[item.code] = {
+                code: item.code,
+                name: item.name,
+                totalQuantity: 0,
+                totalAmount: 0
+            };
+        }
+        overallSummary[item.code].totalQuantity += item.quantity;
+        overallSummary[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);
+    });
 
-                cart = [];
-                updateCartDisplay();
-                calculateTotal();
-                updateSummaryTable();
-                saveSummary();
-                clientCounter++;
-                localStorage.removeItem('cart');
-                productCodeInput.focus(); 
-            });
+    cart = [];
+    updateCartDisplay();
+    calculateTotal();
+    updateSummaryTable();
+    saveSummary();
+    clientCounter++;
+    localStorage.removeItem('cart');
+    productCodeInput.focus(); 
+    
+    // 重置实付金额输入框为 1000 元
+    paidAmountInput.value = 1000;
+});
 
             const calculateTotal = () => {
                 let total = 0;
