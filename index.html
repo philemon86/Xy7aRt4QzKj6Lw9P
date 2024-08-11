@@ -388,56 +388,56 @@
                 }
             }, 300));
 
-            keywordSearchInput.addEventListener('input', throttle((e) => {
-                const keywords = e.target.value.trim().toLowerCase().split(' ');
-                const matchedProducts = Object.values(products).filter(product => 
-                    keywords.every(keyword => product.name.toLowerCase().includes(keyword))
-                );
-                searchResultsElement.innerHTML = '';
+keywordSearchInput.addEventListener('input', (e) => {
+    const keywords = e.target.value.trim().toLowerCase().split(' ');
+    const matchedProducts = Object.values(products).filter(product => 
+        keywords.every(keyword => product.name.toLowerCase().includes(keyword))
+    );
+    searchResultsElement.innerHTML = '';
 
-                const displayProducts = matchedProducts.slice(0, 3); // 先顯示前三個
+    const displayProducts = matchedProducts.slice(0, 3); // 先顯示前三個
 
-                displayProducts.forEach(product => {
-                    const resultItem = document.createElement('div');
-                    resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元 ｜ 庫存:${product.qty}`;
-                    const selectButton = document.createElement('button');
-                    selectButton.textContent = '送出計算';
-                    selectButton.addEventListener('click', () => {
-                        productCodeInput.value = product.code;
-                        addProductToCart(product.code);
-                        productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
-                        searchResultsElement.innerHTML = '';
-                        keywordSearchInput.value = ''; // 清除關鍵字輸入框的內容
-                    });
-                    resultItem.appendChild(selectButton);
-                    searchResultsElement.appendChild(resultItem);
+    displayProducts.forEach(product => {
+        const resultItem = document.createElement('div');
+        resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元 ｜ 庫存:${product.qty}`;
+        const selectButton = document.createElement('button');
+        selectButton.textContent = '送出計算';
+        selectButton.addEventListener('click', () => {
+            productCodeInput.value = product.code;
+            addProductToCart(product.code);
+            productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
+            searchResultsElement.innerHTML = '';
+            keywordSearchInput.value = ''; // 清除關鍵字輸入框的內容
+        });
+        resultItem.appendChild(selectButton);
+        searchResultsElement.appendChild(resultItem);
+    });
+
+    // 添加顯示更多按鈕
+    if (matchedProducts.length > 3) {
+        const showMoreButton = document.createElement('button');
+        showMoreButton.textContent = '顯示更多';
+        showMoreButton.addEventListener('click', () => {
+            searchResultsElement.innerHTML = '';
+            matchedProducts.forEach(product => {
+                const resultItem = document.createElement('div');
+                resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元 ｜ 庫存:${product.qty}`;
+                const selectButton = document.createElement('button');
+                selectButton.textContent = '送出計算';
+                selectButton.addEventListener('click', () => {
+                    productCodeInput.value = product.code;
+                    addProductToCart(product.code);
+                    productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
+                    searchResultsElement.innerHTML = '';
+                    keywordSearchInput.value = ''; // 清除關鍵字輸入框的內容
                 });
-
-                // 添加顯示更多按鈕
-                if (matchedProducts.length > 3) {
-                    const showMoreButton = document.createElement('button');
-                    showMoreButton.textContent = '顯示更多';
-                    showMoreButton.addEventListener('click', () => {
-                        searchResultsElement.innerHTML = '';
-                        matchedProducts.forEach(product => {
-                            const resultItem = document.createElement('div');
-                            resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元 ｜ 庫存:${product.qty}`;
-                            const selectButton = document.createElement('button');
-                            selectButton.textContent = '送出計算';
-                            selectButton.addEventListener('click', () => {
-                                productCodeInput.value = product.code;
-                                addProductToCart(product.code);
-                                productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
-                                searchResultsElement.innerHTML = '';
-                                keywordSearchInput.value = ''; // 清除關鍵字輸入框的內容
-                            });
-                            resultItem.appendChild(selectButton);
-                            searchResultsElement.appendChild(resultItem);
-                        });
-                    });
-                    searchResultsElement.appendChild(showMoreButton);
-                }
-            }, 300));
+                resultItem.appendChild(selectButton);
+                searchResultsElement.appendChild(resultItem);
+            });
+        });
+        searchResultsElement.appendChild(showMoreButton);
+    }
+});
 
             productCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
