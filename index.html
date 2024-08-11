@@ -139,10 +139,13 @@
         }
 .payment-info {
     text-align: right;
-    background-color: #FFFFFF; /* 保持背景为白色 */
-    border-radius: 0 0 8px 8px; /* 保留下方圆角，去掉顶部圆角 */
-    border-top: 2px solid #8A6739; /* 添加一个与上方背景色一致的边框 */
-    padding: 10px; /* 保持内边距 */
+    background-color: #FFFFFF; 
+    border-radius: 0 0 8px 8px; 
+    border-top: 2px solid #8A6739; 
+    padding: 10px; 
+    display: flex;
+    justify-content: space-between; 
+    align-items: center; 
 }
 
 .payment-info span {
@@ -152,10 +155,15 @@
 
 /* 调整实付金额输入框的大小 */
 .payment-info input#paid-amount {
-    max-width: 80px; /* 将输入框宽度缩小到80px */
-    padding: 5px; /* 增加适当的内边距 */
+    max-width: 80px; /* 将输入框缩小到80px */
+    padding: 5px; 
     font-size: 1em; /* 确保字体大小与周围文字一致 */
-}        #product-info {
+}
+
+.payment-info .btn-group {
+    margin-left: auto; /* 确保按钮组在容器的最右边 */
+}
+        #product-info {
             margin-bottom: 10px;
             color: #8B4513;
         }
