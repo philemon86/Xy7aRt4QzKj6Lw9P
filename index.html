@@ -358,15 +358,18 @@
                 }
             };
 
-            productCodeInput.addEventListener('input', (e) => {
-                const codeOrBarcode = e.target.value.trim().toLowerCase(); // 将输入转换为小写
-                const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-                if (product) {
-                    productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
-                } else {
-                    productInfoElement.textContent = '';
-                }
-            });
+           productCodeInput.addEventListener('input', (e) => {
+    const codeOrBarcode = e.target.value.trim().toLowerCase(); 
+    if (e.inputType === 'insertText' || e.inputType === 'deleteContentBackward') {
+        const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+        if (product) {
+            productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
+        } else {
+            productInfoElement.textContent = '';
+        }
+    }
+});
+
 
             keywordSearchInput.addEventListener('input', (e) => {
                 const keywords = e.target.value.trim().toLowerCase().split(' ');
@@ -691,4 +694,3 @@ const addProductToCart = (code) => {
     </script>
 </body>
 </html>
-
