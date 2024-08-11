@@ -544,16 +544,17 @@ checkoutBtn.addEventListener('click', () => {
     paidAmountInput.value = 1000;
 });
 
-            const calculateTotal = () => {
-                let total = 0;
-                cart = cart.filter(item => item.quantity !== 0); 
-                cart.forEach(item => {
-                    total += item.price * item.quantity * (item.discount / 100);
-                });
-                totalAmountElement.textContent = Math.round(total);
-                calculateChange();
-            };
-
+const calculateTotal = () => {
+    let total = 0;
+    cart = cart.filter(item => item.quantity !== 0); 
+    cart.forEach(item => {
+        // 這裡進行四捨五入
+        const roundedDiscount = Math.round(item.discount);
+        total += item.price * item.quantity * (roundedDiscount / 100);
+    });
+    totalAmountElement.textContent = Math.round(total);
+    calculateChange();
+};
             const calculateChange = () => {
                 const totalAmount = parseFloat(totalAmountElement.textContent);
                 const paidAmount = parseFloat(paidAmountInput.value);
@@ -584,8 +585,8 @@ checkoutBtn.addEventListener('click', () => {
                     row.innerHTML = `
                         <td>${item.name}</td>
                         <td>${Math.round(item.price)}</td>
-                        <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="0" class="quantity-input" data-code="${item.code}"></td>
-                        <td><input type="number" name="discount-${item.code}" value="${item.discount}" min="0" max="100" class="discount-input" data-code="${item.code}"></td>
+                        <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="-1000" class="quantity-input" data-code="${item.code}"></td>
+                        <td><input type="number" name="discount-${item.code}" value="${item.discount}" step="0.1" min="0" max="100" class="discount-input" data-code="${item.code}"></td>
                         <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
                     `;
                     cartTableBody.appendChild(row);
