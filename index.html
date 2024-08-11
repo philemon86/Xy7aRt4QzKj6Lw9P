@@ -607,9 +607,9 @@ keywordSearchInput.addEventListener('input', (e) => {
                 localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
             };
 
-            const updateSummaryTable = () => {
-                summaryTableBody.innerHTML = '';
-                overallSummaryTableBody.innerHTML = '';
+const updateSummaryTable = () => {
+    summaryTableBody.innerHTML = '';
+    overallSummaryTableBody.innerHTML = '';
 
     // 依照商品代碼進行排序
     const sortedSummary = Object.values(overallSummary).sort((a, b) => {
@@ -618,52 +618,53 @@ keywordSearchInput.addEventListener('input', (e) => {
         return 0;
     });
 
-                Object.values(clients).forEach(client => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td><a href="#" class="client-link" data-client-id="${client.id}">${client.id}</td>
-                        <td>${Math.round(client.amount)}</td>
-                        <td><button class="delete-client-btn" data-client-id="${client.id}">刪除</button></td>
-                    `;
-                    summaryTableBody.appendChild(row);
-                });
+    Object.values(clients).forEach(client => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><a href="#" class="client-link" data-client-id="${client.id}">${client.id}</td>
+            <td>${Math.round(client.amount)}</td>
+            <td><button class="delete-client-btn" data-client-id="${client.id}">刪除</button></td>
+        `;
+        summaryTableBody.appendChild(row);
+    });
 
-                Object.values(overallSummary).forEach(item => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${item.code}</td>
-                        <td>${item.name}</td>
-                        <td>${item.totalQuantity}</td>
-                        <td>${Math.round(item.totalAmount)}</td>
-                    `;
-                    overallSummaryTableBody.appendChild(row);
-                });
+    // 使用已排序的 summary 顯示表格
+    sortedSummary.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${item.code}</td>
+            <td>${item.name}</td>
+            <td>${item.totalQuantity}</td>
+            <td>${Math.round(item.totalAmount)}</td>
+        `;
+        overallSummaryTableBody.appendChild(row);
+    });
 
-                const overallTotalAmount = Object.values(overallSummary).reduce((sum, item) => sum + item.totalAmount, 0);
-                overallTotalAmountElement.textContent = Math.round(overallTotalAmount);
+    const overallTotalAmount = sortedSummary.reduce((sum, item) => sum + item.totalAmount, 0);
+    overallTotalAmountElement.textContent = Math.round(overallTotalAmount);
 
-                const totalOrders = Object.keys(clients).length;
-                const averageOrderAmount = totalOrders > 0 ? Math.round(overallTotalAmount / totalOrders) : 0;
-                totalOrdersElement.textContent = totalOrders;
-                averageAmountElement.textContent = averageOrderAmount;
+    const totalOrders = Object.keys(clients).length;
+    const averageOrderAmount = totalOrders > 0 ? Math.round(overallTotalAmount / totalOrders) : 0;
+    totalOrdersElement.textContent = totalOrders;
+    averageAmountElement.textContent = averageOrderAmount;
 
-                document.querySelectorAll('.delete-client-btn').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const clientId = e.target.dataset.clientId;
-                        if (confirm('您確定要刪除此客戶的訂單嗎？')) {
-                            deleteClient(clientId);
-                        }
-                    });
-                });
+    document.querySelectorAll('.delete-client-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const clientId = e.target.dataset.clientId;
+            if (confirm('您確定要刪除此客戶的訂單嗎？')) {
+                deleteClient(clientId);
+            }
+        });
+    });
 
-                document.querySelectorAll('.client-link').forEach(link => {
-                    link.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const clientId = e.target.dataset.clientId;
-                        showClientDetails(clientId);
-                    });
-                });
-            };
+    document.querySelectorAll('.client-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const clientId = e.target.dataset.clientId;
+            showClientDetails(clientId);
+        });
+    });
+};
 
             const showClientDetails = (clientId) => {
                 const client = clients[clientId];
