@@ -548,9 +548,11 @@ const calculateTotal = () => {
     let total = 0;
     cart = cart.filter(item => item.quantity !== 0); 
     cart.forEach(item => {
-        // 這裡進行四捨五入
-        const roundedDiscount = Math.round(item.discount);
-        total += item.price * item.quantity * (roundedDiscount / 100);
+        // 先計算折扣後的金額
+        const discountedPrice = item.price * item.quantity * (item.discount / 100);
+        // 將計算結果四捨五入
+        const roundedDiscountedPrice = Math.round(discountedPrice);
+        total += roundedDiscountedPrice;
     });
     totalAmountElement.textContent = Math.round(total);
     calculateChange();
@@ -606,8 +608,8 @@ document.querySelectorAll('.quantity-input').forEach(input => {
         const code = e.target.dataset.code;
         const newQuantity = parseInt(e.target.value);
 
-        // 确保用户输入了有效的数字
-        if (!isNaN(newQuantity) && newQuantity > 0) {
+        // 允許負數數量
+        if (!isNaN(newQuantity)) {
             const item = cart.find(item => item.code === code);
             if (item) {
                 item.quantity = newQuantity;
