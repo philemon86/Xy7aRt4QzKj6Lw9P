@@ -157,16 +157,15 @@
             background-color: #E6E2B2;
             box-sizing: border-box;
         }
-/* 限制数量输入框的宽度 */
-.quantity-input {
-    max-width: 40px; /* 设置一个合适的最大宽度 */
-}
+        /* 限制数量输入框的宽度 */
+        .quantity-input {
+            max-width: 40px; /* 设置一个合适的最大宽度 */
+        }
 
-/* 同时限制折扣输入框的宽度 */
-.discount-input {
-    max-width: 40px; /* 设置一个合适的最大宽度 */
-}
-
+        /* 同时限制折扣输入框的宽度 */
+        .discount-input {
+            max-width: 40px; /* 设置一个合适的最大宽度 */
+        }
     </style>
 </head>
 <body>
@@ -286,7 +285,7 @@
             const notesElement = document.getElementById('notes');
             let cart = JSON.parse(localStorage.getItem('cart')) || [];
             let products = {}; 
-            let discountRates = {}; // 設置一個對應的折扣物件
+            let discountRates = {}; 
             let clients = JSON.parse(localStorage.getItem('clients')) || {};
             let overallSummary = JSON.parse(localStorage.getItem('overallSummary')) || {};
             let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
@@ -340,14 +339,14 @@
                         });
 
                         if (product['CODE'] && product['CNAME'] && product['BARCODE'] && !isNaN(parseInt(product['CQTY']))) {
-                            const discount = discountRates[product['CLAS']] || 100; // 根據分類應用折扣
+                            const discount = discountRates[product['CLAS']] || 100; 
                             products[product['CODE']] = {
                                 code: product['CODE'],
                                 name: product['CNAME'],
                                 barcode: product['BARCODE'],
                                 qty: parseInt(product['CQTY']),
                                 price: parseFloat(product['PRICE']) || 0,
-                                discount: discount // 直接在這裡設定折扣
+                                discount: discount 
                             };
                         }
                     });
@@ -359,7 +358,7 @@
             };
 
             productCodeInput.addEventListener('input', (e) => {
-                const codeOrBarcode = e.target.value.trim().toLowerCase(); // 将输入转换为小写
+                const codeOrBarcode = e.target.value.trim().toLowerCase(); 
                 const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
                 if (product) {
                     productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
@@ -384,6 +383,7 @@
                         addProductToCart(product.code);
                         productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
                         searchResultsElement.innerHTML = '';
+                        productCodeInput.focus(); 
                     });
                     resultItem.appendChild(selectButton);
                     searchResultsElement.appendChild(resultItem);
@@ -392,7 +392,7 @@
 
             productCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    const codeOrBarcode = e.target.value.trim().toLowerCase(); // 将输入转换为小写
+                    const codeOrBarcode = e.target.value.trim().toLowerCase(); 
                     const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
                     if (product) {
                         addProductToCart(product.code);
@@ -416,12 +416,13 @@
                 confirmButton.style.padding = '10px';
 
                 confirmButton.addEventListener('click', () => {
-                    const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); // 将输入转换为小写
+                    const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); 
                     const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
                     if (product) {
                         addProductToCart(product.code);
                         productCodeInput.value = '';
                         productInfoElement.textContent = '';
+                        productCodeInput.focus(); 
                     } else {
                         alert('找不到商品');
                     }
@@ -677,7 +678,7 @@
                 }
             });
 
-            loadDiscountRates(); // 載入折扣率
+            loadDiscountRates(); 
             loadProducts().then(() => {
                 updateCartDisplay();
                 updateSummaryTable();
