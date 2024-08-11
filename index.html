@@ -45,10 +45,10 @@
         .search-results button {
             align-self: flex-end;
             padding: 5px;
-            background-color: #DEB887;
+            background-color: #E6E2B2; /* 按钮背景颜色 */
             border: none;
             border-radius: 4px;
-            color: #fff;
+            color: #fff; /* 文字颜色为白色 */
             cursor: pointer;
             font-size: 0.8em;
             margin-top: 5px;
@@ -72,10 +72,10 @@
         .header button {
             padding: 5px 10px;
             cursor: pointer;
-            background-color: #DEB887;
+            background-color: #E6E2B2; /* 按钮背景颜色 */
             border: none;
             border-radius: 4px;
-            color: #fff;
+            color: #fff; /* 文字颜色为白色 */
             font-size: 0.8em;
         }
         .form-group label {
@@ -121,6 +121,7 @@
     color: #F5F5DC; /* 字体颜色设为米色 */
     background-color: #8A6739; /* 背景颜色设为咖啡色 */
     padding: 10px; /* 增加内边距以突出显示 */
+    border-radius: 8px 8px 0 0; /* 保留上方圆角，去掉底部圆角 */
     text-align: right; /* 文字对齐到右边 */
 }
 
@@ -129,6 +130,7 @@
     border-radius: 8px; /* 设置四个角都为圆角 */
     margin-top: 20px; /* 添加顶部间距 */
 }
+
 .payment-info {
     text-align: right;
     background-color: #FFFFFF; 
@@ -155,37 +157,47 @@
 .payment-info .btn-group {
     margin-left: auto; /* 确保按钮组在容器的最右边 */
 }
-        #product-info {
-            margin-bottom: 10px;
-            color: #8B4513;
-        }
-        .csv-validation {
-            font-size: 0.8em;
-            color: green;
-            margin-bottom: 10px;
-        }
-        .notes-container textarea {
-            width: calc(100% - 20px);
-            max-width: 100%;
-            height: 130px;
-            padding: 10px;
-            font-size: 1em;
-            border: 1px solid #D2B48C;
-            border-radius: 4px;
-            resize: none;
-            background-color: #E6E2B2;
-            box-sizing: border-box;
-        }
-        /* 限制数量输入框的宽度 */
-        .quantity-input {
-            max-width: 40px; /* 设置一个合适的最大宽度 */
-        }
 
-        /* 同时限制折扣输入框的宽度 */
-        .discount-input {
-            max-width: 40px; /* 设置一个合适的最大宽度 */
-        }
+.payment-info button, .delete-client-btn, #export-csv-btn, #clear-all-btn {
+    background-color: #E6E2B2; /* 按钮背景颜色 */
+    color: #fff; /* 文字颜色为白色 */
+    padding: 5px 10px; /* 按钮的内边距 */
+    border: none; /* 移除按钮的默认边框 */
+    border-radius: 4px; /* 边角圆润 */
+    cursor: pointer; /* 鼠标悬停时显示手型光标 */
+    font-size: 0.8em; /* 字体大小 */
+}
 
+#product-info {
+    margin-bottom: 10px;
+    color: #8B4513;
+}
+.csv-validation {
+    font-size: 0.8em;
+    color: green;
+    margin-bottom: 10px;
+}
+.notes-container textarea {
+    width: calc(100% - 20px);
+    max-width: 100%;
+    height: 130px;
+    padding: 10px;
+    font-size: 1em;
+    border: 1px solid #D2B48C;
+    border-radius: 4px;
+    resize: none;
+    background-color: #E6E2B2;
+    box-sizing: border-box;
+}
+/* 限制数量输入框的宽度 */
+.quantity-input {
+    max-width: 40px; /* 设置一个合适的最大宽度 */
+}
+
+/* 同时限制折扣输入框的宽度 */
+.discount-input {
+    max-width: 40px; /* 设置一个合适的最大宽度 */
+}
     </style>
 </head>
 <body>
@@ -274,7 +286,7 @@
                 </tbody>
             </table>
         </div>
-<div class="total bottom-total">總金額：<span id="overall-total-amount">0</span> 元</div>
+        <div class="total bottom-total">總金額：<span id="overall-total-amount">0</span> 元</div>
     </div>
     <div class="container notes-container">
         <label for="notes">訂單備註：</label>
@@ -470,7 +482,7 @@ keywordSearchInput.addEventListener('input', (e) => {
                 const confirmButton = document.createElement('button');
                 confirmButton.textContent = '確認送出';
                 confirmButton.style.marginTop = '10px';
-                confirmButton.style.backgroundColor = '#DEB887';
+                confirmButton.style.backgroundColor = '#E6E2B2';
                 confirmButton.style.border = 'none';
                 confirmButton.style.borderRadius = '4px';
                 confirmButton.style.color = '#fff';
