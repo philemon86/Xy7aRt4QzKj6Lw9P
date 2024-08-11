@@ -103,6 +103,10 @@
             padding: 5px;
             text-align: left;
             border-bottom: 1px solid #D2B48C;
+            max-width: 150px; /* 固定寬度 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         th {
             font-size: 0.9em;
@@ -358,30 +362,44 @@
                 }
             };
 
-productCodeInput.addEventListener('input', (e) => {
-    const codeOrBarcode = e.target.value.trim().toLowerCase();
-    if (!e.isTrusted) {
-        // 如果不是用户直接输入的事件，不做处理
-        return;
-    }
-    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-    if (product) {
-        productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
-    } else {
-        productInfoElement.textContent = '';
-    }
-});
+            const throttle = (func, limit) => {
+                let inThrottle;
+                return function() {
+                    const args = arguments;
+                    const context = this;
+                    if (!inThrottle) {
+                        func.apply(context, args);
+                        inThrottle = true;
+                        setTimeout(() => inThrottle = false, limit);
+                    }
+                };
+            };
 
+            productCodeInput.addEventListener('input', throttle((e) => {
+                const codeOrBarcode = e.target.value.trim().toLowerCase(); 
+                if (!e.isTrusted) {
+                    return;
+                }
+                const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+                if (product) {
+                    productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
+                } else {
+                    productInfoElement.textContent = '';
+                }
+            }, 300));
 
-            keywordSearchInput.addEventListener('input', (e) => {
+            keywordSearchInput.addEventListener('input', throttle((e) => {
                 const keywords = e.target.value.trim().toLowerCase().split(' ');
                 const matchedProducts = Object.values(products).filter(product => 
                     keywords.every(keyword => product.name.toLowerCase().includes(keyword))
-                ).slice(0, 3); 
+                );
                 searchResultsElement.innerHTML = '';
-                matchedProducts.forEach(product => {
+
+                const displayProducts = matchedProducts.slice(0, 3); // 先顯示前三個
+
+                displayProducts.forEach(product => {
                     const resultItem = document.createElement('div');
-                    resultItem.textContent = `${product.code} ｜ ${product.name.substring(0, 10)} ｜ ${Math.round(product.price)}元 ｜ 庫存:${product.qty}`;
+                    resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元 ｜ 庫存:${product.qty}`;
                     const selectButton = document.createElement('button');
                     selectButton.textContent = '送出計算';
                     selectButton.addEventListener('click', () => {
@@ -394,11 +412,36 @@ productCodeInput.addEventListener('input', (e) => {
                     resultItem.appendChild(selectButton);
                     searchResultsElement.appendChild(resultItem);
                 });
-            });
+
+                // 添加顯示更多按鈕
+                if (matchedProducts.length > 3) {
+                    const showMoreButton = document.createElement('button');
+                    showMoreButton.textContent = '顯示更多';
+                    showMoreButton.addEventListener('click', () => {
+                        searchResultsElement.innerHTML = '';
+                        matchedProducts.forEach(product => {
+                            const resultItem = document.createElement('div');
+                            resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元 ｜ 庫存:${product.qty}`;
+                            const selectButton = document.createElement('button');
+                            selectButton.textContent = '送出計算';
+                            selectButton.addEventListener('click', () => {
+                                productCodeInput.value = product.code;
+                                addProductToCart(product.code);
+                                productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
+                                searchResultsElement.innerHTML = '';
+                                keywordSearchInput.value = ''; // 清除關鍵字輸入框的內容
+                            });
+                            resultItem.appendChild(selectButton);
+                            searchResultsElement.appendChild(resultItem);
+                        });
+                    });
+                    searchResultsElement.appendChild(showMoreButton);
+                }
+            }, 300));
 
             productCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    const codeOrBarcode = e.target.value.trim().toLowerCase(); // 将输入转换为小写
+                    const codeOrBarcode = e.target.value.trim().toLowerCase();
                     const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
                     if (product) {
                         addProductToCart(product.code);
@@ -422,13 +465,13 @@ productCodeInput.addEventListener('input', (e) => {
                 confirmButton.style.padding = '10px';
 
                 confirmButton.addEventListener('click', () => {
-                    const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); // 将输入转换为小写
+                    const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); 
                     const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
                     if (product) {
                         addProductToCart(product.code);
-                        productCodeInput.value = ''; // 清空商品代碼輸入框
+                        productCodeInput.value = ''; 
                         productInfoElement.textContent = '';
-                        keywordSearchInput.value = ''; // 清除關鍵字輸入框的內容
+                        keywordSearchInput.value = ''; 
                     } else {
                         alert('找不到商品');
                     }
@@ -492,26 +535,26 @@ productCodeInput.addEventListener('input', (e) => {
 
             paidAmountInput.addEventListener('input', calculateChange);
 
-const addProductToCart = (code) => {
-    const product = products[code];
-    const existingItem = cart.find(item => item.code === code);
-    if (existingItem) {
-        existingItem.quantity += 1;
-    } else {
-        cart.push({ ...product, quantity: 1 });
-    }
-    updateCartDisplay();
-    calculateTotal();
-    saveCart();
-    productCodeInput.value = ''; // 清空商品代码输入框
-};
+            const addProductToCart = (code) => {
+                const product = products[code];
+                const existingItem = cart.find(item => item.code === code);
+                if (existingItem) {
+                    existingItem.quantity += 1;
+                } else {
+                    cart.push({ ...product, quantity: 1 });
+                }
+                updateCartDisplay();
+                calculateTotal();
+                saveCart();
+                productCodeInput.value = ''; 
+            };
 
             const updateCartDisplay = () => {
                 cartTableBody.innerHTML = '';
                 cart.forEach(item => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>${item.name.substring(0, 10)}</td>
+                        <td>${item.name}</td>
                         <td>${Math.round(item.price)}</td>
                         <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="0" class="quantity-input" data-code="${item.code}"></td>
                         <td><input type="number" name="discount-${item.code}" value="${item.discount}" min="0" max="100" class="discount-input" data-code="${item.code}"></td>
@@ -521,7 +564,7 @@ const addProductToCart = (code) => {
                 });
 
                 document.querySelectorAll('.quantity-input').forEach(input => {
-                    input.addEventListener('change', (e) => {
+                    input.addEventListener('input', throttle((e) => {
                         const code = e.target.dataset.code;
                         const newQuantity = parseInt(e.target.value);
                         const item = cart.find(item => item.code === code);
@@ -531,11 +574,11 @@ const addProductToCart = (code) => {
                             updateCartDisplay();
                             saveCart();
                         }
-                    });
+                    }, 300));
                 });
 
                 document.querySelectorAll('.discount-input').forEach(input => {
-                    input.addEventListener('change', (e) => {
+                    input.addEventListener('input', throttle((e) => {
                         const code = e.target.dataset.code;
                         const newDiscount = parseInt(e.target.value);
                         if (newDiscount < 0) {
@@ -550,7 +593,7 @@ const addProductToCart = (code) => {
                                 saveCart();
                             }
                         }
-                    });
+                    }, 300));
                 });
             };
 
@@ -582,7 +625,7 @@ const addProductToCart = (code) => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${item.code}</td>
-                        <td>${item.name.substring(0, 10)}</td>
+                        <td>${item.name}</td>
                         <td>${item.totalQuantity}</td>
                         <td>${Math.round(item.totalAmount)}</td>
                     `;
@@ -696,4 +739,3 @@ const addProductToCart = (code) => {
     </script>
 </body>
 </html>
-
