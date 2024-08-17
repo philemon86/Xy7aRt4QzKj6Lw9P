@@ -513,11 +513,15 @@ checkoutBtn.addEventListener('click', () => {
         return;
     }
 
-    // 让按钮变红闪一下
-    checkoutBtn.style.backgroundColor = 'red';
+    // 按钮动画反馈
+    checkoutBtn.style.backgroundColor = 'green';
+    checkoutBtn.style.transform = 'scale(1.1)'; // 按钮变大
+    checkoutBtn.textContent = '已送出'; // 显示已送出
     setTimeout(() => {
         checkoutBtn.style.backgroundColor = '#8A6739';
-    }, 200);
+        checkoutBtn.style.transform = 'scale(1)'; // 按钮恢复原状
+        checkoutBtn.textContent = 'F10結帳'; // 恢复按钮文本
+    }, 300);
 
     // 剩余的结账代码...
     const totalAmount = parseFloat(totalAmountElement.textContent);
