@@ -247,7 +247,7 @@
             <span>實付金額：<input type="number" id="paid-amount" value="1000" placeholder="輸入實付金額"></span>
             <span>找錢：<span id="change-amount">0</span> 元</span>
             <div class="btn-group">
-                <button id="checkout-btn">結帳</button>
+                <button id="checkout-btn">F10結帳</button>
             </div>
         </div>
     </div>
@@ -512,6 +512,14 @@ checkoutBtn.addEventListener('click', () => {
         alert('購物車為空，無法結帳');
         return;
     }
+
+    // 让按钮变红闪一下
+    checkoutBtn.style.backgroundColor = 'red';
+    setTimeout(() => {
+        checkoutBtn.style.backgroundColor = '#8A6739';
+    }, 200);
+
+    // 剩余的结账代码...
     const totalAmount = parseFloat(totalAmountElement.textContent);
     const clientId = generateClientId();
     clients[clientId] = {
