@@ -246,9 +246,9 @@
         <div class="payment-info">
             <span>實付金額：<input type="number" id="paid-amount" value="1000" placeholder="輸入實付金額"></span>
             <span>找錢：<span id="change-amount">0</span> 元</span>
-            <div class="btn-group">
-                <button id="checkout-btn">F10結帳</button>
-            </div>
+<div class="btn-group">
+    <button id="checkout-btn" style="transition: all 0.6s ease;">F10結帳</button>
+</div>
         </div>
     </div>
     <div class="container summary-container">
@@ -521,7 +521,7 @@ checkoutBtn.addEventListener('click', () => {
         checkoutBtn.style.backgroundColor = '#8A6739';
         checkoutBtn.style.transform = 'scale(1)'; // 按钮恢复原状
         checkoutBtn.textContent = 'F10結帳'; // 恢复按钮文本
-    }, 300);
+    }, 600);
 
     // 剩余的结账代码...
     const totalAmount = parseFloat(totalAmountElement.textContent);
