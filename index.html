@@ -768,7 +768,7 @@ const updateSummaryTable = () => {
             clearAllBtn.addEventListener('click', () => {
                 if (confirm('確定要刪除全部訂單？此操作無法撤銷。')) {
                     if (confirm('再次確認，確定要刪除全部訂單嗎？')) {
-                        localStorage.clear();
+                        localStorage.clear(); // 清除 localStorage
                         cart = [];
                         clients = {};
                         overallSummary = {};
@@ -778,6 +778,14 @@ const updateSummaryTable = () => {
                         overallTotalAmountElement.textContent = '0';
                         alert('已成功刪除全部訂單。');
                     }
+                }
+            });
+
+            // 增加 F10 快捷鍵結帳功能
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'F10' && cart.length > 0) { // 只有當購物車不為空時才結帳
+                    e.preventDefault(); // 阻止預設 F10 功能
+                    checkoutBtn.click(); // 觸發結帳按鈕
                 }
             });
 
