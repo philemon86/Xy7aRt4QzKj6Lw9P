@@ -613,12 +613,12 @@
                 cartTableBody.innerHTML = '';
                 cart.forEach(item => {
                     const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${item.name}</td>
-                        <td><input type="number" name="price-${item.code}" value="${item.price}" step="0.1" min="0" class="price-input" data-code="${item.code}"></td>
-                        <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="-1000" class="quantity-input" data-code="${item.code}"></td>
-                        <td><input type="number" name="discount-${item.code}" value="${item.discount}" step="0.1" min="0" max="100" class="discount-input" data-code="${item.code}"></td>
-                        <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
+row.innerHTML = `
+    <td>${item.name}</td>
+    <td><input type="number" name="price-${item.code}" value="${item.price}" step="0.1" min="0" style="width: 60px;" class="price-input" data-code="${item.code}"></td>
+    <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="-1000" class="quantity-input" data-code="${item.code}"></td>
+    <td><input type="number" name="discount-${item.code}" value="${item.discount}" step="0.1" min="0" max="100" class="discount-input" data-code="${item.code}"></td>
+    <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
                     `;
                     cartTableBody.appendChild(row);
                 });
