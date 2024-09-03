@@ -45,10 +45,10 @@
         .search-results button {
             align-self: flex-end;
             padding: 5px;
-            background-color: #8A6739;
+            background-color: #8A6739; /* 按钮背景颜色 */
             border: none;
             border-radius: 4px;
-            color: #fff;
+            color: #fff; /* 文字颜色为白色 */
             cursor: pointer;
             font-size: 0.8em;
             margin-top: 5px;
@@ -72,10 +72,10 @@
         .header button {
             padding: 5px 10px;
             cursor: pointer;
-            background-color: #8A6739;
+            background-color: #8A6739; /* 按钮背景颜色 */
             border: none;
             border-radius: 4px;
-            color: #fff;
+            color: #fff; /* 文字颜色为白色 */
             font-size: 0.8em;
         }
         .form-group label {
@@ -103,7 +103,7 @@
             padding: 5px;
             text-align: left;
             border-bottom: 1px solid #D2B48C;
-            max-width: 150px;
+            max-width: 150px; /* 固定寬度 */
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -115,85 +115,89 @@
         td {
             font-size: 0.8em;
         }
-        .total {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #F5F5DC;
-            background-color: #8A6739;
-            padding: 10px;
-            border-radius: 8px 8px 0 0;
-            text-align: right;
-        }
+.total {
+    font-size: 1.5em; /* 字体增大1.5倍 */
+    font-weight: bold; /* 加粗字体 */
+    color: #F5F5DC; /* 字体颜色设为米色 */
+    background-color: #8A6739; /* 背景颜色设为咖啡色 */
+    padding: 10px; /* 增加内边距以突出显示 */
+    border-radius: 8px 8px 0 0; /* 保留上方圆角，去掉底部圆角 */
+    text-align: right; /* 文字对齐到右边 */
+}
 
-        .bottom-total {
-            border-radius: 8px;
-            margin-top: 20px;
-        }
+/* 仅应用于底部“總金額”区域的样式 */
+.bottom-total {
+    border-radius: 8px; /* 设置四个角都为圆角 */
+    margin-top: 20px; /* 添加顶部间距 */
+}
 
-        .payment-info {
-            text-align: right;
-            background-color: #FFFFFF; 
-            border-radius: 0 0 8px 8px; 
-            border-top: 2px solid #8A6739; 
-            padding: 10px; 
-            display: flex;
-            justify-content: space-between; 
-            align-items: center; 
-        }
+.payment-info {
+    text-align: right;
+    background-color: #FFFFFF; 
+    border-radius: 0 0 8px 8px; 
+    border-top: 2px solid #8A6739; 
+    padding: 10px; 
+    display: flex;
+    justify-content: space-between; 
+    align-items: center; 
+}
 
-        .payment-info span {
-            margin-right: 10px;
-            color: #8B4513;
-        }
+.payment-info span {
+    margin-right: 10px;
+    color: #8B4513;
+}
 
-        .payment-info input#paid-amount {
-            max-width: 80px;
-            padding: 5px;
-            font-size: 1em;
-        }
+/* 调整实付金额输入框的大小 */
+.payment-info input#paid-amount {
+    max-width: 80px; /* 将输入框缩小到80px */
+    padding: 5px; 
+    font-size: 1em; /* 确保字体大小与周围文字一致 */
+}
 
-        .payment-info .btn-group {
-            margin-left: auto;
-        }
+.payment-info .btn-group {
+    margin-left: auto; /* 确保按钮组在容器的最右边 */
+}
 
-        .payment-info button, .delete-client-btn, #export-csv-btn, #clear-all-btn {
-            background-color: #8A6739;
-            color: #fff;
-            padding: 5px 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8em;
-        }
+.payment-info button, .delete-client-btn, #export-csv-btn, #clear-all-btn {
+    background-color: #8A6739; /* 按钮背景颜色 */
+    color: #fff; /* 文字颜色为白色 */
+    padding: 5px 10px; /* 按钮的内边距 */
+    border: none; /* 移除按钮的默认边框 */
+    border-radius: 4px; /* 边角圆润 */
+    cursor: pointer; /* 鼠标悬停时显示手型光标 */
+    font-size: 0.8em; /* 字体大小 */
+}
 
-        #product-info {
-            margin-bottom: 10px;
-            color: #8B4513;
-        }
-        .csv-validation {
-            font-size: 0.8em;
-            color: green;
-            margin-bottom: 10px;
-        }
-        .notes-container textarea {
-            width: calc(100% - 20px);
-            max-width: 100%;
-            height: 130px;
-            padding: 10px;
-            font-size: 1em;
-            border: 1px solid #D2B48C;
-            border-radius: 4px;
-            resize: none;
-            background-color: #E6E2B2;
-            box-sizing: border-box;
-        }
-        .quantity-input {
-            max-width: 40px;
-        }
+#product-info {
+    margin-bottom: 10px;
+    color: #8B4513;
+}
+.csv-validation {
+    font-size: 0.8em;
+    color: green;
+    margin-bottom: 10px;
+}
+.notes-container textarea {
+    width: calc(100% - 20px);
+    max-width: 100%;
+    height: 130px;
+    padding: 10px;
+    font-size: 1em;
+    border: 1px solid #D2B48C;
+    border-radius: 4px;
+    resize: none;
+    background-color: #E6E2B2;
+    box-sizing: border-box;
+}
+/* 限制数量输入框的宽度 */
+.quantity-input {
+    max-width: 40px; /* 设置一个合适的最大宽度 */
+}
 
-        .discount-input {
-            max-width: 40px;
-        }
+/* 同时限制折扣输入框的宽度 */
+.discount-input {
+    max-width: 40px; /* 设置一个合适的最大宽度 */
+}
     </style>
 </head>
 <body>
@@ -213,7 +217,7 @@
         <div class="form-group">
             <label for="product-code">請輸入商品代碼/條碼：</label>
             <input type="text" id="product-code" placeholder="請輸入商品代碼/條碼">
-            <div id="product-info"></div>
+            <div id="product-info"></div> <!-- 顯示商品資訊 -->
         </div>
         <div class="form-group search-container">
             <label for="keyword-search">輸入關鍵字搜尋商品：</label>
@@ -233,6 +237,7 @@
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- 購物車商品列表將動態添加到這裡 -->
                 </tbody>
             </table>
         </div>
@@ -240,9 +245,9 @@
         <div class="payment-info">
             <span>實付金額：<input type="number" id="paid-amount" value="1000" placeholder="輸入實付金額"></span>
             <span>找錢：<span id="change-amount">0</span> 元</span>
-            <div class="btn-group">
-                <button id="checkout-btn" style="transition: all 0.6s ease;">F10結帳</button>
-            </div>
+<div class="btn-group">
+    <button id="checkout-btn" style="transition: all 0.6s ease;">F10結帳</button>
+</div>
         </div>
     </div>
     <div class="container summary-container">
@@ -260,6 +265,7 @@
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- 統計數據將動態添加到這裡 -->
                 </tbody>
             </table>
         </div>
@@ -275,6 +281,7 @@
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- 整體統計數據將動態添加到這裡 -->
                 </tbody>
             </table>
         </div>
@@ -307,7 +314,7 @@
             const notesElement = document.getElementById('notes');
             let cart = JSON.parse(localStorage.getItem('cart')) || [];
             let products = {}; 
-            let discountRates = {};
+            let discountRates = {}; 
             let clients = JSON.parse(localStorage.getItem('clients')) || {};
             let overallSummary = JSON.parse(localStorage.getItem('overallSummary')) || {};
             let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
@@ -363,14 +370,14 @@
                         });
 
                         if (product['CODE'] && product['CNAME'] && product['BARCODE'] && !isNaN(parseInt(product['CQTY']))) {
-                            const discount = discountRates[product['CLAS']] || 100;
+                            const discount = discountRates[product['CLAS']] || 100; 
                             products[product['CODE']] = {
                                 code: product['CODE'],
                                 name: product['CNAME'],
                                 barcode: product['BARCODE'],
                                 qty: parseInt(product['CQTY']),
                                 price: parseFloat(product['PRICE']) || 0,
-                                discount: discount
+                                discount: discount 
                             };
                         }
                     });
@@ -379,6 +386,26 @@
                 } catch (error) {
                     csvValidationElement.textContent = `CSV文件讀取失敗: ${error.message}`;
                 }
+            };
+
+            const parseProductInput = (input) => {
+                const pattern = /^(\d+)\*(\d+)\*([\w-]+)$|^(\d+)\*([\w-]+)$/;
+                const match = input.match(pattern);
+                if (match) {
+                    if (match[3]) {
+                        return {
+                            quantity: parseInt(match[1], 10),
+                            discount: parseInt(match[2], 10),
+                            code: match[3]
+                        };
+                    } else {
+                        return {
+                            quantity: parseInt(match[4], 10),
+                            code: match[5]
+                        };
+                    }
+                }
+                return null;
             };
 
             const throttle = (func, limit) => {
@@ -395,22 +422,27 @@
             };
 
 productCodeInput.addEventListener('input', (e) => {
-    let codeOrBarcode = e.target.value.trim().toLowerCase(); 
+    const codeOrBarcode = e.target.value.trim().toLowerCase(); 
     if (!e.isTrusted) {
         return;
     }
 
-    const match = codeOrBarcode.match(/(\d+)\*(\w+)/);
-    if (match) {
-        const quantity = parseInt(match[1]);
-        const code = match[2];
-        codeOrBarcode = code;
-        const product = products[codeOrBarcode];
+    const parsedInput = parseProductInput(codeOrBarcode);
+
+    if (parsedInput) {
+        const product = products[parsedInput.code];
         if (product) {
-            addProductToCart(codeOrBarcode, quantity);
-            productCodeInput.value = ''; 
+            if (parsedInput.quantity) {
+                product.quantity = parsedInput.quantity;
+            }
+            if (parsedInput.discount) {
+                product.discount = parsedInput.discount;
+            }
+            addProductToCart(product.code);
+            e.target.value = ''; 
+            productInfoElement.textContent = '';
         } else {
-            productInfoElement.textContent = '找不到商品';
+            productInfoElement.textContent = '';
         }
     } else {
         const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
@@ -429,7 +461,7 @@ keywordSearchInput.addEventListener('input', (e) => {
     );
     searchResultsElement.innerHTML = '';
 
-    const displayProducts = matchedProducts.slice(0, 3);
+    const displayProducts = matchedProducts.slice(0, 3); 
 
     displayProducts.forEach(product => {
         const resultItem = document.createElement('div');
@@ -441,7 +473,7 @@ keywordSearchInput.addEventListener('input', (e) => {
             addProductToCart(product.code);
             productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
             searchResultsElement.innerHTML = '';
-            keywordSearchInput.value = '';
+            keywordSearchInput.value = ''; 
         });
         resultItem.appendChild(selectButton);
         searchResultsElement.appendChild(resultItem);
@@ -462,7 +494,7 @@ keywordSearchInput.addEventListener('input', (e) => {
                     addProductToCart(product.code);
                     productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
                     searchResultsElement.innerHTML = '';
-                    keywordSearchInput.value = '';
+                    keywordSearchInput.value = ''; 
                 });
                 resultItem.appendChild(selectButton);
                 searchResultsElement.appendChild(resultItem);
@@ -472,46 +504,46 @@ keywordSearchInput.addEventListener('input', (e) => {
     }
 });
 
-            productCodeInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    const codeOrBarcode = e.target.value.trim().toLowerCase();
-                    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-                    if (product) {
-                        addProductToCart(product.code);
-                        e.target.value = ''; 
-                        productInfoElement.textContent = '';
-                    } else {
-                        alert('找不到商品');
-                    }
-                }
-            });
+productCodeInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const codeOrBarcode = e.target.value.trim().toLowerCase();
+        const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+        if (product) {
+            addProductToCart(product.code);
+            e.target.value = ''; 
+            productInfoElement.textContent = '';
+        } else {
+            alert('找不到商品');
+        }
+    }
+});
 
-            if (window.innerWidth < 768) {
-                const confirmButton = document.createElement('button');
-                confirmButton.textContent = '確認送出';
-                confirmButton.style.marginTop = '10px';
-                confirmButton.style.backgroundColor = '#8A6739';
-                confirmButton.style.border = 'none';
-                confirmButton.style.borderRadius = '4px';
-                confirmButton.style.color = '#fff';
-                confirmButton.style.cursor = 'pointer';
-                confirmButton.style.padding = '10px';
+if (window.innerWidth < 768) {
+    const confirmButton = document.createElement('button');
+    confirmButton.textContent = '確認送出';
+    confirmButton.style.marginTop = '10px';
+    confirmButton.style.backgroundColor = '#8A6739';
+    confirmButton.style.border = 'none';
+    confirmButton.style.borderRadius = '4px';
+    confirmButton.style.color = '#fff';
+    confirmButton.style.cursor = 'pointer';
+    confirmButton.style.padding = '10px';
 
-                confirmButton.addEventListener('click', () => {
-                    const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); 
-                    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-                    if (product) {
-                        addProductToCart(product.code);
-                        productCodeInput.value = ''; 
-                        productInfoElement.textContent = '';
-                        keywordSearchInput.value = ''; 
-                    } else {
-                        alert('找不到商品');
-                    }
-                });
+    confirmButton.addEventListener('click', () => {
+        const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); 
+        const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+        if (product) {
+            addProductToCart(product.code);
+            productCodeInput.value = ''; 
+            productInfoElement.textContent = '';
+            keywordSearchInput.value = ''; 
+        } else {
+            alert('找不到商品');
+        }
+    });
 
-                document.querySelector('.form-group').appendChild(confirmButton);
-            }
+    document.querySelector('.form-group').appendChild(confirmButton);
+}
 
 checkoutBtn.addEventListener('click', () => {
     if (cart.length === 0) {
@@ -520,12 +552,12 @@ checkoutBtn.addEventListener('click', () => {
     }
 
     checkoutBtn.style.backgroundColor = 'green';
-    checkoutBtn.style.transform = 'scale(1.1)';
-    checkoutBtn.textContent = '已送出';
+    checkoutBtn.style.transform = 'scale(1.1)'; 
+    checkoutBtn.textContent = '已送出'; 
     setTimeout(() => {
         checkoutBtn.style.backgroundColor = '#8A6739';
-        checkoutBtn.style.transform = 'scale(1)';
-        checkoutBtn.textContent = 'F10結帳';
+        checkoutBtn.style.transform = 'scale(1)'; 
+        checkoutBtn.textContent = 'F10結帳'; 
     }, 600);
 
     const totalAmount = parseFloat(totalAmountElement.textContent);
@@ -555,7 +587,7 @@ checkoutBtn.addEventListener('click', () => {
     updateSummaryTable();
     saveSummary();
     clientCounter++;
-    localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
+    localStorage.setItem('clientCounter', JSON.stringify(clientCounter)); 
     localStorage.removeItem('cart');
     productCodeInput.focus(); 
     
@@ -572,7 +604,6 @@ const calculateTotal = () => {
     totalAmountElement.textContent = Math.round(total);
     calculateChange();
 };
-
 const calculateChange = () => {
     const totalAmount = parseFloat(totalAmountElement.textContent);
     const paidAmount = parseFloat(paidAmountInput.value);
@@ -582,13 +613,13 @@ const calculateChange = () => {
 
 paidAmountInput.addEventListener('input', calculateChange);
 
-const addProductToCart = (code, quantity = 1) => {
+const addProductToCart = (code) => {
     const product = products[code];
     const existingItem = cart.find(item => item.code === code);
     if (existingItem) {
-        existingItem.quantity += quantity;
+        existingItem.quantity += 1;
     } else {
-        cart.push({ ...product, quantity: quantity });
+        cart.push({ ...product, quantity: 1 });
     }
     updateCartDisplay();
     calculateTotal();
@@ -602,47 +633,73 @@ const updateCartDisplay = () => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${item.name}</td>
-            <td><input type="number" name="price-${item.code}" value="${Math.round(item.price)}" style="max-width: 60px;"></td>
-            <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="0" class="quantity-input" data-code="${item.code}"></td>
+            <td><input type="number" name="price-${item.code}" value="${item.price}" step="0.1" min="0" class="price-input" data-code="${item.code}"></td>
+            <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="-1000" class="quantity-input" data-code="${item.code}"></td>
             <td><input type="number" name="discount-${item.code}" value="${item.discount}" step="0.1" min="0" max="100" class="discount-input" data-code="${item.code}"></td>
             <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
         `;
         cartTableBody.appendChild(row);
     });
 
-    document.querySelectorAll('.quantity-input').forEach(input => {
-        input.addEventListener('input', debounce((e) => {
-            const code = e.target.dataset.code;
-            const newQuantity = parseInt(e.target.value);
+const debounce = (func, delay) => {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), delay);
+    };
+};
 
-            if (!isNaN(newQuantity)) {
-                const item = cart.find(item => item.code === code);
-                if (item) {
-                    item.quantity = newQuantity;
-                    calculateTotal();
-                    updateCartDisplay();
-                    saveCart();
-                }
+document.querySelectorAll('.quantity-input').forEach(input => {
+    input.addEventListener('input', debounce((e) => {
+        const code = e.target.dataset.code;
+        const newQuantity = parseInt(e.target.value);
+
+        if (!isNaN(newQuantity)) {
+            const item = cart.find(item => item.code === code);
+            if (item) {
+                item.quantity = newQuantity;
+                calculateTotal();
+                updateCartDisplay();
+                saveCart();
             }
-        }, 500));
-    });
+        }
+    }, 500)); 
+});
 
-    document.querySelectorAll('.discount-input').forEach(input => {
-        input.addEventListener('input', debounce((e) => {
-            const code = e.target.dataset.code;
-            const newDiscount = parseFloat(e.target.value);
+document.querySelectorAll('.discount-input').forEach(input => {
+    input.addEventListener('input', debounce((e) => {
+        const code = e.target.dataset.code;
+        const newDiscount = parseFloat(e.target.value); 
 
-            if (!isNaN(newDiscount) && newDiscount >= 0) {
-                const item = cart.find(item => item.code === code);
-                if (item) {
-                    item.discount = newDiscount;
-                    calculateTotal();
-                    updateCartDisplay();
-                    saveCart();
-                }
+        if (!isNaN(newDiscount) && newDiscount >= 0) {
+            const item = cart.find(item => item.code === code);
+            if (item) {
+                item.discount = newDiscount; 
+                calculateTotal();
+                updateCartDisplay();
+                saveCart();
             }
-        }, 500));
-    });
+        }
+    }, 500));  
+});
+
+document.querySelectorAll('.price-input').forEach(input => {
+    input.addEventListener('input', debounce((e) => {
+        const code = e.target.dataset.code;
+        const newPrice = parseFloat(e.target.value);
+
+        if (!isNaN(newPrice) && newPrice >= 0) {
+            const item = cart.find(item => item.code === code);
+            if (item) {
+                item.price = newPrice;
+                calculateTotal();
+                updateCartDisplay();
+                saveCart();
+            }
+        }
+    }, 500)); 
+});
+
 };
 
 const saveCart = () => {
@@ -769,7 +826,7 @@ exportCsvBtn.addEventListener('click', () => {
 clearAllBtn.addEventListener('click', () => {
     if (confirm('確定要刪除全部訂單？此操作無法撤銷。')) {
         if (confirm('再次確認，確定要刪除全部訂單嗎？')) {
-            localStorage.clear();
+            localStorage.clear(); 
             cart = [];
             clients = {};
             overallSummary = {};
@@ -783,20 +840,20 @@ clearAllBtn.addEventListener('click', () => {
 });
 
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'F10' && cart.length > 0) {
-        e.preventDefault();
-        checkoutBtn.click();
+    if (e.key === 'F10' && cart.length > 0) { 
+        e.preventDefault(); 
+        checkoutBtn.click(); 
     }
 });
 
-loadDiscountRates();
+loadDiscountRates(); 
 loadProducts().then(() => {
     updateCartDisplay();
     updateSummaryTable();
 });
 
-calculateChange();
-        });
-    </script>
+calculateChange(); 
+});
+</script>
 </body>
 </html>
