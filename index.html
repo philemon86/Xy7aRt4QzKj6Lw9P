@@ -17,73 +17,49 @@
             height: 100vh;
             background-color: #F5F5DC;
         }
-        .container {
+
+        /* 父級容器，用於設定AB和CD的佈局 */
+        .flex-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1200px;
+            margin-top: 20px;
+        }
+
+        /* 讓每個區域有一致的寬度與顯示效果 */
+        .container-half {
             background-color: #fff;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            width: 80%;
-            max-width: 600px;
+            width: 48%; /* 左右佔48%寬度 */
             margin-bottom: 20px;
-            margin-top: 20px;
+            min-height: 300px;
+            box-sizing: border-box;
         }
 
-        .search-results div {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #D2B48C;
-            padding-bottom: 10px;
-        }
-
-        .search-results div span {
-            font-size: 0.9em;
-            color: #8B4513;
-            margin-bottom: 5px;
-        }
-
-        .search-results button {
-            align-self: flex-end;
-            padding: 5px;
-            background-color: #8A6739;
-            border: none;
-            border-radius: 4px;
-            color: #fff;
-            cursor: pointer;
-            font-size: 0.8em;
-            margin-top: 5px;
-        }
-
+        /* 保持原始邊框和圓角 */
         .header, .form-group, .table-container, .payment-info, .notes-container {
             border: 1px solid #D2B48C;
             padding: 10px;
             border-radius: 4px;
             margin-bottom: 20px;
         }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .header span, .table-title {
-            font-size: 1em;
-            color: #8B4513;
-        }
-        .header button {
-            padding: 5px 10px;
-            cursor: pointer;
+
+        /* 保持按鈕顏色和設計 */
+        .header button, .form-group button, .btn-group button {
             background-color: #8A6739;
+            color: white;
             border: none;
+            padding: 10px;
             border-radius: 4px;
-            color: #fff;
-            font-size: 0.8em;
+            cursor: pointer;
         }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #8B4513;
-        }
-        .form-group input {
+
+        /* 保持原始的輸入框背景色和樣式 */
+        .form-group input, .notes-container textarea {
             width: calc(100% - 20px);
             padding: 10px;
             font-size: 1em;
@@ -91,30 +67,15 @@
             border-radius: 4px;
             background-color: #E6E2B2;
         }
-        .table-container {
-            overflow-x: auto;
+
+        /* 備註區域增加高度 */
+        .notes-container textarea {
+            resize: none;
+            background-color: #E6E2B2;
+            height: 200px; /* 設置較大的高度 */
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        th, td {
-            padding: 5px;
-            text-align: left;
-            border-bottom: 1px solid #D2B48C;
-            max-width: 150px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        th {
-            font-size: 0.9em;
-            color: #8B4513;
-        }
-        td {
-            font-size: 0.8em;
-        }
+
+        /* 保持應付金額的背景色與圓角 */
         .total {
             font-size: 1.5em;
             font-weight: bold;
@@ -125,11 +86,7 @@
             text-align: right;
         }
 
-        .bottom-total {
-            border-radius: 8px;
-            margin-top: 20px;
-        }
-
+        /* 保持支付資訊的設計 */
         .payment-info {
             text-align: right;
             background-color: #FFFFFF;
@@ -141,6 +98,7 @@
             align-items: center;
         }
 
+        /* 保持支付資訊內的文字和輸入框樣式 */
         .payment-info span {
             margin-right: 10px;
             color: #8B4513;
@@ -152,138 +110,165 @@
             font-size: 1em;
         }
 
-        .payment-info .btn-group {
-            margin-left: auto;
+        .table-container {
+            overflow-x: auto;
         }
 
-        .payment-info button, .delete-client-btn, #export-csv-btn, #clear-all-btn {
-            background-color: #8A6739;
-            color: #fff;
-            padding: 5px 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8em;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
         }
 
-        #product-info {
-            margin-bottom: 10px;
+        th, td {
+            padding: 5px;
+            text-align: left;
+            border-bottom: 1px solid #D2B48C;
+        }
+
+        th {
+            font-size: 0.9em;
             color: #8B4513;
         }
-        .csv-validation {
+
+        td {
             font-size: 0.8em;
-            color: green;
-            margin-bottom: 10px;
-        }
-        .notes-container textarea {
-            width: calc(100% - 20px);
-            max-width: 100%;
-            height: 130px;
-            padding: 10px;
-            font-size: 1em;
-            border: 1px solid #D2B48C;
-            border-radius: 4px;
-            resize: none;
-            background-color: #E6E2B2;
-            box-sizing: border-box;
-        }
-        .quantity-input {
-            max-width: 40px;
         }
 
-        .discount-input {
-            max-width: 40px;
+        .bottom-total {
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        /* 修正手機版響應式佈局，讓白框不會被切掉 */
+        @media (max-width: 768px) {
+            .flex-container {
+                flex-direction: column;
+                align-items: center;
+                padding: 0 10px; /* 加入內邊距，避免手機上白框被切到 */
+            }
+
+            .container-half {
+                width: 100%;
+                margin-bottom: 20px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="csv-validation" id="csv-validation"></div>
-    <div class="container main-container">
-        <div class="header">
-            <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
-            <span id="title">腓利門雲POS</span>
-        </div>
-        <div class="header">
-            <span id="current-date"></span>
-            <div class="btn-group">
-                <button id="export-csv-btn">匯出 CSV</button>
-                <button id="clear-all-btn">刪除全部</button>
+    <!-- 區域 A + B -->
+    <div class="flex-container">
+        <div class="container-half">
+            <!-- 區域 A 內容 -->
+            <div class="header">
+                <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
+                <span id="title">腓利門雲POS</span>
+            </div>
+            <div class="header">
+                <span id="current-date"></span>
+                <div class="btn-group">
+                    <button id="export-csv-btn">匯出 CSV</button>
+                    <button id="clear-all-btn">刪除全部</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="product-code">請輸入商品代碼/條碼：</label>
+                <input type="text" id="product-code" placeholder="請輸入商品代碼/條碼">
+                <div id="product-info"></div>
+            </div>
+            <div class="form-group search-container">
+                <label for="keyword-search">輸入關鍵字搜尋商品：</label>
+                <input type="text" id="keyword-search" placeholder="僅限商品名稱">
+                <div id="search-results" class="search-results"></div>
             </div>
         </div>
-        <div class="form-group">
-            <label for="product-code">請輸入商品代碼/條碼：</label>
-            <input type="text" id="product-code" placeholder="請輸入商品代碼/條碼">
-            <div id="product-info"></div>
-        </div>
-        <div class="form-group search-container">
-            <label for="keyword-search">輸入關鍵字搜尋商品：</label>
-            <input type="text" id="keyword-search" placeholder="僅限商品名稱">
-            <div id="search-results" class="search-results"></div>
-        </div>
-        <div class="table-container">
-            <div class="table-title">結帳明細 <span id="current-client"></span></div>
-            <table id="cart-table">
-                <thead>
-                    <tr>
-                        <th>名稱</th>
-                        <th>單價</th>
-                        <th>數量</th>
-                        <th>折扣</th>
-                        <th>小計</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
-        <div class="total">應付金額：<span id="total-amount">0</span> 元</div>
-        <div class="payment-info">
-            <span>實付金額：<input type="number" id="paid-amount" value="1000" placeholder="輸入實付金額"></span>
-            <span>找錢：<span id="change-amount">0</span> 元</span>
-            <div class="btn-group">
-                <button id="checkout-btn" style="transition: all 0.6s ease;">F10結帳</button>
+
+        <div class="container-half">
+            <!-- 區域 B 內容 -->
+            <div class="table-container">
+                <div class="table-title">結帳明細</div>
+                <table id="cart-table">
+                    <thead>
+                        <tr>
+                            <th>名稱</th>
+                            <th>單價</th>
+                            <th>數量</th>
+                            <th>折扣</th>
+                            <th>小計</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+            <div class="total">應付金額：<span id="total-amount">0</span> 元</div>
+            <div class="payment-info">
+                <span>實付金額：<input type="number" id="paid-amount" value="1000" placeholder="輸入實付金額"></span>
+                <span>找錢：<span id="change-amount">0</span> 元</span>
+                <div class="btn-group">
+                    <button id="checkout-btn" style="transition: all 0.6s ease;">F10結帳</button>
+                </div>
             </div>
         </div>
     </div>
-    <div class="container summary-container">
-        <div class="table-title">
-            單筆消費明細 <br>
-            統計訂單總數: <span id="total-orders">0</span> | 訂單平均消費: <span id="average-amount">0</span> 元
+
+    <!-- 區域 C + D -->
+    <div class="flex-container">
+        <div class="container-half">
+            <!-- 區域 C 內容 -->
+            <div class="table-title">
+                單筆消費明細 <br>
+                統計訂單總數: <span id="total-orders">0</span> | 訂單平均消費: <span id="average-amount">0</span> 元
+            </div>
+            <div class="table-container">
+                <table id="summary-table">
+                    <thead>
+                        <tr>
+                            <th>客戶名稱</th>
+                            <th>消費金額</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-title">消費總覽</div>
+            <div class="table-container">
+                <table id="overall-summary-table">
+                    <thead>
+                        <tr>
+                            <th>商品代碼</th>
+                            <th>產品名稱</th>
+                            <th>數量小計</th>
+                            <th>金額小計</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+            <div class="total bottom-total">總金額：<span id="overall-total-amount">0</span> 元</div>
         </div>
-        <div class="table-container">
-            <table id="summary-table">
-                <thead>
-                    <tr>
-                        <th>客戶名稱</th>
-                        <th>消費金額</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
+
+        <div class="container-half">
+            <!-- 區域 D 內容 -->
+            <div class="notes-container">
+                <label for="notes">訂單備註：</label>
+                <textarea id="notes"></textarea>
+            </div>
         </div>
-        <div class="table-title">消費總覽</div>
-        <div class="table-container">
-            <table id="overall-summary-table">
-                <thead>
-                    <tr>
-                        <th>商品代碼</th>
-                        <th>產品名稱</th>
-                        <th>數量小計</th>
-                        <th>金額小計</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
-        <div class="total bottom-total">總金額：<span id="overall-total-amount">0</span> 元</div>
     </div>
-    <div class="container notes-container">
-        <label for="notes">訂單備註：</label>
-        <textarea id="notes"></textarea>
-    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // JS 邏輯保持不變
+        });
+    </script>
+</body>
+</html>
+
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const currentDateElement = document.getElementById('current-date');
