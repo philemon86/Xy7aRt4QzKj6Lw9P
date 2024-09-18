@@ -326,6 +326,13 @@
             };
 
 const loadProducts = async () => {
+    const csvValidationElement = document.getElementById('csv-validation');
+    
+    if (!csvValidationElement) {
+        console.error("csvValidationElement not found!");
+        return;
+    }
+
     try {
         const response = await fetch('products.csv');
         if (!response.ok) {
