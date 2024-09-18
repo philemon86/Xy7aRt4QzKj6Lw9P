@@ -325,46 +325,50 @@
                 };
             };
 
-            const loadProducts = async () => {
-                try {
-                    const response = await fetch('products.csv');
-                    const data = await response.text();
-                    const lines = data.split('\n');
-                    let headers = [];
-                    let isHeader = true;
+const loadProducts = async () => {
+    try {
+        const response = await fetch('products.csv');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.text();
+        const lines = data.split('\n');
+        let headers = [];
+        let isHeader = true;
 
-                    lines.forEach(line => {
-                        const columns = line.split(',');
+        lines.forEach(line => {
+            const columns = line.split(',');
 
-                        if (isHeader) {
-                            headers = columns.map(header => header.trim());
-                            isHeader = false;
-                            return;
-                        }
+            if (isHeader) {
+                headers = columns.map(header => header.trim());
+                isHeader = false;
+                return;
+            }
 
-                        const product = {};
-                        headers.forEach((header, index) => {
-                            product[header] = columns[index]?.trim();
-                        });
+            const product = {};
+            headers.forEach((header, index) => {
+                product[header] = columns[index]?.trim();
+            });
 
-                        if (product['CODE'] && product['CNAME'] && product['BARCODE'] && !isNaN(parseInt(product['CQTY']))) {
-                            const discount = discountRates[product['CLAS']] || 100; 
-                            products[product['CODE']] = {
-                                code: product['CODE'],
-                                name: product['CNAME'],
-                                barcode: product['BARCODE'],
-                                qty: parseInt(product['CQTY']),
-                                price: parseFloat(product['PRICE']) || 0,
-                                discount: discount 
-                            };
-                        }
-                    });
+            if (product['CODE'] && product['CNAME'] && product['BARCODE'] && !isNaN(parseInt(product['CQTY']))) {
+                const discount = discountRates[product['CLAS']] || 100; 
+                products[product['CODE']] = {
+                    code: product['CODE'],
+                    name: product['CNAME'],
+                    barcode: product['BARCODE'],
+                    qty: parseInt(product['CQTY']),
+                    price: parseFloat(product['PRICE']) || 0,
+                    discount: discount 
+                };
+            }
+        });
 
-                    csvValidationElement.textContent = "CSV檔讀取成功";
-                } catch (error) {
-                    csvValidationElement.textContent = `CSV文件讀取失敗: ${error.message}`;
-                }
-            };
+        csvValidationElement.textContent = "CSV檔讀取成功";
+    } catch (error) {
+        console.error('Error loading CSV file:', error);
+        csvValidationElement.textContent = `CSV文件讀取失敗: ${error.message}`;
+    }
+};
 
             const parseProductInput = (input) => {
                 const pattern = /^(\d+)\*([\w-]+)$/;
