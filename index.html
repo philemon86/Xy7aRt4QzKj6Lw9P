@@ -140,6 +140,14 @@
             margin-top: 20px;
         }
 
+        /* 調整單價、數量和折扣的輸入框大小 */
+        td input[type="number"] {
+            width: 50px; /* 調整寬度為50px */
+            padding: 5px;
+            font-size: 0.9em;
+            box-sizing: border-box;
+        }
+
         /* 修正手機版響應式佈局，讓白框不會被切掉 */
         @media (max-width: 768px) {
             .flex-container {
@@ -151,6 +159,11 @@
             .container-half {
                 width: 100%;
                 margin-bottom: 20px;
+            }
+
+            /* 在手機上的進一步調整 */
+            td input[type="number"] {
+                width: 40px; /* 手機上進一步縮小寬度 */
             }
         }
     </style>
@@ -261,8 +274,6 @@
             <div class="total bottom-total">總金額：<span id="overall-total-amount">0</span> 元</div>
         </div>
     </div>
-
-    <div id="csv-validation" style="color: red; text-align: center; margin-top: 20px;"></div> <!-- CSV 驗證結果區域 -->
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
