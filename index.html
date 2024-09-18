@@ -34,7 +34,7 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            width: 48%; /* 左右佔48%寬度 */
+            width: 48%;
             margin-bottom: 20px;
             min-height: 300px;
             box-sizing: border-box;
@@ -68,11 +68,11 @@
             background-color: #E6E2B2;
         }
 
-        /* 備註區域增加高度 */
+        /* 備註區域 */
         .notes-container textarea {
             resize: none;
             background-color: #E6E2B2;
-            height: 200px; /* 設置較大的高度 */
+            height: 200px;
         }
 
         /* 保持應付金額的背景色與圓角 */
@@ -215,7 +215,7 @@
     <!-- 區域 C + D -->
     <div class="flex-container">
         <div class="container-half">
-            <!-- 區域 C 內容 -->
+            <!-- **單筆消費明細 和 備註欄，放在同一區域** -->
             <div class="table-title">
                 單筆消費明細 <br>
                 統計訂單總數: <span id="total-orders">0</span> | 訂單平均消費: <span id="average-amount">0</span> 元
@@ -233,7 +233,17 @@
                     </tbody>
                 </table>
             </div>
-            <div class="table-title">消費總覽</div>
+            <div class="notes-container">
+                <label for="notes">訂單備註：</label>
+                <textarea id="notes"></textarea>
+            </div>
+        </div>
+
+        <div class="container-half">
+            <!-- **消費總覽 和 總金額 單獨放在右邊** -->
+            <div class="table-title">
+                消費總覽
+            </div>
             <div class="table-container">
                 <table id="overall-summary-table">
                     <thead>
@@ -250,14 +260,6 @@
             </div>
             <div class="total bottom-total">總金額：<span id="overall-total-amount">0</span> 元</div>
         </div>
-
-        <div class="container-half">
-            <!-- 區域 D 內容 -->
-            <div class="notes-container">
-                <label for="notes">訂單備註：</label>
-                <textarea id="notes"></textarea>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -267,8 +269,6 @@
     </script>
 </body>
 </html>
-
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const currentDateElement = document.getElementById('current-date');
