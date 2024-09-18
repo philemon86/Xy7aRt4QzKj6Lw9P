@@ -194,6 +194,8 @@
                 <input type="text" id="keyword-search" placeholder="僅限商品名稱">
                 <div id="search-results" class="search-results"></div>
             </div>
+            <!-- 新增CSV狀態顯示的div -->
+            <div id="csv-validation"></div>
         </div>
 
         <div class="container-half">
@@ -282,7 +284,6 @@
     </script>
 </body>
 </html>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const currentDateElement = document.getElementById('current-date');
