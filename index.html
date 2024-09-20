@@ -358,13 +358,19 @@
             updateCart(); // 檢查購物車狀態以啟動或停止計時器
         };
 
+        // 清空購物車
+        const clearCart = () => {
+            cart = [];
+            updateCartDisplay();
+            calculateTotal();
+            saveCart();
+            stopInactivityTimer(); // 清空購物車時停止計時器
+        };
+
         // 當購物車結帳後，清空購物車並停止計時器
         checkoutBtn.addEventListener('click', () => {
             stopInactivityTimer(); // 結帳後停止計時
-            cart = []; // 清空購物車
-            updateCartDisplay(); // 更新購物車顯示
-            calculateTotal(); // 計算總額
-            saveCart(); // 保存清空後的狀態
+            clearCart(); // 清空購物車
         });
 
         // 監聽用戶操作來重置計時器
@@ -378,7 +384,6 @@
         // 其餘原有邏輯...
     });
 </script>
-
 
 
 </body>
