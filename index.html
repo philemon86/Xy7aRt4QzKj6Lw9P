@@ -279,14 +279,14 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const currentDateElement = document.getElementById('current-date');
         const checkoutBtn = document.getElementById('checkout-btn');
         let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
         // 定義倒數計時器相關變數
         let lastActionTime = null; // 用來記錄最後操作的時間
-        let inactivityTimer = null; // 定義一個變數來存儲計時器ID
-        const INACTIVITY_LIMIT = 10000; // 10秒無操作的限制
+        let inactivityTimer = null; // 計時器ID
+        const INACTIVITY_LIMIT = 10000; // 10秒無操作限制
+        let timerActive = false; // 計時器狀態標誌
 
         // 檢查購物車是否為空
         const isCartEmpty = () => {
@@ -303,12 +303,13 @@
             if (inactivityTimer) {
                 clearInterval(inactivityTimer);
                 inactivityTimer = null;
+                timerActive = false; // 重置標誌
             }
         };
 
         // 啟動計時器
         const startInactivityTimer = () => {
-            if (!inactivityTimer && !isCartEmpty()) {
+            if (!timerActive && !isCartEmpty()) {
                 resetInactivityTimer();
                 inactivityTimer = setInterval(() => {
                     if (Date.now() - lastActionTime > INACTIVITY_LIMIT && !isCartEmpty()) {
@@ -317,10 +318,11 @@
                             checkoutBtn.click(); // 自動觸發結帳
                             stopInactivityTimer(); // 結帳後停止計時
                         } else {
-                            resetInactivityTimer(); // 用戶選擇否後，重置計時器
+                            resetInactivityTimer(); // 用戶選擇否，重置計時器
                         }
                     }
                 }, 1000); // 每秒檢查一次
+                timerActive = true; // 設置計時器啟動標誌
             }
         };
 
@@ -345,7 +347,7 @@
             updateCartDisplay();
             calculateTotal();
             saveCart();
-            updateCart(); // 檢查購物車狀態以啟動或停止計時器
+            updateCart(); // 檢查購物車狀態
         };
 
         // 當購物車商品被移除時調用
@@ -354,7 +356,7 @@
             updateCartDisplay();
             calculateTotal();
             saveCart();
-            updateCart(); // 更新購物車狀態
+            updateCart(); // 更新購物車狀態以啟動或停止計時器
         };
 
         // 監聽用戶操作來重置計時器
@@ -369,6 +371,7 @@
 
     });
 </script>
+
 
 </body>
 </html>
