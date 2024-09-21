@@ -569,18 +569,33 @@ const loadProducts = async () => {
                 confirmButton.style.cursor = 'pointer';
                 confirmButton.style.padding = '10px';
 
-                confirmButton.addEventListener('click', () => {
-                    const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); 
-                    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-                    if (product) {
-                        addProductToCart(product.code);
-                        productCodeInput.value = ''; 
-                        productInfoElement.textContent = '';
-                        keywordSearchInput.value = ''; 
-                    } else {
-                        alert('找不到商品');
-                    }
-                });
+// 當用戶按下確認送出按鈕時，檢查商品是否存在
+confirmButton.addEventListener('click', () => {
+    const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); 
+    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+    if (product) {
+        addProductToCart(product.code);
+        productCodeInput.value = '';  // 清空輸入框
+        productInfoElement.textContent = '';  // 清空商品資訊
+        keywordSearchInput.value = '';  // 清空搜尋框
+    } else {
+        alert('找不到商品');
+    }
+});
+                
+productCodeInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const codeOrBarcode = e.target.value.trim().toLowerCase();
+        const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+        if (product) {
+            addProductToCart(product.code);
+            e.target.value = '';  // 清空輸入框
+            productInfoElement.textContent = '';  // 清空商品資訊
+        } else {
+            alert('找不到商品');
+        }
+    }
+});
 
                 document.querySelector('.form-group').appendChild(confirmButton);
             }
