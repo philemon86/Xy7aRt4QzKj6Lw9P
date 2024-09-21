@@ -298,76 +298,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkoutBtn = document.getElementById('checkout-btn');
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
     let effectTimer = null;
-    let hasPromptedCheckout = false; // 用來追踪是否已經彈出過結帳提示
+    let hasShownEmptyCartAlert = false; // 初始化這個變數
 
     // 檢查購物車是否有商品
     const isCartEmpty = () => cart.length === 0;
 
-    // 啟動彈窗詢問是否結帳
-    const promptCheckout = () => {
+    // 檢查購物車狀態並啟動或停止動畫
+    const checkCartAndAnimateButton = () => {
         if (!isCartEmpty()) {
-            const userConfirmed = confirm('購物車有商品，是否立即結帳？');
-            if (userConfirmed) {
-                sendCheckout(); // 執行結帳
-            } else {
-                hasPromptedCheckout = false; // 重置狀態以便再次提示
-            }
+            checkoutBtn.classList.add('animate');
+        } else {
+            checkoutBtn.classList.remove('animate');
         }
     };
 
-    // 每2秒檢查一次購物車並開始計時器
+    // 每2秒檢查一次購物車
     effectTimer = setInterval(() => {
         cart = JSON.parse(localStorage.getItem('cart')) || [];
-        if (!isCartEmpty() && !hasPromptedCheckout) {
-            setTimeout(promptCheckout, 7000); // 7秒後彈出詢問
-            hasPromptedCheckout = true; // 防止多次提示
-        }
+        checkCartAndAnimateButton();
     }, 2000);
 
-    // 結帳邏輯
-    const sendCheckout = () => {
-        cart = []; // 清空購物車
-        localStorage.setItem('cart', JSON.stringify(cart)); // 更新本地存儲
-        updateCartDisplay(); // 更新購物車顯示
-        calculateTotal(); // 計算總金額
-        updateSummaryTable(); // 更新總結表
-        hasPromptedCheckout = false; // 重置提示狀態
-    };
-
-    // 更新購物車顯示
-    const updateCartDisplay = () => {
-        const cartTableBody = document.querySelector('#cart-table tbody');
-        cartTableBody.innerHTML = ''; // 清空表格
-        cart.forEach(item => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${item.name}</td>
-                <td>${item.price}</td>
-                <td>${item.quantity}</td>
-                <td>${item.discount}</td>
-                <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
-            `;
-            cartTableBody.appendChild(row);
-        });
-    };
-
-    // 計算總金額
-    const calculateTotal = () => {
-        let total = 0;
-        cart.forEach(item => {
-            total += item.price * item.quantity * (item.discount / 100);
-        });
-        const totalAmountElement = document.getElementById('total-amount');
-        totalAmountElement.textContent = Math.round(total);
-    };
-
-    // 更新總結表
-    const updateSummaryTable = () => {
-        const summaryTableBody = document.querySelector('#summary-table tbody');
-        summaryTableBody.innerHTML = ''; // 清空表格
-        // 此處可以根據你的需求進一步處理訂單的顯示
-    };
-});
+    checkoutBtn.addEventListener('click', () => {
+        if (!isCartEmpty()) {
+            cart = [];  // 清空購物車
+            localStorage.setItem('cart', JSON.stringify(cart));
+            checkCartAndAnimateButton();
+            hasShownEmptyCartAlert = false; // 重置提醒狀態
+        } else {
+            if (!hasShownEmptyCartAlert) {
+                alert('購物車為空，無法結帳');
+                hasShownEmptyCartAlert = true; // 更新狀態以防止多次提醒
+            }
+        }
+    });
+}); 
 </script>
 
 </body>
