@@ -293,46 +293,48 @@
         </div>
     </div>
 
-    <script>
+   <script>
 document.addEventListener('DOMContentLoaded', () => {
     const checkoutBtn = document.getElementById('checkout-btn');
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
     let effectTimer = null;
     let hasShownEmptyCartAlert = false; // 初始化這個變數
 
-            // 檢查購物車是否有商品
-            const isCartEmpty = () => cart.length === 0;
+    // 檢查購物車是否有商品
+    const isCartEmpty = () => cart.length === 0;
 
-            // 檢查購物車狀態並啟動或停止動畫
-            const checkCartAndAnimateButton = () => {
-                if (!isCartEmpty()) {
-                    checkoutBtn.classList.add('animate');
-                } else {
-                    checkoutBtn.classList.remove('animate');
-                }
-            };
-
-            // 每2秒檢查一次購物車
-            effectTimer = setInterval(() => {
-                cart = JSON.parse(localStorage.getItem('cart')) || [];
-                checkCartAndAnimateButton();
-            }, 2000);
-
-            checkoutBtn.addEventListener('click', () => {
-    if (!isCartEmpty()) {
-        cart = [];  // 清空購物車
-        localStorage.setItem('cart', JSON.stringify(cart));
-        checkCartAndAnimateButton();
-        alert('結帳成功！');
-        hasShownEmptyCartAlert = false; // 重置提醒狀態
-    } else {
-        if (!hasShownEmptyCartAlert) {
-            alert('購物車為空，無法結帳');
-            hasShownEmptyCartAlert = true; // 更新狀態以防止多次提醒
+    // 檢查購物車狀態並啟動或停止動畫
+    const checkCartAndAnimateButton = () => {
+        if (!isCartEmpty()) {
+            checkoutBtn.classList.add('animate');
+        } else {
+            checkoutBtn.classList.remove('animate');
         }
-    }
-});
-    </script>
+    };
+
+    // 每2秒檢查一次購物車
+    effectTimer = setInterval(() => {
+        cart = JSON.parse(localStorage.getItem('cart')) || [];
+        checkCartAndAnimateButton();
+    }, 2000);
+
+    checkoutBtn.addEventListener('click', () => {
+        if (!isCartEmpty()) {
+            cart = [];  // 清空購物車
+            localStorage.setItem('cart', JSON.stringify(cart));
+            checkCartAndAnimateButton();
+            alert('結帳成功！');
+            hasShownEmptyCartAlert = false; // 重置提醒狀態
+        } else {
+            if (!hasShownEmptyCartAlert) {
+                alert('購物車為空，無法結帳');
+                hasShownEmptyCartAlert = true; // 更新狀態以防止多次提醒
+            }
+        }
+    });
+}); 
+
+</script> 
 </body>
 </html>
 
