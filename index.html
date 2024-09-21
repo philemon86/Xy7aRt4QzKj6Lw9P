@@ -140,9 +140,8 @@
             margin-top: 20px;
         }
 
-        /* 調整單價、數量和折扣的輸入框大小 */
         td input[type="number"] {
-            width: 50px; /* 調整寬度為50px */
+            width: 50px;
             padding: 5px;
             font-size: 0.9em;
             box-sizing: border-box;
@@ -153,7 +152,7 @@
             .flex-container {
                 flex-direction: column;
                 align-items: center;
-                padding: 0 10px; /* 加入內邊距，避免手機上白框被切到 */
+                padding: 0 10px;
             }
 
             .container-half {
@@ -161,9 +160,28 @@
                 margin-bottom: 20px;
             }
 
-            /* 在手機上的進一步調整 */
             td input[type="number"] {
-                width: 40px; /* 手機上進一步縮小寬度 */
+                width: 40px;
+            }
+        }
+
+        /* F10 結帳按鈕的動畫效果 */
+        .animate {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
+            }
+            50% {
+                transform: scale(1.2);
+                box-shadow: 0 0 20px rgba(255, 255, 0, 1);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
             }
         }
     </style>
@@ -230,7 +248,6 @@
     <!-- 區域 C + D -->
     <div class="flex-container">
         <div class="container-half">
-            <!-- **單筆消費明細 和 備註欄，放在同一區域** -->
             <div class="table-title">
                 單筆消費明細 <br>
                 統計訂單總數: <span id="total-orders">0</span> | 訂單平均消費: <span id="average-amount">0</span> 元
@@ -255,7 +272,6 @@
         </div>
 
         <div class="container-half">
-            <!-- **消費總覽 和 總金額 單獨放在右邊** -->
             <div class="table-title">
                 消費總覽
             </div>
@@ -278,73 +294,44 @@
     </div>
 
     <script>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const checkoutBtn = document.getElementById('checkout-btn');
-        let cart = JSON.parse(localStorage.getItem('cart')) || [];
-        let effectTimer = null;  // 計時器ID
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkoutBtn = document.getElementById('checkout-btn');
+            let cart = JSON.parse(localStorage.getItem('cart')) || [];
+            let effectTimer = null;
 
-        // 檢查購物車是否有商品
-        const isCartEmpty = () => {
-            return cart.length === 0;
-        };
+            // 檢查購物車是否有商品
+            const isCartEmpty = () => cart.length === 0;
 
-        // 檢查購物車狀態並啟動或停止動畫
-        const checkCartAndAnimateButton = () => {
-            if (!isCartEmpty()) {
-                // 如果購物車有商品，啟動動畫
-                checkoutBtn.classList.add('animate');
-            } else {
-                // 購物車空時，移除動畫
-                checkoutBtn.classList.remove('animate');
-            }
-        };
+            // 檢查購物車狀態並啟動或停止動畫
+            const checkCartAndAnimateButton = () => {
+                if (!isCartEmpty()) {
+                    checkoutBtn.classList.add('animate');
+                } else {
+                    checkoutBtn.classList.remove('animate');
+                }
+            };
 
-        // 每2秒檢查一次購物車
-        effectTimer = setInterval(() => {
-            cart = JSON.parse(localStorage.getItem('cart')) || [];
-            checkCartAndAnimateButton();
-        }, 2000);  // 每2秒檢查一次購物車
+            // 每2秒檢查一次購物車
+            effectTimer = setInterval(() => {
+                cart = JSON.parse(localStorage.getItem('cart')) || [];
+                checkCartAndAnimateButton();
+            }, 2000);
 
-        // 在結帳按鈕上添加事件來結帳
-        checkoutBtn.addEventListener('click', () => {
-            if (!isCartEmpty()) {
-                cart = [];  // 清空購物車
-                localStorage.setItem('cart', JSON.stringify(cart));  // 保存清空後的購物車
-                checkCartAndAnimateButton();  // 清空後立即停止動畫
-                alert('結帳成功！');
-            } else {
-                alert('購物車為空，無法結帳');
-            }
+            checkoutBtn.addEventListener('click', () => {
+                if (!isCartEmpty()) {
+                    cart = [];  // 清空購物車
+                    localStorage.setItem('cart', JSON.stringify(cart));
+                    checkCartAndAnimateButton();
+                    alert('結帳成功！');
+                } else {
+                    alert('購物車為空，無法結帳');
+                }
+            });
         });
-    });
-</script>
-
-<style>
-    /* F10 結帳按鈕的動畫效果 */
-    .animate {
-        animation: pulse 1s infinite;
-    }
-
-    @keyframes pulse {
-        0% {
-            transform: scale(1);
-            box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
-        }
-        50% {
-            transform: scale(1.2);
-            box-shadow: 0 0 20px rgba(255, 255, 0, 1);
-        }
-        100% {
-            transform: scale(1);
-            box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
-        }
-    }
-</style>
-
     </script>
 </body>
 </html>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const currentDateElement = document.getElementById('current-date');
