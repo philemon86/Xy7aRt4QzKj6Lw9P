@@ -205,7 +205,7 @@
             <div class="form-group">
                 <label for="product-code">請輸入商品代碼/條碼：</label>
                 <input type="text" id="product-code" placeholder="請輸入商品代碼/條碼">
-                <div id="product-info"></div>
+                <div id="product-info"></div> <!-- 用於顯示商品資訊或錯誤訊息 -->
             </div>
             <div class="form-group search-container">
                 <label for="keyword-search">輸入關鍵字搜尋商品：</label>
@@ -292,46 +292,88 @@
             <div class="total bottom-total">總金額：<span id="overall-total-amount">0</span> 元</div>
         </div>
     </div>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const checkoutBtn = document.getElementById('checkout-btn');
-        let cart = JSON.parse(localStorage.getItem('cart')) || [];
-        let effectTimer = null;
 
-        const isCartEmpty = () => cart.length === 0;
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentDateElement = document.getElementById('current-date');
+            const keywordSearchInput = document.getElementById('keyword-search');
+            const searchResultsElement = document.getElementById('search-results');
+            const productCodeInput = document.getElementById('product-code');
+            const productInfoElement = document.getElementById('product-info');
+            let products = {}; 
 
-        const checkCartAndAnimateButton = () => {
-            if (!isCartEmpty()) {
-                checkoutBtn.classList.add('animate');
-            } else {
-                checkoutBtn.classList.remove('animate');
-            }
-        };
+            const loadProducts = async () => {
+                try {
+                    const response = await fetch('products.csv');
+                    const data = await response.text();
+                    const lines = data.split('\n');
+                    const headers = lines[0].split(',');
 
-        effectTimer = setInterval(() => {
-            cart = JSON.parse(localStorage.getItem('cart')) || [];
-            checkCartAndAnimateButton();
-        }, 2000);
+                    lines.slice(1).forEach(line => {
+                        const columns = line.split(',');
+                        const product = {};
+                        headers.forEach((header, index) => {
+                            product[header.trim()] = columns[index].trim();
+                        });
 
-        checkoutBtn.addEventListener('click', () => {
-            if (!isCartEmpty()) {
-                cart = [];
-                localStorage.setItem('cart', JSON.stringify(cart));
-                checkCartAndAnimateButton();
-                alert('結帳成功！');
-                hasShownEmptyCartAlert = false;
-            } else {
-                if (!hasShownEmptyCartAlert) {
-                    alert('購物車為空，無法結帳');
-                    hasShownEmptyCartAlert = true;
+                        if (product['CODE'] && product['CNAME'] && product['BARCODE']) {
+                            products[product['CODE']] = {
+                                code: product['CODE'],
+                                name: product['CNAME'],
+                                barcode: product['BARCODE'],
+                                qty: parseInt(product['CQTY']),
+                                price: parseFloat(product['PRICE'])
+                            };
+                        }
+                    });
+
+                    productInfoElement.textContent = "CSV檔讀取成功";
+                } catch (error) {
+                    console.error('Error loading CSV file:', error);
+                    productInfoElement.textContent = `CSV文件讀取失敗: ${error.message}`;
                 }
-            }
-        });
-    });
-</script>
+            };
 
+            // 處理商品搜尋
+            const handleProductSearch = () => {
+                const codeOrBarcode = productCodeInput.value.trim().toLowerCase();
+                const product = Object.values(products).find(product => 
+                    product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode
+                );
+
+                if (product) {
+                    productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
+                    productCodeInput.value = ''; // 清空輸入欄
+                } else {
+                    productInfoElement.textContent = '找不到商品';
+                }
+            };
+
+            // 只在用戶按下確認送出按鈕或按 Enter 鍵時觸發商品搜尋
+            const confirmButton = document.createElement('button');
+            confirmButton.textContent = '確認送出';
+            confirmButton.style.marginTop = '10px';
+            confirmButton.style.backgroundColor = '#8A6739';
+            confirmButton.style.border = 'none';
+            confirmButton.style.borderRadius = '4px';
+            confirmButton.style.color = '#fff';
+            confirmButton.style.cursor = 'pointer';
+            confirmButton.style.padding = '10px';
+            document.querySelector('.form-group').appendChild(confirmButton);
+
+            confirmButton.addEventListener('click', handleProductSearch);
+            productCodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleProductSearch();
+                }
+            });
+
+            loadProducts(); // 載入商品數據
+        });
+    </script>
 </body>
 </html>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
