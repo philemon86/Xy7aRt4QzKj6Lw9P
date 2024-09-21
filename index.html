@@ -373,6 +373,14 @@
             clearCart(); // 清空購物車
         });
 
+        // 監聽按下F10結帳時重新啟動計時器
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F10' && !isCartEmpty()) {
+                stopInactivityTimer();  // 停止舊的計時器
+                startInactivityTimer(); // 按下F10後重新啟動計時器
+            }
+        });
+
         // 監聽用戶操作來重置計時器
         ['click', 'keypress', 'mousemove', 'touchstart'].forEach(event => {
             document.addEventListener(event, resetInactivityTimer);
