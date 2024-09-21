@@ -277,12 +277,12 @@
         </div>
     </div>
 
+<script>
 document.addEventListener('DOMContentLoaded', () => {
     const checkoutBtn = document.getElementById('checkout-btn');
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
     // 定義倒數計時器相關變數
-    let lastActionTime = null; // 用來記錄最後操作的時間
     let inactivityTimer = null; // 計時器ID
     const INACTIVITY_LIMIT = 8000; // 8秒無操作限制
     let timerActive = false; // 計時器狀態標誌
@@ -290,19 +290,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // 檢查購物車是否為空
     const isCartEmpty = () => cart.length === 0;
 
-    // 重置計時器
-    const resetInactivityTimer = () => {
-        lastActionTime = Date.now();
-        stopInactivityTimer(); // 先停止舊的計時器，避免重複計時
-        if (!isCartEmpty()) {
-            startInactivityTimer(); // 當購物車有新內容時啟動新計時器
-        }
-    };
-
     // 停止計時器
     const stopInactivityTimer = () => {
         if (inactivityTimer) {
-            clearInterval(inactivityTimer); // 清除計時器
+            clearTimeout(inactivityTimer); // 清除計時器
             inactivityTimer = null;
             timerActive = false; // 設定標誌為計時器未啟動
         }
@@ -310,33 +301,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 啟動計時器（僅當購物車有商品且計時器未啟動時）
     const startInactivityTimer = () => {
-        if (!timerActive && !isCartEmpty()) { // 確保購物車有商品並且計時器未啟動
-            inactivityTimer = setInterval(() => {
-                if (Date.now() - lastActionTime > INACTIVITY_LIMIT && !isCartEmpty()) {
-                    const userConfirmed = confirm("您已經超過8秒沒有操作，是否要進行結帳？");
-                    if (userConfirmed) {
-                        checkoutBtn.click(); // 自動觸發結帳
-                        stopInactivityTimer(); // 結帳後停止計時
-                    } else {
-                        resetInactivityTimer(); // 用戶選擇否後重置計時器
-                    }
+        stopInactivityTimer(); // 先停止舊的計時器，避免多次重啟
+        if (!isCartEmpty()) {
+            inactivityTimer = setTimeout(() => {
+                const userConfirmed = confirm("您已經超過8秒沒有操作，是否要進行結帳？");
+                if (userConfirmed) {
+                    checkoutBtn.click(); // 自動觸發結帳
                 }
-            }, 1000); // 每秒檢查一次
+            }, INACTIVITY_LIMIT);
             timerActive = true; // 設定計時器啟動狀態
         }
     };
 
-    // 當購物車有變動時，無論是新增商品、清空或結帳，都重置計時器
-    const updateCart = () => {
-        stopInactivityTimer(); // 先停止當前計時器
+    // 每當購物車有變動時，重置計時器
+    const resetInactivityTimer = () => {
         if (!isCartEmpty()) {
-            startInactivityTimer(); // 購物車有商品則重新啟動計時器
+            startInactivityTimer(); // 購物車有內容時啟動倒數計時器
+        } else {
+            stopInactivityTimer(); // 購物車為空時停止計時器
         }
     };
 
     // 當購物車添加商品時調用
     const addProductToCart = (code) => {
-        // 模擬添加商品邏輯
         const product = { code: code, name: `Product ${code}`, quantity: 1, price: 100 };
         cart.push(product);
         localStorage.setItem('cart', JSON.stringify(cart)); // 保存購物車到本地存儲
@@ -347,27 +334,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearCart = () => {
         cart = [];
         localStorage.setItem('cart', JSON.stringify(cart)); // 清空本地存儲
-        updateCart(); // 確保計時器停止
+        resetInactivityTimer(); // 確保計時器停止
     };
 
     // 當結帳時調用
     checkoutBtn.addEventListener('click', () => {
         clearCart(); // 結帳後清空購物車並重置計時器
-        stopInactivityTimer(); // 結帳後立即停止計時器
     });
 
-    // 模擬添加商品事件
+    // 監聽按下F10結帳時重置計時器
     document.addEventListener('keydown', (e) => {
         if (e.key === 'F10') {
             checkoutBtn.click(); // 按下F10自動結帳
         }
     });
 
-    // 初始化購物車
-    updateCart();
+    // 監聽購物車內容的變更（例如加入商品、清空等操作）
+    document.addEventListener('click', resetInactivityTimer); // 監聽所有點擊操作來重置計時器
+    document.addEventListener('keypress', resetInactivityTimer); // 監聽鍵盤輸入來重置計時器
+
+    // 初始加載時，檢查購物車狀態以啟動或停止計時器
+    resetInactivityTimer();
 });
-
-
+</script>
 
 </body>
 </html>
