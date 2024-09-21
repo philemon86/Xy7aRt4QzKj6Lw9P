@@ -468,11 +468,37 @@ const loadProducts = async () => {
                 };
             };
 
-            productCodeInput.addEventListener('input', (e) => {
-                const codeOrBarcode = e.target.value.trim().toLowerCase(); 
-                if (!e.isTrusted) {
-                    return;
-                }
+           productCodeInput.addEventListener('input', (e) => {
+    const inputValue = e.target.value.trim().toLowerCase(); 
+    if (!e.isTrusted) {
+        return;
+    }
+
+    // 使用正則表達式來解析 "數量*商品代碼" 格式
+    const regex = /^(\d+)\*(.+)$/;
+    const match = inputValue.match(regex);
+
+    if (match) {
+        const quantity = parseInt(match[1], 10); // 提取數量
+        const codeOrBarcode = match[2]; // 提取商品代碼或條碼
+
+        // 查找商品代碼或條碼是否存在
+        const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+
+        if (product) {
+            // 將該商品的數量加入購物車
+            addProductToCart(product.code, quantity); // 修改 addProductToCart 函數以接受數量
+            e.target.value = ''; // 清空輸入框
+            productInfoElement.textContent = ''; // 清空商品資訊顯示
+        } else {
+            alert('找不到商品');
+        }
+    } else {
+        // 若輸入不符合格式，清空資訊或顯示提示
+        productInfoElement.textContent = '';
+    }
+});
+
 
                 const parsedInput = parseProductInput(codeOrBarcode);
 
@@ -657,19 +683,20 @@ const loadProducts = async () => {
 
             paidAmountInput.addEventListener('input', calculateChange);
 
-            const addProductToCart = (code) => {
-                const product = products[code];
-                const existingItem = cart.find(item => item.code === code);
-                if (existingItem) {
-                    existingItem.quantity += 1;
-                } else {
-                    cart.push({ ...product, quantity: 1 });
-                }
-                updateCartDisplay();
-                calculateTotal();
-                saveCart();
-                productCodeInput.value = ''; 
-            };
+const addProductToCart = (code, quantity = 1) => { // 默認數量為 1
+    const product = products[code];
+    const existingItem = cart.find(item => item.code === code);
+    if (existingItem) {
+        existingItem.quantity += quantity; // 增加對應的數量
+    } else {
+        cart.push({ ...product, quantity: quantity });
+    }
+    updateCartDisplay();
+    calculateTotal();
+    saveCart();
+    productCodeInput.value = ''; 
+};
+
 
             const updateCartDisplay = () => {
                 cartTableBody.innerHTML = '';
