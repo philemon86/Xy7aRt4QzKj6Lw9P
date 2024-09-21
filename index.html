@@ -294,10 +294,11 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const checkoutBtn = document.getElementById('checkout-btn');
-            let cart = JSON.parse(localStorage.getItem('cart')) || [];
-            let effectTimer = null;
+document.addEventListener('DOMContentLoaded', () => {
+    const checkoutBtn = document.getElementById('checkout-btn');
+    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    let effectTimer = null;
+    let hasShownEmptyCartAlert = false; // 初始化這個變數
 
             // 檢查購物車是否有商品
             const isCartEmpty = () => cart.length === 0;
