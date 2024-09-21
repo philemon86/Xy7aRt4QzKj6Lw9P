@@ -292,46 +292,44 @@
             <div class="total bottom-total">總金額：<span id="overall-total-amount">0</span> 元</div>
         </div>
     </div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const checkoutBtn = document.getElementById('checkout-btn');
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        let effectTimer = null;
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const checkoutBtn = document.getElementById('checkout-btn');
-            let cart = JSON.parse(localStorage.getItem('cart')) || [];
-            let effectTimer = null;
+        const isCartEmpty = () => cart.length === 0;
 
-            // 檢查購物車是否有商品
-            const isCartEmpty = () => cart.length === 0;
+        const checkCartAndAnimateButton = () => {
+            if (!isCartEmpty()) {
+                checkoutBtn.classList.add('animate');
+            } else {
+                checkoutBtn.classList.remove('animate');
+            }
+        };
 
-            // 檢查購物車狀態並啟動或停止動畫
-            const checkCartAndAnimateButton = () => {
-                if (!isCartEmpty()) {
-                    checkoutBtn.classList.add('animate');
-                } else {
-                    checkoutBtn.classList.remove('animate');
-                }
-            };
+        effectTimer = setInterval(() => {
+            cart = JSON.parse(localStorage.getItem('cart')) || [];
+            checkCartAndAnimateButton();
+        }, 2000);
 
-            // 每2秒檢查一次購物車
-            effectTimer = setInterval(() => {
-                cart = JSON.parse(localStorage.getItem('cart')) || [];
+        checkoutBtn.addEventListener('click', () => {
+            if (!isCartEmpty()) {
+                cart = [];
+                localStorage.setItem('cart', JSON.stringify(cart));
                 checkCartAndAnimateButton();
-            }, 2000);
+                alert('結帳成功！');
+                hasShownEmptyCartAlert = false;
+            } else {
+                if (!hasShownEmptyCartAlert) {
+                    alert('購物車為空，無法結帳');
+                    hasShownEmptyCartAlert = true;
+                }
+            }
+        });
+    });
+</script>
 
-            checkoutBtn.addEventListener('click', () => {
-    if (!isCartEmpty()) {
-        cart = [];  // 清空購物車
-        localStorage.setItem('cart', JSON.stringify(cart));
-        checkCartAndAnimateButton();
-        alert('結帳成功！');
-        hasShownEmptyCartAlert = false; // 重置提醒狀態
-    } else {
-        if (!hasShownEmptyCartAlert) {
-            alert('購物車為空，無法結帳');
-            hasShownEmptyCartAlert = true; // 更新狀態以防止多次提醒
-        }
-    }
-});
-    </script>
 </body>
 </html>
 
@@ -468,39 +466,32 @@ const loadProducts = async () => {
                 };
             };
 
-   productCodeInput.addEventListener('input', (e) => {
+  productCodeInput.addEventListener('input', (e) => {
     const inputValue = e.target.value.trim().toLowerCase(); 
     if (!e.isTrusted) {
         return;
     }
 
-    // 使用正則表達式來解析 "數量*商品代碼" 格式
     const regex = /^(\d+)\*(.+)$/;
     const match = inputValue.match(regex);
 
     if (match) {
-        const quantity = parseInt(match[1], 10); // 提取數量
-        const codeOrBarcode = match[2]; // 提取商品代碼或條碼
+        const quantity = parseInt(match[1], 10);
+        const codeOrBarcode = match[2];
 
-        // 查找商品代碼或條碼是否存在
         const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
 
         if (product) {
-            // 將該商品的數量加入購物車
-            addProductToCart(product.code, quantity); // 修改 addProductToCart 函數以接受數量
-            e.target.value = ''; // 清空輸入框
-            productInfoElement.textContent = ''; // 清空商品資訊顯示
+            addProductToCart(product.code, quantity);
+            e.target.value = '';
+            productInfoElement.textContent = '';
         } else {
             alert('找不到商品');
         }
     } else {
-        // 若輸入不符合格式，清空資訊或顯示提示
         productInfoElement.textContent = '';
     }
-});  // 關閉 eventListener
-
-
-
+});
                 const parsedInput = parseProductInput(codeOrBarcode);
 
                 if (parsedInput) {
