@@ -468,7 +468,7 @@ const loadProducts = async () => {
                 };
             };
 
-           productCodeInput.addEventListener('input', (e) => {
+   productCodeInput.addEventListener('input', (e) => {
     const inputValue = e.target.value.trim().toLowerCase(); 
     if (!e.isTrusted) {
         return;
@@ -497,7 +497,8 @@ const loadProducts = async () => {
         // 若輸入不符合格式，清空資訊或顯示提示
         productInfoElement.textContent = '';
     }
-});
+});  // 關閉 eventListener
+
 
 
                 const parsedInput = parseProductInput(codeOrBarcode);
