@@ -318,16 +318,19 @@
             }, 2000);
 
             checkoutBtn.addEventListener('click', () => {
-                if (!isCartEmpty()) {
-                    cart = [];  // 清空購物車
-                    localStorage.setItem('cart', JSON.stringify(cart));
-                    checkCartAndAnimateButton();
-                    alert('結帳成功！');
-                } else {
-                    alert('購物車為空，無法結帳');
-                }
-            });
-        });
+    if (!isCartEmpty()) {
+        cart = [];  // 清空購物車
+        localStorage.setItem('cart', JSON.stringify(cart));
+        checkCartAndAnimateButton();
+        alert('結帳成功！');
+        hasShownEmptyCartAlert = false; // 重置提醒狀態
+    } else {
+        if (!hasShownEmptyCartAlert) {
+            alert('購物車為空，無法結帳');
+            hasShownEmptyCartAlert = true; // 更新狀態以防止多次提醒
+        }
+    }
+});
     </script>
 </body>
 </html>
