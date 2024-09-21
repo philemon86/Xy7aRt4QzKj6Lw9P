@@ -302,37 +302,40 @@
             const productInfoElement = document.getElementById('product-info');
             let products = {}; 
 
-            const loadProducts = async () => {
-                try {
-                    const response = await fetch('products.csv');
-                    const data = await response.text();
-                    const lines = data.split('\n');
-                    const headers = lines[0].split(',');
+const loadProducts = async () => {
+    try {
+        const response = await fetch('products.csv');
+        const data = await response.text();
+        const lines = data.split('\n');
+        const headers = lines[0].split(',');
 
-                    lines.slice(1).forEach(line => {
-                        const columns = line.split(',');
-                        const product = {};
-                        headers.forEach((header, index) => {
-                            product[header.trim()] = columns[index].trim();
-                        });
+        lines.slice(1).forEach(line => {
+            const columns = line.split(',');
 
-                        if (product['CODE'] && product['CNAME'] && product['BARCODE']) {
-                            products[product['CODE']] = {
-                                code: product['CODE'],
-                                name: product['CNAME'],
-                                barcode: product['BARCODE'],
-                                qty: parseInt(product['CQTY']),
-                                price: parseFloat(product['PRICE'])
-                            };
-                        }
-                    });
+            const product = {};
+            headers.forEach((header, index) => {
+                // 先確認該欄位是否有值再進行 trim() 處理
+                product[header.trim()] = columns[index] !== undefined ? columns[index].trim() : '';
+            });
 
-                    productInfoElement.textContent = "CSV檔讀取成功";
-                } catch (error) {
-                    console.error('Error loading CSV file:', error);
-                    productInfoElement.textContent = `CSV文件讀取失敗: ${error.message}`;
-                }
-            };
+            if (product['CODE'] && product['CNAME'] && product['BARCODE']) {
+                products[product['CODE']] = {
+                    code: product['CODE'],
+                    name: product['CNAME'],
+                    barcode: product['BARCODE'],
+                    qty: parseInt(product['CQTY']) || 0, // 預設為 0
+                    price: parseFloat(product['PRICE']) || 0 // 預設為 0
+                };
+            }
+        });
+
+        productInfoElement.textContent = "CSV檔讀取成功";
+    } catch (error) {
+        console.error('Error loading CSV file:', error);
+        productInfoElement.textContent = `CSV文件讀取失敗: ${error.message}`;
+    }
+};
+
 
             // 處理商品搜尋
             const handleProductSearch = () => {
