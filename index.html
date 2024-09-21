@@ -492,29 +492,7 @@ const loadProducts = async () => {
         productInfoElement.textContent = '';
     }
 });
-                const parsedInput = parseProductInput(codeOrBarcode);
 
-                if (parsedInput) {
-                    const product = products[parsedInput.code];
-                    if (product) {
-                        if (parsedInput.quantity) {
-                            product.quantity = parsedInput.quantity;
-                        }
-                        addProductToCart(product.code);
-                        e.target.value = ''; 
-                        productInfoElement.textContent = '';
-                    } else {
-                        productInfoElement.textContent = '';
-                    }
-                } else {
-                    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-                    if (product) {
-                        productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
-                    } else {
-                        productInfoElement.textContent = '';
-                    }
-                }
-            });
 
             keywordSearchInput.addEventListener('input', (e) => {
                 const keywords = e.target.value.trim().toLowerCase().split(' ');
