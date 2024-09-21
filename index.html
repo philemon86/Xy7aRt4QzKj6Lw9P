@@ -205,7 +205,7 @@
             <div class="form-group">
                 <label for="product-code">請輸入商品代碼/條碼：</label>
                 <input type="text" id="product-code" placeholder="請輸入商品代碼/條碼">
-                <div id="product-info"></div> <!-- 用於顯示商品資訊或錯誤訊息 -->
+                <div id="product-info"></div>
             </div>
             <div class="form-group search-container">
                 <label for="keyword-search">輸入關鍵字搜尋商品：</label>
@@ -295,88 +295,45 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const currentDateElement = document.getElementById('current-date');
-            const keywordSearchInput = document.getElementById('keyword-search');
-            const searchResultsElement = document.getElementById('search-results');
-            const productCodeInput = document.getElementById('product-code');
-            const productInfoElement = document.getElementById('product-info');
-            let products = {}; 
+            const checkoutBtn = document.getElementById('checkout-btn');
+            let cart = JSON.parse(localStorage.getItem('cart')) || [];
+            let effectTimer = null;
 
-const loadProducts = async () => {
-    try {
-        const response = await fetch('products.csv');
-        const data = await response.text();
-        const lines = data.split('\n');
-        const headers = lines[0].split(',');
+            // 檢查購物車是否有商品
+            const isCartEmpty = () => cart.length === 0;
 
-        lines.slice(1).forEach(line => {
-            const columns = line.split(',');
-
-            const product = {};
-            headers.forEach((header, index) => {
-                // 先確認該欄位是否有值再進行 trim() 處理
-                product[header.trim()] = columns[index] !== undefined ? columns[index].trim() : '';
-            });
-
-            if (product['CODE'] && product['CNAME'] && product['BARCODE']) {
-                products[product['CODE']] = {
-                    code: product['CODE'],
-                    name: product['CNAME'],
-                    barcode: product['BARCODE'],
-                    qty: parseInt(product['CQTY']) || 0, // 預設為 0
-                    price: parseFloat(product['PRICE']) || 0 // 預設為 0
-                };
-            }
-        });
-
-        productInfoElement.textContent = "CSV檔讀取成功";
-    } catch (error) {
-        console.error('Error loading CSV file:', error);
-        productInfoElement.textContent = `CSV文件讀取失敗: ${error.message}`;
-    }
-};
-
-
-            // 處理商品搜尋
-            const handleProductSearch = () => {
-                const codeOrBarcode = productCodeInput.value.trim().toLowerCase();
-                const product = Object.values(products).find(product => 
-                    product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode
-                );
-
-                if (product) {
-                    productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
-                    productCodeInput.value = ''; // 清空輸入欄
+            // 檢查購物車狀態並啟動或停止動畫
+            const checkCartAndAnimateButton = () => {
+                if (!isCartEmpty()) {
+                    checkoutBtn.classList.add('animate');
                 } else {
-                    productInfoElement.textContent = '找不到商品';
+                    checkoutBtn.classList.remove('animate');
                 }
             };
 
-            // 只在用戶按下確認送出按鈕或按 Enter 鍵時觸發商品搜尋
-            const confirmButton = document.createElement('button');
-            confirmButton.textContent = '確認送出';
-            confirmButton.style.marginTop = '10px';
-            confirmButton.style.backgroundColor = '#8A6739';
-            confirmButton.style.border = 'none';
-            confirmButton.style.borderRadius = '4px';
-            confirmButton.style.color = '#fff';
-            confirmButton.style.cursor = 'pointer';
-            confirmButton.style.padding = '10px';
-            document.querySelector('.form-group').appendChild(confirmButton);
+            // 每2秒檢查一次購物車
+            effectTimer = setInterval(() => {
+                cart = JSON.parse(localStorage.getItem('cart')) || [];
+                checkCartAndAnimateButton();
+            }, 2000);
 
-            confirmButton.addEventListener('click', handleProductSearch);
-            productCodeInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    handleProductSearch();
-                }
-            });
-
-            loadProducts(); // 載入商品數據
-        });
+            checkoutBtn.addEventListener('click', () => {
+    if (!isCartEmpty()) {
+        cart = [];  // 清空購物車
+        localStorage.setItem('cart', JSON.stringify(cart));
+        checkCartAndAnimateButton();
+        alert('結帳成功！');
+        hasShownEmptyCartAlert = false; // 重置提醒狀態
+    } else {
+        if (!hasShownEmptyCartAlert) {
+            alert('購物車為空，無法結帳');
+            hasShownEmptyCartAlert = true; // 更新狀態以防止多次提醒
+        }
+    }
+});
     </script>
 </body>
 </html>
-
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -511,33 +468,35 @@ const loadProducts = async () => {
                 };
             };
 
-  productCodeInput.addEventListener('input', (e) => {
-    const inputValue = e.target.value.trim().toLowerCase(); 
-    if (!e.isTrusted) {
-        return;
-    }
+            productCodeInput.addEventListener('input', (e) => {
+                const codeOrBarcode = e.target.value.trim().toLowerCase(); 
+                if (!e.isTrusted) {
+                    return;
+                }
 
-    const regex = /^(\d+)\*(.+)$/;
-    const match = inputValue.match(regex);
+                const parsedInput = parseProductInput(codeOrBarcode);
 
-    if (match) {
-        const quantity = parseInt(match[1], 10);
-        const codeOrBarcode = match[2];
-
-        const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-
-        if (product) {
-            addProductToCart(product.code, quantity);
-            e.target.value = '';
-            productInfoElement.textContent = '';
-        } else {
-            alert('找不到商品');
-        }
-    } else {
-        productInfoElement.textContent = '';
-    }
-});
-
+                if (parsedInput) {
+                    const product = products[parsedInput.code];
+                    if (product) {
+                        if (parsedInput.quantity) {
+                            product.quantity = parsedInput.quantity;
+                        }
+                        addProductToCart(product.code);
+                        e.target.value = ''; 
+                        productInfoElement.textContent = '';
+                    } else {
+                        productInfoElement.textContent = '';
+                    }
+                } else {
+                    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+                    if (product) {
+                        productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
+                    } else {
+                        productInfoElement.textContent = '';
+                    }
+                }
+            });
 
             keywordSearchInput.addEventListener('input', (e) => {
                 const keywords = e.target.value.trim().toLowerCase().split(' ');
@@ -614,33 +573,18 @@ const loadProducts = async () => {
                 confirmButton.style.cursor = 'pointer';
                 confirmButton.style.padding = '10px';
 
-// 當用戶按下確認送出按鈕時，檢查商品是否存在
-confirmButton.addEventListener('click', () => {
-    const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); 
-    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-    if (product) {
-        addProductToCart(product.code);
-        productCodeInput.value = '';  // 清空輸入框
-        productInfoElement.textContent = '';  // 清空商品資訊
-        keywordSearchInput.value = '';  // 清空搜尋框
-    } else {
-        alert('找不到商品');
-    }
-});
-                
-productCodeInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        const codeOrBarcode = e.target.value.trim().toLowerCase();
-        const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-        if (product) {
-            addProductToCart(product.code);
-            e.target.value = '';  // 清空輸入框
-            productInfoElement.textContent = '';  // 清空商品資訊
-        } else {
-            alert('找不到商品');
-        }
-    }
-});
+                confirmButton.addEventListener('click', () => {
+                    const codeOrBarcode = productCodeInput.value.trim().toLowerCase(); 
+                    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
+                    if (product) {
+                        addProductToCart(product.code);
+                        productCodeInput.value = ''; 
+                        productInfoElement.textContent = '';
+                        keywordSearchInput.value = ''; 
+                    } else {
+                        alert('找不到商品');
+                    }
+                });
 
                 document.querySelector('.form-group').appendChild(confirmButton);
             }
@@ -713,20 +657,19 @@ productCodeInput.addEventListener('keypress', (e) => {
 
             paidAmountInput.addEventListener('input', calculateChange);
 
-const addProductToCart = (code, quantity = 1) => { // 默認數量為 1
-    const product = products[code];
-    const existingItem = cart.find(item => item.code === code);
-    if (existingItem) {
-        existingItem.quantity += quantity; // 增加對應的數量
-    } else {
-        cart.push({ ...product, quantity: quantity });
-    }
-    updateCartDisplay();
-    calculateTotal();
-    saveCart();
-    productCodeInput.value = ''; 
-};
-
+            const addProductToCart = (code) => {
+                const product = products[code];
+                const existingItem = cart.find(item => item.code === code);
+                if (existingItem) {
+                    existingItem.quantity += 1;
+                } else {
+                    cart.push({ ...product, quantity: 1 });
+                }
+                updateCartDisplay();
+                calculateTotal();
+                saveCart();
+                productCodeInput.value = ''; 
+            };
 
             const updateCartDisplay = () => {
                 cartTableBody.innerHTML = '';
