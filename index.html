@@ -417,6 +417,25 @@
     });
 </script>
 
+        // 監聽按下F10結帳時重新啟動計時器
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F10' && !isCartEmpty()) {
+                stopInactivityTimer(); // 停止舊的計時器
+                startInactivityTimer(); // 按下F10後重新啟動計時器
+                console.log("F10 pressed, timer reset");
+            }
+        });
+
+        // 用戶操作時重置計時器
+        ['click', 'keypress', 'mousemove', 'touchstart'].forEach(event => {
+            document.addEventListener(event, resetInactivityTimer);
+        });
+
+        // 初始化時，檢查購物車並啟動計時器
+        updateCart();
+    });
+</script>
+
 
 
 </body>
