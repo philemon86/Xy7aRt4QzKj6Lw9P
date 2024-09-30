@@ -842,32 +842,49 @@ row.innerHTML = `
                 }
             };
 
-            exportCsvBtn.addEventListener('click', () => {
-                const notes = localStorage.getItem('notes') || '無備註';
-                const rows = [
-                    ['客戶名稱', '消費金額'],
-                    ...Object.values(clients).map(client => [client.id, Math.round(client.amount)]),
-                    [],
-                    ['商品代碼', '名稱', '總數量', '總金額'],
-                    ...Object.values(overallSummary).map(item => [item.code, item.name, item.totalQuantity, Math.round(item.totalAmount)]),
-                    [],
-                    ['總金額', Math.round(overallTotalAmountElement.textContent)],
-                    [],
-                    ['備註'],
-                    [notes]
-                ];
+exportCsvBtn.addEventListener('click', () => {
+    try {
+        const notes = localStorage.getItem('notes') || '無備註';
+        const rows = [
+            ['客戶名稱', '消費金額'],
+            ...Object.values(clients).map(client => [client.id, Math.round(client.amount)]),
+            [],
+            ['商品代碼', '名稱', '總數量', '總金額'],
+            ...Object.values(overallSummary).map(item => {
+                if (item && item.code && item.name) {
+                    return [item.code, item.name, item.totalQuantity, Math.round(item.totalAmount)];
+                }
+                return []; // 跳過空行或不完整數據
+            }),
+            [],
+            ['總金額', Math.round(overallTotalAmountElement.textContent)],
+            [],
+            ['備註'],
+            [notes]
+        ];
 
-                let csvContent = "data:text/csv;charset=utf-8,\ufeff" 
-                    + rows.map(e => e.join(",")).join("\n");
+        // 檢查資料是否正確處理
+        if (rows.length === 0) {
+            throw new Error('匯出資料為空');
+        }
 
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", `sales_summary_${new Date().toISOString().split('T')[0]}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            });
+        let csvContent = "data:text/csv;charset=utf-8,\ufeff" 
+            + rows.filter(row => row.length > 0).map(e => e.join(",")).join("\n"); // 過濾掉空行
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `sales_summary_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+    } catch (error) {
+        console.error('CSV匯出錯誤:', error);
+        alert('CSV匯出過程出現問題，請檢查數據是否完整');
+    }
+});
+
 
             clearAllBtn.addEventListener('click', () => {
                 if (confirm('確定要刪除全部訂單？此操作無法撤銷。')) {
