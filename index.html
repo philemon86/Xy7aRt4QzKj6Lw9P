@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
@@ -212,6 +212,12 @@
                 <input type="text" id="keyword-search" placeholder="僅限商品名稱">
                 <div id="search-results" class="search-results"></div>
             </div>
+            <!-- 新增固定價格區域 -->
+            <div class="form-group">
+                <label for="fixed-price">輸入固定價格商品 (格式: 代碼,價格)：</label>
+                <textarea id="fixed-price" rows="5" placeholder="例如：CU63A,300"></textarea>
+                <button id="set-fixed-price-btn">設定固定價格</button>
+            </div>
             <!-- 新增CSV狀態顯示的div -->
             <div id="csv-validation"></div>
         </div>
@@ -245,95 +251,100 @@
         </div>
     </div>
 
-    <!-- 區域 C + D -->
-    <div class="flex-container">
-        <div class="container-half">
-            <div class="table-title">
-                單筆消費明細 <br>
-                統計訂單總數: <span id="total-orders">0</span> | 訂單平均消費: <span id="average-amount">0</span> 元
-            </div>
-            <div class="table-container">
-                <table id="summary-table">
-                    <thead>
-                        <tr>
-                            <th>客戶名稱</th>
-                            <th>消費金額</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
-            </div>
-            <div class="notes-container">
-                <label for="notes">訂單備註：</label>
-                <textarea id="notes"></textarea>
-            </div>
-        </div>
-
-        <div class="container-half">
-            <div class="table-title">
-                消費總覽
-            </div>
-            <div class="table-container">
-                <table id="overall-summary-table">
-                    <thead>
-                        <tr>
-                            <th>商品代碼</th>
-                            <th>產品名稱</th>
-                            <th>數量小計</th>
-                            <th>金額小計</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
-            </div>
-            <div class="total bottom-total">總金額：<span id="overall-total-amount">0</span> 元</div>
-        </div>
-    </div>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const checkoutBtn = document.getElementById('checkout-btn');
+    const fixedPriceTextArea = document.getElementById('fixed-price');
+    const setFixedPriceBtn = document.getElementById('set-fixed-price-btn');
+    const productCodeInput = document.getElementById('product-code');
+    const cartTableBody = document.querySelector('#cart-table tbody');
+    const totalAmountElement = document.getElementById('total-amount');
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
-    let effectTimer = null;
-    let hasShownEmptyCartAlert = false; // 初始化這個變數
+    let fixedPriceProducts = {};
 
-    // 檢查購物車是否有商品
-    const isCartEmpty = () => cart.length === 0;
-
-    // 檢查購物車狀態並啟動或停止動畫
-    const checkCartAndAnimateButton = () => {
-        if (!isCartEmpty()) {
-            checkoutBtn.classList.add('animate');
-        } else {
-            checkoutBtn.classList.remove('animate');
-        }
+    // 讀取預設的固定價格商品
+    const loadFixedPrices = () => {
+        fixedPriceProducts = {
+            'CU63A': 300  // 預設的固定價格商品
+        };
     };
 
-    // 每2秒檢查一次購物車
-    effectTimer = setInterval(() => {
-        cart = JSON.parse(localStorage.getItem('cart')) || [];
-        checkCartAndAnimateButton();
-    }, 2000);
+    // 設定固定價格商品
+    setFixedPriceBtn.addEventListener('click', () => {
+        const fixedPriceData = fixedPriceTextArea.value.trim();
+        const lines = fixedPriceData.split('\n');
 
-    checkoutBtn.addEventListener('click', () => {
-        if (!isCartEmpty()) {
-            cart = [];  // 清空購物車
-            localStorage.setItem('cart', JSON.stringify(cart));
-            checkCartAndAnimateButton();
-            hasShownEmptyCartAlert = false; // 重置提醒狀態
-        } else {
-            if (!hasShownEmptyCartAlert) {
-                alert('購物車為空，無法結帳');
-                hasShownEmptyCartAlert = true; // 更新狀態以防止多次提醒
+        lines.forEach(line => {
+            const [code, price] = line.split(',');
+            if (code && price && !isNaN(parseFloat(price))) {
+                fixedPriceProducts[code.trim()] = parseFloat(price.trim());
             }
+        });
+
+        alert('固定價格商品已設定成功');
+    });
+
+    // 檢查輸入的商品代碼或條碼
+    productCodeInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const codeOrBarcode = e.target.value.trim();
+            if (fixedPriceProducts[codeOrBarcode]) {
+                addProductToCart(codeOrBarcode, fixedPriceProducts[codeOrBarcode]);
+            } else {
+                // 其他邏輯，例如查詢商品資料庫，這裡省略
+                alert('找不到商品');
+            }
+            e.target.value = '';
         }
     });
-}); 
-</script>
 
+    // 添加商品到購物車
+    const addProductToCart = (code, price) => {
+        const existingItem = cart.find(item => item.code === code);
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            cart.push({ code, name: `固定價格商品-${code}`, price, quantity: 1 });
+        }
+        updateCartDisplay();
+        calculateTotal();
+        saveCart();
+    };
+
+    // 更新購物車顯示
+    const updateCartDisplay = () => {
+        cartTableBody.innerHTML = '';
+        cart.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.name}</td>
+                <td>${item.price}</td>
+                <td>${item.quantity}</td>
+                <td>0%</td>
+                <td>${Math.round(item.price * item.quantity)}</td>
+            `;
+            cartTableBody.appendChild(row);
+        });
+    };
+
+    // 計算總金額
+    const calculateTotal = () => {
+        let total = 0;
+        cart.forEach(item => {
+            total += item.price * item.quantity;
+        });
+        totalAmountElement.textContent = Math.round(total);
+    };
+
+    // 儲存購物車
+    const saveCart = () => {
+        localStorage.setItem('cart', JSON.stringify(cart));
+    };
+
+    loadFixedPrices();
+    updateCartDisplay();
+    calculateTotal();
+});
+</script>
 </body>
 </html>
 
