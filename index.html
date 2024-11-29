@@ -848,7 +848,7 @@ exportCsvBtn.addEventListener('click', () => {
 
         const notes = localStorage.getItem('notes') || '無備註';
 
-        // 準備總覽資料
+        // 總覽資料（原始匯出部分）
         const summaryRows = [
             ['客戶名稱', '消費金額'],
             ...Object.values(clients).map(client => [client.id, Math.round(client.amount)]),
@@ -865,11 +865,13 @@ exportCsvBtn.addEventListener('click', () => {
             ['總金額', Math.round(overallTotalAmountElement.textContent || 0)],
             [],
             ['備註'],
-            [notes]
+            [notes],
+            [] // 空行分隔區域
         ];
 
-        // 準備詳細內容資料
+        // 詳細內容資料
         const detailsRows = [
+            ['詳細內容：'], // 標題行
             ['客戶名稱', '商品名稱', '數量', '單價', '折扣', '小計'],
             ...Object.values(clients).flatMap(client =>
                 client.items.map(item => [
@@ -883,30 +885,25 @@ exportCsvBtn.addEventListener('click', () => {
             )
         ];
 
-        // 生成工作表
-        const workbook = XLSX.utils.book_new();
-        const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
-        const detailsSheet = XLSX.utils.aoa_to_sheet(detailsRows);
+        // 合併總覽和詳細內容
+        const combinedRows = [...summaryRows, ...detailsRows];
 
-        // 將工作表加入工作簿
-        XLSX.utils.book_append_sheet(workbook, summarySheet, "總覽");
-        XLSX.utils.book_append_sheet(workbook, detailsSheet, "詳細內容");
-
-        // 將工作簿導出為 Excel 文件
-        const excelBlob = XLSX.write(workbook, { bookType: "xlsx", type: "blob" });
+        // 匯出 CSV 檔案
+        const csvContent = combinedRows.map(e => e.join(",")).join("\n");
+        const blob = new Blob([`\ufeff${csvContent}`], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
-        const url = URL.createObjectURL(excelBlob);
+        const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", `sales_report_${new Date().toISOString().split('T')[0]}.xlsx`);
+        link.setAttribute("download", `sales_combined_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(url); // 釋放 URL 資源
 
-        console.log('Excel 匯出完成');
+        console.log('匯出完成');
     } catch (error) {
-        console.error('Excel 匯出錯誤:', error);
-        alert('Excel 匯出過程出現問題，請檢查數據是否完整。');
+        console.error('CSV匯出錯誤:', error);
+        alert('CSV匯出過程出現問題，請檢查數據是否完整。');
     }
 });
             clearAllBtn.addEventListener('click', () => {
