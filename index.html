@@ -848,7 +848,7 @@ exportCsvBtn.addEventListener('click', () => {
 
         const notes = localStorage.getItem('notes') || '無備註';
 
-        // 總覽資料（原始匯出）
+        // 準備總覽資料
         const summaryRows = [
             ['客戶名稱', '消費金額'],
             ...Object.values(clients).map(client => [client.id, Math.round(client.amount)]),
@@ -868,7 +868,7 @@ exportCsvBtn.addEventListener('click', () => {
             [notes]
         ];
 
-        // 詳細內容資料
+        // 準備詳細內容資料
         const detailsRows = [
             ['客戶名稱', '商品名稱', '數量', '單價', '折扣', '小計'],
             ...Object.values(clients).flatMap(client =>
@@ -883,30 +883,30 @@ exportCsvBtn.addEventListener('click', () => {
             )
         ];
 
-        // 檔案生成邏輯
-        const exportCsvFile = (filename, rows) => {
-            const csvContent = rows.map(e => e.join(",")).join("\n");
-            const blob = new Blob([`\ufeff${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", filename);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url); // 釋放 URL 資源
-        };
+        // 生成工作表
+        const workbook = XLSX.utils.book_new();
+        const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+        const detailsSheet = XLSX.utils.aoa_to_sheet(detailsRows);
 
-        // 匯出總覽檔案
-        exportCsvFile(`sales_summary_${new Date().toISOString().split('T')[0]}.csv`, summaryRows);
+        // 將工作表加入工作簿
+        XLSX.utils.book_append_sheet(workbook, summarySheet, "總覽");
+        XLSX.utils.book_append_sheet(workbook, detailsSheet, "詳細內容");
 
-        // 匯出詳細檔案
-        exportCsvFile(`sales_details_${new Date().toISOString().split('T')[0]}.csv`, detailsRows);
+        // 將工作簿導出為 Excel 文件
+        const excelBlob = XLSX.write(workbook, { bookType: "xlsx", type: "blob" });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(excelBlob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `sales_report_${new Date().toISOString().split('T')[0]}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
-        console.log('匯出完成');
+        console.log('Excel 匯出完成');
     } catch (error) {
-        console.error('CSV匯出錯誤:', error);
-        alert('CSV匯出過程出現問題，請檢查數據是否完整。');
+        console.error('Excel 匯出錯誤:', error);
+        alert('Excel 匯出過程出現問題，請檢查數據是否完整。');
     }
 });
             clearAllBtn.addEventListener('click', () => {
