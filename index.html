@@ -845,14 +845,11 @@ row.innerHTML = `
 exportCsvBtn.addEventListener('click', () => {
     try {
         console.log('正在準備匯出資料...');
-        console.log('Clients 資料:', clients);
-        console.log('OverallSummary 資料:', overallSummary);
-        console.log('總金額元素:', overallTotalAmountElement.textContent);
 
         const notes = localStorage.getItem('notes') || '無備註';
 
-        // 確保所有資料正常準備
-        const rows = [
+        // 總覽資料（原始匯出）
+        const summaryRows = [
             ['客戶名稱', '消費金額'],
             ...Object.values(clients).map(client => [client.id, Math.round(client.amount)]),
             [],
@@ -871,25 +868,40 @@ exportCsvBtn.addEventListener('click', () => {
             [notes]
         ];
 
-        // 檢查資料完整性
-        if (!rows || rows.length < 10) {
-            console.error('數據筆數過少或為空，無法匯出:', rows);
-            alert('匯出資料不足，請檢查是否有完整數據。');
-            return;
-        }
+        // 詳細內容資料
+        const detailsRows = [
+            ['客戶名稱', '商品名稱', '數量', '單價', '折扣', '小計'],
+            ...Object.values(clients).flatMap(client =>
+                client.items.map(item => [
+                    client.id,
+                    item.name,
+                    item.quantity,
+                    Math.round(item.price),
+                    `${item.discount}%`,
+                    Math.round(item.price * item.quantity * (item.discount / 100))
+                ])
+            )
+        ];
 
-        // 用 Blob 生成 CSV，適合大數據處理
-        const csvContent = rows.map(e => e.join(",")).join("\n");
-        const blob = new Blob([`\ufeff${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+        // 檔案生成邏輯
+        const exportCsvFile = (filename, rows) => {
+            const csvContent = rows.map(e => e.join(",")).join("\n");
+            const blob = new Blob([`\ufeff${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url); // 釋放 URL 資源
+        };
 
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `sales_summary_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url); // 釋放 URL 資源
+        // 匯出總覽檔案
+        exportCsvFile(`sales_summary_${new Date().toISOString().split('T')[0]}.csv`, summaryRows);
+
+        // 匯出詳細檔案
+        exportCsvFile(`sales_details_${new Date().toISOString().split('T')[0]}.csv`, detailsRows);
 
         console.log('匯出完成');
     } catch (error) {
