@@ -851,10 +851,7 @@ exportCsvBtn.addEventListener('click', () => {
             [],
             ['商品代碼', '名稱', '總數量', '總金額'],
             ...Object.values(overallSummary).map(item => {
-                if (item && item.code && item.name) {
-                    return [item.code, item.name, item.totalQuantity, Math.round(item.totalAmount)];
-                }
-                return []; // 跳過空行或不完整數據
+                return item && item.code && item.name ? [item.code, item.name, item.totalQuantity, Math.round(item.totalAmount)] : ['錯誤資料'];
             }),
             [],
             ['總金額', Math.round(overallTotalAmountElement.textContent)],
@@ -863,13 +860,18 @@ exportCsvBtn.addEventListener('click', () => {
             [notes]
         ];
 
-        // 檢查資料是否正確處理
-        if (rows.length === 0) {
-            throw new Error('匯出資料為空');
+        // 檢查筆數是否異常
+        if (rows.length < 10) {
+            throw new Error('數據不足，可能存在處理問題');
         }
 
-        let csvContent = "data:text/csv;charset=utf-8,\ufeff" 
-            + rows.filter(row => row.length > 0).map(e => e.join(",")).join("\n"); // 過濾掉空行
+        // 防止漏掉空行，加入更好的處理
+        let csvContent = "data:text/csv;charset=utf-8,\ufeff"
+            + rows.map(e => e.join(",")).join("\n");
+
+        // 檢查內容是否正確生成
+        console.log('匯出資料筆數:', rows.length);
+        console.log('匯出內容預覽:', rows);
 
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -878,7 +880,6 @@ exportCsvBtn.addEventListener('click', () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-
     } catch (error) {
         console.error('CSV匯出錯誤:', error);
         alert('CSV匯出過程出現問題，請檢查數據是否完整');
