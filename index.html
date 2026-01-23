@@ -18,7 +18,7 @@
             background-color: #F5F5DC;
         }
 
-        /* 父級容器，用於設定AB和CD的佈局 */
+        /* 父級容器 */
         .flex-container {
             display: flex;
             flex-wrap: wrap;
@@ -28,7 +28,6 @@
             margin-top: 20px;
         }
 
-        /* 讓每個區域有一致的寬度與顯示效果 */
         .container-half {
             background-color: #fff;
             padding: 20px;
@@ -40,7 +39,6 @@
             box-sizing: border-box;
         }
 
-        /* 保持原始邊框和圓角 */
         .header, .form-group, .table-container, .payment-info, .notes-container {
             border: 1px solid #D2B48C;
             padding: 10px;
@@ -48,7 +46,6 @@
             margin-bottom: 20px;
         }
 
-        /* 保持按鈕顏色和設計 */
         .header button, .form-group button, .btn-group button {
             background-color: #8A6739;
             color: white;
@@ -58,7 +55,6 @@
             cursor: pointer;
         }
 
-        /* 保持原始的輸入框背景色和樣式 */
         .form-group input, .notes-container textarea {
             width: calc(100% - 20px);
             padding: 10px;
@@ -68,14 +64,12 @@
             background-color: #E6E2B2;
         }
 
-        /* 備註區域 */
         .notes-container textarea {
             resize: none;
             background-color: #E6E2B2;
             height: 200px;
         }
 
-        /* 保持應付金額的背景色與圓角 */
         .total {
             font-size: 1.5em;
             font-weight: bold;
@@ -86,39 +80,82 @@
             text-align: right;
         }
 
-        /* 保持支付資訊的設計 */
         .payment-info {
-            text-align: right;
             background-color: #FFFFFF;
             border-radius: 0 0 8px 8px;
             border-top: 2px solid #8A6739;
-            padding: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column; /* 改為垂直排列以便放入下方按鈕區 */
+            gap: 15px;
+        }
+
+        .payment-details {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap; /* 允許換行以適應提示文字 */
+            width: 100%;
         }
 
-        /* 保持支付資訊內的文字和輸入框樣式 */
         .payment-info span {
-            margin-right: 10px;
             color: #8B4513;
+            font-weight: bold;
         }
 
         .payment-info input#paid-amount {
-            max-width: 80px;
+            max-width: 100px;
             padding: 5px;
+            font-size: 1.2em;
+            text-align: right;
+        }
+
+        /* --- 新增：底部四個結帳按鈕的樣式 --- */
+        .checkout-buttons-area {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .checkout-btn {
+            flex: 1; /* 平均分配寬度 */
+            background-color: #8A6739;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 15px 5px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .checkout-btn:hover {
+            background-color: #6d522d;
+            transform: translateY(-2px);
+        }
+
+        .checkout-btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-key {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .btn-label {
             font-size: 1em;
+            display: block;
         }
-        
-        /* 新增：快捷鍵提示文字樣式 */
-        .hotkey-hint {
-            width: 100%; 
-            text-align: right; 
-            font-size: 0.8em; 
-            color: #666; 
-            margin-top: 5px;
-        }
+
+        /* ---------------------------------- */
 
         .table-container {
             overflow-x: auto;
@@ -157,42 +194,34 @@
             box-sizing: border-box;
         }
 
-        /* 修正手機版響應式佈局，讓白框不會被切掉 */
         @media (max-width: 768px) {
             .flex-container {
                 flex-direction: column;
                 align-items: center;
                 padding: 0 10px;
             }
-
             .container-half {
                 width: 100%;
                 margin-bottom: 20px;
             }
-
-            td input[type="number"] {
-                width: 40px;
+            /* 手機版按鈕變成 2x2 排列 */
+            .checkout-buttons-area {
+                flex-wrap: wrap;
+            }
+            .checkout-btn {
+                min-width: 45%;
             }
         }
 
-        /* F10 結帳按鈕的動畫效果 */
-        .animate {
-            animation: pulse 1s infinite;
+        /* 按鈕點擊動畫 */
+        .animate-click {
+            animation: pulse-green 0.5s ease-out;
         }
 
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
-                box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
-            }
-            50% {
-                transform: scale(1.2);
-                box-shadow: 0 0 20px rgba(255, 255, 0, 1);
-            }
-            100% {
-                transform: scale(1);
-                box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
-            }
+        @keyframes pulse-green {
+            0% { transform: scale(1); background-color: #8A6739; }
+            50% { transform: scale(1.05); background-color: #28a745; }
+            100% { transform: scale(1); background-color: #8A6739; }
         }
     </style>
 </head>
@@ -241,14 +270,30 @@
                 </table>
             </div>
             <div class="total">應付金額：<span id="total-amount">0</span> 元</div>
+            
             <div class="payment-info">
-                <span>實付金額：<input type="number" id="paid-amount" value="1000" placeholder="輸入實付金額"></span>
-                <span>找錢：<span id="change-amount">0</span> 元</span>
-                <div class="btn-group">
-                    <button id="checkout-btn" style="transition: all 0.6s ease; padding: 15px 35px; font-size: 1.5em;">F10結帳</button>
+                <div class="payment-details">
+                    <span>實付金額：<input type="number" id="paid-amount" value="1000" placeholder="輸入實付金額"></span>
+                    <span>找錢：<span id="change-amount">0</span> 元</span>
                 </div>
-                <div class="hotkey-hint">
-                    F7:信用卡 / F8:LINE PAY / F9:文化幣 / F10:現金
+                
+                <div class="checkout-buttons-area">
+                    <button id="btn-f7" class="checkout-btn">
+                        <span class="btn-key">F7</span>
+                        <span class="btn-label">信用卡結帳</span>
+                    </button>
+                    <button id="btn-f8" class="checkout-btn">
+                        <span class="btn-key">F8</span>
+                        <span class="btn-label">LINE PAY</span>
+                    </button>
+                    <button id="btn-f9" class="checkout-btn">
+                        <span class="btn-key">F9</span>
+                        <span class="btn-label">文化幣</span>
+                    </button>
+                    <button id="btn-f10" class="checkout-btn">
+                        <span class="btn-key">F10</span>
+                        <span class="btn-label">現金結帳</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -318,7 +363,13 @@
             const summaryTableBody = document.querySelector('#summary-table tbody');
             const overallSummaryTableBody = document.querySelector('#overall-summary-table tbody');
             const overallTotalAmountElement = document.getElementById('overall-total-amount');
-            const checkoutBtn = document.getElementById('checkout-btn');
+            
+            // 按鈕們
+            const btnF7 = document.getElementById('btn-f7');
+            const btnF8 = document.getElementById('btn-f8');
+            const btnF9 = document.getElementById('btn-f9');
+            const btnF10 = document.getElementById('btn-f10');
+            
             const exportCsvBtn = document.getElementById('export-csv-btn');
             const clearAllBtn = document.getElementById('clear-all-btn');
             const totalOrdersElement = document.getElementById('total-orders');
@@ -332,7 +383,6 @@
             let clients = JSON.parse(localStorage.getItem('clients')) || {};
             let overallSummary = JSON.parse(localStorage.getItem('overallSummary')) || {};
             let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
-            let effectTimer = null;
             let hasShownEmptyCartAlert = false;
 
             // --- 日期與初始化 ---
@@ -342,29 +392,6 @@
             notesElement.addEventListener('input', () => {
                 localStorage.setItem('notes', notesElement.value);
             });
-
-            // --- 核心邏輯 ---
-
-            // 檢查購物車狀態並啟動或停止動畫
-            const isCartEmpty = () => cart.length === 0;
-            const checkCartAndAnimateButton = () => {
-                if (!isCartEmpty()) {
-                    checkoutBtn.classList.add('animate');
-                } else {
-                    checkoutBtn.classList.remove('animate');
-                }
-            };
-            
-            // 每2秒檢查一次購物車
-            effectTimer = setInterval(() => {
-                const storedCart = JSON.parse(localStorage.getItem('cart'));
-                // 只有當 localStorage 改變時才更新，避免覆蓋當前操作
-                if(JSON.stringify(storedCart) !== JSON.stringify(cart)){
-                     // 這裡主要是為了多視窗同步，單一視窗操作不需頻繁讀取
-                     // 但為保持原邏輯，保留讀取
-                }
-                checkCartAndAnimateButton();
-            }, 2000);
 
             const generateClientId = () => {
                 const date = new Date();
@@ -428,8 +455,8 @@
                 }
             };
 
-            // --- 結帳核心功能 (修改處) ---
-            const performCheckout = (paymentMethod) => {
+            // --- 混合支付邏輯 (文化幣) ---
+            const handleCulturalCoinCheckout = () => {
                 if (cart.length === 0) {
                     if (!hasShownEmptyCartAlert) {
                         alert('購物車為空，無法結帳');
@@ -439,27 +466,84 @@
                 }
                 hasShownEmptyCartAlert = false;
 
-                // 按鈕動畫與文字反饋
-                checkoutBtn.style.backgroundColor = 'green';
-                checkoutBtn.style.transform = 'scale(1.1)'; 
-                checkoutBtn.textContent = `已收 ${paymentMethod}`; 
+                const totalAmount = parseFloat(totalAmountElement.textContent);
+                
+                // 1. 詢問使用者要使用多少文化幣
+                let coinAmountStr = prompt(`訂單總額為 ${totalAmount} 元。\n請輸入文化幣支付金額：`, totalAmount);
+                
+                // 檢查使用者是否按下取消
+                if (coinAmountStr === null) return;
+
+                let coinAmount = parseInt(coinAmountStr);
+
+                // 2. 驗證輸入
+                if (isNaN(coinAmount) || coinAmount < 0) {
+                    alert("請輸入有效的金額！");
+                    return;
+                }
+
+                if (coinAmount > totalAmount) {
+                    alert("文化幣金額不能大於訂單總額！");
+                    coinAmount = totalAmount; // 自動修正為上限
+                }
+
+                // 3. 計算剩餘現金
+                const cashAmount = totalAmount - coinAmount;
+                
+                // 4. 產生複合支付方式名稱
+                let methodStr = "";
+                if (cashAmount > 0 && coinAmount > 0) {
+                    methodStr = `文化幣(${coinAmount}) + 現金(${cashAmount})`;
+                } else if (coinAmount > 0 && cashAmount === 0) {
+                    methodStr = `文化幣全額(${coinAmount})`;
+                } else {
+                    methodStr = `現金(${totalAmount})`; // 使用者輸入0文化幣
+                }
+
+                // 5. 執行結帳 (帶入特殊顯示字串，並觸發 F9 按鈕動畫)
+                triggerButtonAnimation(btnF9);
+                performCheckout(methodStr, true); // true 代表是複合支付，直接傳入字串
+            };
+
+            // --- 觸發按鈕動畫 ---
+            const triggerButtonAnimation = (btnElement) => {
+                if(!btnElement) return;
+                btnElement.classList.add('animate-click');
                 setTimeout(() => {
-                    checkoutBtn.style.backgroundColor = '#8A6739';
-                    checkoutBtn.style.transform = 'scale(1)'; 
-                    checkoutBtn.textContent = 'F10結帳'; 
-                }, 800);
+                    btnElement.classList.remove('animate-click');
+                }, 500);
+            };
+
+            // --- 一般結帳邏輯 ---
+            const performCheckout = (paymentMethod, isComposite = false) => {
+                if (cart.length === 0) {
+                    if (!hasShownEmptyCartAlert) {
+                        alert('購物車為空，無法結帳');
+                        hasShownEmptyCartAlert = true; 
+                    }
+                    return;
+                }
+                hasShownEmptyCartAlert = false;
+
+                // 如果不是複合支付(F9)，觸發對應按鈕動畫
+                if (!isComposite) {
+                     if(paymentMethod === '信用卡') triggerButtonAnimation(btnF7);
+                     if(paymentMethod === 'LINE PAY') triggerButtonAnimation(btnF8);
+                     if(paymentMethod === '現金') triggerButtonAnimation(btnF10);
+                }
 
                 const totalAmount = parseFloat(totalAmountElement.textContent);
                 const clientId = generateClientId();
                 
-                // 儲存訂單資料，包含付款方式
+                // 儲存訂單資料
                 clients[clientId] = {
                     id: clientId,
                     amount: totalAmount,
-                    paymentMethod: paymentMethod, // 新增付款方式
+                    paymentMethod: paymentMethod, // 這裡會存入 "信用卡" 或 "文化幣(100)+現金(50)"
                     items: [...cart]
                 };
 
+                // 統計數據更新
                 cart.forEach(item => {
                     if (!overallSummary[item.code]) {
                         overallSummary[item.code] = {
@@ -484,13 +568,13 @@
                 productCodeInput.focus(); 
                 
                 paidAmountInput.value = 1000;
-                checkCartAndAnimateButton();
             };
 
-            // --- 點擊 F10 按鈕 ---
-            checkoutBtn.addEventListener('click', () => {
-                performCheckout('現金');
-            });
+            // --- 按鈕點擊事件監聽 ---
+            btnF7.addEventListener('click', () => performCheckout('信用卡'));
+            btnF8.addEventListener('click', () => performCheckout('LINE PAY'));
+            btnF9.addEventListener('click', () => handleCulturalCoinCheckout()); // 呼叫特殊處理邏輯
+            btnF10.addEventListener('click', () => performCheckout('現金'));
 
             // --- 鍵盤監聽 (F7, F8, F9, F10) ---
             document.addEventListener('keydown', (e) => {
@@ -502,7 +586,7 @@
                             break;
                         case 'F9':
                             e.preventDefault();
-                            performCheckout('文化幣');
+                            handleCulturalCoinCheckout(); // 特殊處理
                             break;
                         case 'F8':
                             e.preventDefault();
@@ -516,7 +600,7 @@
                 }
             });
 
-            // --- 商品輸入與搜尋邏輯 ---
+            // --- 商品輸入與搜尋邏輯 (與原版相同) ---
             const parseProductInput = (input) => {
                 const pattern = /^(\d+)\*([\w-]+)$/;
                 const match = input.match(pattern);
@@ -752,8 +836,6 @@
                         }
                     }, 500)); 
                 });
-                
-                checkCartAndAnimateButton();
             };
 
             const saveCart = () => {
