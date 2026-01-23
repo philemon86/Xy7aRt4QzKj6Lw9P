@@ -972,7 +972,7 @@
                 const client = clients[clientId];
                 if (client) {
                     const method = client.paymentMethod || '現金';
-                    const items = client.items.map(item => `${item.name} x ${item.quantity}`).join('\n');
+                    const items = client.items.map(item => `${item.code} ｜ ${item.name} x ${item.quantity}`).join('\n');
                     alert(`客戶：${clientId}\n付款方式：${method}\n\n購買商品：\n${items}`);
                 }
             };
@@ -1090,3 +1090,4 @@
     </script>
 </body>
 </html>
+
