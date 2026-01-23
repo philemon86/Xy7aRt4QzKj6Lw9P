@@ -46,6 +46,12 @@
             margin-bottom: 20px;
         }
 
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         .header button, .form-group button, .btn-group button {
             background-color: #8A6739;
             color: white;
@@ -53,6 +59,12 @@
             padding: 10px;
             border-radius: 4px;
             cursor: pointer;
+            margin-left: 5px; /* 按鈕間距 */
+        }
+        
+        /* 特別標示危險操作 */
+        #clear-all-btn {
+            background-color: #a94442;
         }
 
         .form-group input, .notes-container textarea {
@@ -97,7 +109,6 @@
             width: 100%;
         }
 
-        /* 這裡特別指定只有直接在 payment-info 下的 span 才是咖啡色，避免影響按鈕 */
         .payment-info > span, .payment-details > span {
             color: #8B4513;
             font-weight: bold;
@@ -110,7 +121,7 @@
             text-align: right;
         }
 
-        /* --- 修改重點：底部四個結帳按鈕的樣式 --- */
+        /* 底部四個結帳按鈕的樣式 */
         .checkout-buttons-area {
             display: flex;
             justify-content: space-between;
@@ -144,29 +155,24 @@
             transform: translateY(0);
         }
 
-        /* 修正：使用更強的選擇器權重並加上 !important 
-           確保文字絕對是米白色 (#F5F5DC) 
-        */
         .checkout-btn .btn-key {
-            font-size: 2.2em !important; /* 再放大一點 */
+            font-size: 2.2em !important;
             font-weight: 800 !important;
-            color: #FFF8DC !important; /* 亮米白 */
+            color: #FFF8DC !important;
             margin-bottom: 5px;
             display: block;
             font-family: Arial, sans-serif;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.3); /* 增加陰影提升對比 */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
             line-height: 1;
         }
 
         .checkout-btn .btn-label {
-            font-size: 0.9em !important; /* 說明文字維持小巧 */
-            color: #F5F5DC !important; /* 米白 */
+            font-size: 0.9em !important;
+            color: #F5F5DC !important;
             display: block;
-            opacity: 1; /* 確保不透明 */
+            opacity: 1;
             font-weight: normal;
         }
-
-        /* ---------------------------------- */
 
         .table-container {
             overflow-x: auto;
@@ -253,15 +259,21 @@
     </style>
 </head>
 <body>
+    <input type="file" id="import-file" accept=".json" style="display: none;">
+
     <div class="flex-container">
         <div class="container-half">
             <div class="header">
-                <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
-                <span id="title">腓利門雲POS</span>
+                <div>
+                    <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
+                    <span id="title">腓利門雲POS</span>
+                </div>
             </div>
-            <div class="header">
-                <span id="current-date"></span>
+            <div class="header" style="justify-content: flex-end;">
+                <span id="current-date" style="margin-right: auto;"></span>
                 <div class="btn-group">
+                    <button id="backup-btn" style="background-color: #4682B4;">備份資料</button>
+                    <button id="restore-btn" style="background-color: #20B2AA;">還原資料</button>
                     <button id="export-csv-btn">匯出 CSV</button>
                     <button id="clear-all-btn">刪除全部</button>
                 </div>
@@ -401,6 +413,10 @@
             
             const exportCsvBtn = document.getElementById('export-csv-btn');
             const clearAllBtn = document.getElementById('clear-all-btn');
+            const backupBtn = document.getElementById('backup-btn');
+            const restoreBtn = document.getElementById('restore-btn');
+            const importFileInput = document.getElementById('import-file');
+
             const totalOrdersElement = document.getElementById('total-orders');
             const averageAmountElement = document.getElementById('average-amount');
             const paymentStatsElement = document.getElementById('payment-stats');
@@ -414,6 +430,47 @@
             let overallSummary = JSON.parse(localStorage.getItem('overallSummary')) || {};
             let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
             let hasShownEmptyCartAlert = false;
+
+            // --- 音效控制器 (Web Audio API) ---
+            const POSAudio = {
+                ctx: new (window.AudioContext || window.webkitAudioContext)(),
+                
+                playTone: function(freq, type, duration, startTime = 0) {
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + startTime);
+                    
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime + startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + startTime + duration);
+                    
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    
+                    osc.start(this.ctx.currentTime + startTime);
+                    osc.stop(this.ctx.currentTime + startTime + duration);
+                },
+
+                // 嗶聲 (掃描成功)
+                beep: function() {
+                    this.playTone(880, 'sine', 0.1); // A5
+                },
+
+                // 錯誤聲 (低沉)
+                error: function() {
+                    this.playTone(150, 'sawtooth', 0.3);
+                },
+
+                // 結帳成功 (類似收銀機叮叮聲)
+                success: function() {
+                    // 快速播放 C Major 和弦 (C5, E5, G5)
+                    this.playTone(523.25, 'triangle', 0.1, 0);
+                    this.playTone(659.25, 'triangle', 0.1, 0.05);
+                    this.playTone(783.99, 'triangle', 0.2, 0.1);
+                }
+            };
 
             // --- 日期與初始化 ---
             const currentDate = new Date().toISOString().split('T')[0].replace(/-/g, '/');
@@ -490,6 +547,7 @@
                 if (cart.length === 0) {
                     if (!hasShownEmptyCartAlert) {
                         alert('購物車為空，無法結帳');
+                        POSAudio.error(); // 錯誤音效
                         hasShownEmptyCartAlert = true; 
                     }
                     return;
@@ -506,11 +564,13 @@
 
                 if (isNaN(coinAmount) || coinAmount < 0) {
                     alert("請輸入有效的金額！");
+                    POSAudio.error(); // 錯誤音效
                     return;
                 }
 
                 if (coinAmount > totalAmount) {
                     alert("文化幣金額不能大於訂單總額！");
+                    POSAudio.error(); // 錯誤音效
                     coinAmount = totalAmount; 
                 }
 
@@ -541,6 +601,7 @@
                 if (cart.length === 0) {
                     if (!hasShownEmptyCartAlert) {
                         alert('購物車為空，無法結帳');
+                        POSAudio.error(); // 錯誤音效
                         hasShownEmptyCartAlert = true; 
                     }
                     return;
@@ -552,6 +613,9 @@
                      if(paymentMethod === 'LINE PAY') triggerButtonAnimation(btnF8);
                      if(paymentMethod === '現金') triggerButtonAnimation(btnF10);
                 }
+                
+                // 播放成功音效
+                POSAudio.success();
 
                 const totalAmount = parseFloat(totalAmountElement.textContent);
                 const clientId = generateClientId();
@@ -718,6 +782,7 @@
                         productInfoElement.textContent = '';
                     } else {
                         alert('找不到商品');
+                        POSAudio.error(); // 錯誤音效
                     }
                 }
             });
@@ -743,6 +808,7 @@
                         keywordSearchInput.value = ''; 
                     } else {
                         alert('找不到商品');
+                        POSAudio.error(); // 錯誤音效
                     }
                 });
                 document.querySelector('.form-group').appendChild(confirmButton);
@@ -777,6 +843,10 @@
                 } else {
                     cart.push({ ...product, quantity: 1 });
                 }
+                
+                // 成功加入購物車，播放嗶聲
+                POSAudio.beep();
+
                 updateCartDisplay();
                 calculateTotal();
                 saveCart();
@@ -883,12 +953,10 @@
                     } else if (method === '現金') {
                         stats.cash += client.amount;
                     } else if (method.includes('文化幣')) {
-                        // 解析複雜字串
                         const coinMatch = method.match(/文化幣.*?\((\d+)\)/);
                         if (coinMatch && coinMatch[1]) {
                             stats.culture += parseInt(coinMatch[1]);
                         }
-                        
                         const cashMatch = method.match(/現金\((\d+)\)/);
                         if (cashMatch && cashMatch[1]) {
                             stats.cash += parseInt(cashMatch[1]);
@@ -941,7 +1009,6 @@
                 totalOrdersElement.textContent = totalOrders;
                 averageAmountElement.textContent = averageOrderAmount;
                 
-                // 更新金流統計顯示
                 const stats = calculatePaymentStats();
                 paymentStatsElement.innerHTML = `
                     <div class="stat-item">現金總計: <b>${stats.cash}</b></div>
@@ -995,6 +1062,70 @@
                     saveSummary();
                 }
             };
+
+            // --- 備份與還原功能 ---
+            // 備份
+            backupBtn.addEventListener('click', () => {
+                const backupData = {
+                    cart: cart,
+                    clients: clients,
+                    overallSummary: overallSummary,
+                    clientCounter: clientCounter,
+                    notes: notesElement.value,
+                    timestamp: new Date().toISOString()
+                };
+                
+                const dataStr = JSON.stringify(backupData, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                a.download = `pos_backup_${dateStr}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                alert('備份已下載！');
+            });
+
+            // 還原 - 觸發檔案選擇
+            restoreBtn.addEventListener('click', () => {
+                if (confirm('注意：還原備份將會「覆蓋」目前的訂單資料，建議先備份目前資料。確定要繼續嗎？')) {
+                    importFileInput.click();
+                }
+            });
+
+            // 還原 - 處理檔案讀取
+            importFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        
+                        // 簡單驗證資料格式
+                        if (data.clients && data.overallSummary) {
+                            localStorage.setItem('cart', JSON.stringify(data.cart || []));
+                            localStorage.setItem('clients', JSON.stringify(data.clients || {}));
+                            localStorage.setItem('overallSummary', JSON.stringify(data.overallSummary || {}));
+                            localStorage.setItem('clientCounter', JSON.stringify(data.clientCounter || 1));
+                            localStorage.setItem('notes', data.notes || '');
+                            
+                            alert('資料還原成功！網頁將重新整理。');
+                            location.reload();
+                        } else {
+                            alert('錯誤：備份檔案格式不正確。');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('錯誤：無法解析備份檔案。');
+                    }
+                };
+                reader.readAsText(file);
+                // 清空 input，確保下次選同檔名也能觸發 change
+                importFileInput.value = '';
+            });
 
             exportCsvBtn.addEventListener('click', () => {
                 try {
@@ -1090,4 +1221,3 @@
     </script>
 </body>
 </html>
-
