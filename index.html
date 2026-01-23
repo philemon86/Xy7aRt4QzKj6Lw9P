@@ -285,7 +285,7 @@
             </div>
             <div class="form-group search-container">
                 <label for="keyword-search">輸入關鍵字搜尋商品：</label>
-                <input type="text" id="keyword-search" placeholder="僅限商品名稱">
+                <input type="text" id="keyword-search" placeholder="名稱 / 代碼 / 條碼 皆可搜尋">
                 <div id="search-results" class="search-results"></div>
             </div>
             <div id="csv-validation"></div>
@@ -722,18 +722,29 @@
                 }
             });
 
+            // --- 搜尋邏輯 (多欄位支援) ---
             keywordSearchInput.addEventListener('input', (e) => {
                 const keywords = e.target.value.trim().toLowerCase().split(' ');
+                
                 const matchedProducts = Object.values(products).filter(product => 
-                    keywords.every(keyword => product.name.toLowerCase().includes(keyword))
+                    keywords.every(keyword => 
+                        // 1. 搜尋名稱
+                        product.name.toLowerCase().includes(keyword) ||
+                        // 2. 搜尋代碼 (模糊搜尋)
+                        product.code.toLowerCase().includes(keyword) ||
+                        // 3. 搜尋條碼 (模糊搜尋，先確認條碼存在)
+                        (product.barcode && product.barcode.includes(keyword))
+                    )
                 );
+
                 searchResultsElement.innerHTML = '';
 
                 const displayProducts = matchedProducts.slice(0, 3); 
 
                 displayProducts.forEach(product => {
                     const resultItem = document.createElement('div');
-                    resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元 ｜ 庫存:${product.qty}`;
+                    resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元`;
+                    
                     const selectButton = document.createElement('button');
                     selectButton.textContent = '送出計算';
                     selectButton.addEventListener('click', () => {
@@ -749,12 +760,12 @@
 
                 if (matchedProducts.length > 3) {
                     const showMoreButton = document.createElement('button');
-                    showMoreButton.textContent = '顯示更多';
+                    showMoreButton.textContent = `顯示更多 (還有 ${matchedProducts.length - 3} 筆)`;
                     showMoreButton.addEventListener('click', () => {
                         searchResultsElement.innerHTML = '';
-                        matchedProducts.forEach(product => {
+                        matchedProducts.slice(0, 20).forEach(product => {
                             const resultItem = document.createElement('div');
-                            resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元 ｜ 庫存:${product.qty}`;
+                            resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元`;
                             const selectButton = document.createElement('button');
                             selectButton.textContent = '送出計算';
                             selectButton.addEventListener('click', () => {
