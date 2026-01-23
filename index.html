@@ -96,6 +96,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap; /* 允許換行以適應提示文字 */
         }
 
         /* 保持支付資訊內的文字和輸入框樣式 */
@@ -108,6 +109,15 @@
             max-width: 80px;
             padding: 5px;
             font-size: 1em;
+        }
+        
+        /* 新增：快捷鍵提示文字樣式 */
+        .hotkey-hint {
+            width: 100%; 
+            text-align: right; 
+            font-size: 0.8em; 
+            color: #666; 
+            margin-top: 5px;
         }
 
         .table-container {
@@ -187,10 +197,8 @@
     </style>
 </head>
 <body>
-    <!-- 區域 A + B -->
     <div class="flex-container">
         <div class="container-half">
-            <!-- 區域 A 內容 -->
             <div class="header">
                 <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
                 <span id="title">腓利門雲POS</span>
@@ -212,12 +220,10 @@
                 <input type="text" id="keyword-search" placeholder="僅限商品名稱">
                 <div id="search-results" class="search-results"></div>
             </div>
-            <!-- 新增CSV狀態顯示的div -->
             <div id="csv-validation"></div>
         </div>
 
         <div class="container-half">
-            <!-- 區域 B 內容 -->
             <div class="table-container">
                 <div class="table-title">結帳明細</div>
                 <table id="cart-table">
@@ -241,11 +247,13 @@
                 <div class="btn-group">
                     <button id="checkout-btn" style="transition: all 0.6s ease; padding: 15px 35px; font-size: 1.5em;">F10結帳</button>
                 </div>
+                <div class="hotkey-hint">
+                    F7:信用卡 / F8:LINE PAY / F9:文化幣 / F10:現金
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- 區域 C + D -->
     <div class="flex-container">
         <div class="container-half">
             <div class="table-title">
@@ -258,6 +266,7 @@
                         <tr>
                             <th>客戶名稱</th>
                             <th>消費金額</th>
+                            <th>付款方式</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -293,52 +302,9 @@
         </div>
     </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const checkoutBtn = document.getElementById('checkout-btn');
-    let cart = JSON.parse(localStorage.getItem('cart')) || [];
-    let effectTimer = null;
-    let hasShownEmptyCartAlert = false; // 初始化這個變數
-
-    // 檢查購物車是否有商品
-    const isCartEmpty = () => cart.length === 0;
-
-    // 檢查購物車狀態並啟動或停止動畫
-    const checkCartAndAnimateButton = () => {
-        if (!isCartEmpty()) {
-            checkoutBtn.classList.add('animate');
-        } else {
-            checkoutBtn.classList.remove('animate');
-        }
-    };
-
-    // 每2秒檢查一次購物車
-    effectTimer = setInterval(() => {
-        cart = JSON.parse(localStorage.getItem('cart')) || [];
-        checkCartAndAnimateButton();
-    }, 2000);
-
-    checkoutBtn.addEventListener('click', () => {
-        if (!isCartEmpty()) {
-            cart = [];  // 清空購物車
-            localStorage.setItem('cart', JSON.stringify(cart));
-            checkCartAndAnimateButton();
-            hasShownEmptyCartAlert = false; // 重置提醒狀態
-        } else {
-            if (!hasShownEmptyCartAlert) {
-                alert('購物車為空，無法結帳');
-                hasShownEmptyCartAlert = true; // 更新狀態以防止多次提醒
-            }
-        }
-    });
-}); 
-</script>
-
-</body>
-</html>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM 元素獲取 ---
             const currentDateElement = document.getElementById('current-date');
             const keywordSearchInput = document.getElementById('keyword-search');
             const searchResultsElement = document.getElementById('search-results');
@@ -358,21 +324,47 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalOrdersElement = document.getElementById('total-orders');
             const averageAmountElement = document.getElementById('average-amount');
             const notesElement = document.getElementById('notes');
+
+            // --- 狀態變數 ---
             let cart = JSON.parse(localStorage.getItem('cart')) || [];
             let products = {}; 
             let discountRates = {}; 
             let clients = JSON.parse(localStorage.getItem('clients')) || {};
             let overallSummary = JSON.parse(localStorage.getItem('overallSummary')) || {};
             let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
+            let effectTimer = null;
+            let hasShownEmptyCartAlert = false;
 
+            // --- 日期與初始化 ---
             const currentDate = new Date().toISOString().split('T')[0].replace(/-/g, '/');
             currentDateElement.textContent = `今日日期：${currentDate}`;
-
             notesElement.value = localStorage.getItem('notes') || '';
-
             notesElement.addEventListener('input', () => {
                 localStorage.setItem('notes', notesElement.value);
             });
+
+            // --- 核心邏輯 ---
+
+            // 檢查購物車狀態並啟動或停止動畫
+            const isCartEmpty = () => cart.length === 0;
+            const checkCartAndAnimateButton = () => {
+                if (!isCartEmpty()) {
+                    checkoutBtn.classList.add('animate');
+                } else {
+                    checkoutBtn.classList.remove('animate');
+                }
+            };
+            
+            // 每2秒檢查一次購物車
+            effectTimer = setInterval(() => {
+                const storedCart = JSON.parse(localStorage.getItem('cart'));
+                // 只有當 localStorage 改變時才更新，避免覆蓋當前操作
+                if(JSON.stringify(storedCart) !== JSON.stringify(cart)){
+                     // 這裡主要是為了多視窗同步，單一視窗操作不需頻繁讀取
+                     // 但為保持原邏輯，保留讀取
+                }
+                checkCartAndAnimateButton();
+            }, 2000);
 
             const generateClientId = () => {
                 const date = new Date();
@@ -393,58 +385,138 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             };
 
-const loadProducts = async () => {
-    const csvValidationElement = document.getElementById('csv-validation');
-    
-    if (!csvValidationElement) {
-        console.error("csvValidationElement not found!");
-        return;
-    }
+            const loadProducts = async () => {
+                if (!csvValidationElement) return;
 
-    try {
-        const response = await fetch('products.csv');
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const data = await response.text();
-        const lines = data.split('\n');
-        let headers = [];
-        let isHeader = true;
+                try {
+                    const response = await fetch('products.csv');
+                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                    
+                    const data = await response.text();
+                    const lines = data.split('\n');
+                    let headers = [];
+                    let isHeader = true;
 
-        lines.forEach(line => {
-            const columns = line.split(',');
+                    lines.forEach(line => {
+                        const columns = line.split(',');
+                        if (isHeader) {
+                            headers = columns.map(header => header.trim());
+                            isHeader = false;
+                            return;
+                        }
+                        const product = {};
+                        headers.forEach((header, index) => {
+                            product[header] = columns[index]?.trim();
+                        });
 
-            if (isHeader) {
-                headers = columns.map(header => header.trim());
-                isHeader = false;
-                return;
-            }
+                        if (product['CODE'] && product['CNAME'] && product['BARCODE'] && !isNaN(parseInt(product['CQTY']))) {
+                            const discount = discountRates[product['CLAS']] || 100; 
+                            products[product['CODE']] = {
+                                code: product['CODE'],
+                                name: product['CNAME'],
+                                barcode: product['BARCODE'],
+                                qty: parseInt(product['CQTY']),
+                                price: parseFloat(product['PRICE']) || 0,
+                                discount: discount 
+                            };
+                        }
+                    });
+                    csvValidationElement.textContent = "CSV檔讀取成功";
+                } catch (error) {
+                    console.error('Error loading CSV file:', error);
+                    csvValidationElement.textContent = `CSV文件讀取失敗: ${error.message}`;
+                }
+            };
 
-            const product = {};
-            headers.forEach((header, index) => {
-                product[header] = columns[index]?.trim();
+            // --- 結帳核心功能 (修改處) ---
+            const performCheckout = (paymentMethod) => {
+                if (cart.length === 0) {
+                    if (!hasShownEmptyCartAlert) {
+                        alert('購物車為空，無法結帳');
+                        hasShownEmptyCartAlert = true; 
+                    }
+                    return;
+                }
+                hasShownEmptyCartAlert = false;
+
+                // 按鈕動畫與文字反饋
+                checkoutBtn.style.backgroundColor = 'green';
+                checkoutBtn.style.transform = 'scale(1.1)'; 
+                checkoutBtn.textContent = `已收 ${paymentMethod}`; 
+                setTimeout(() => {
+                    checkoutBtn.style.backgroundColor = '#8A6739';
+                    checkoutBtn.style.transform = 'scale(1)'; 
+                    checkoutBtn.textContent = 'F10結帳'; 
+                }, 800);
+
+                const totalAmount = parseFloat(totalAmountElement.textContent);
+                const clientId = generateClientId();
+                
+                // 儲存訂單資料，包含付款方式
+                clients[clientId] = {
+                    id: clientId,
+                    amount: totalAmount,
+                    paymentMethod: paymentMethod, // 新增付款方式
+                    items: [...cart]
+                };
+
+                cart.forEach(item => {
+                    if (!overallSummary[item.code]) {
+                        overallSummary[item.code] = {
+                            code: item.code,
+                            name: item.name,
+                            totalQuantity: 0,
+                            totalAmount: 0
+                        };
+                    }
+                    overallSummary[item.code].totalQuantity += item.quantity;
+                    overallSummary[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);
+                });
+
+                cart = [];
+                updateCartDisplay();
+                calculateTotal();
+                updateSummaryTable();
+                saveSummary();
+                clientCounter++;
+                localStorage.setItem('clientCounter', JSON.stringify(clientCounter)); 
+                localStorage.removeItem('cart');
+                productCodeInput.focus(); 
+                
+                paidAmountInput.value = 1000;
+                checkCartAndAnimateButton();
+            };
+
+            // --- 點擊 F10 按鈕 ---
+            checkoutBtn.addEventListener('click', () => {
+                performCheckout('現金');
             });
 
-            if (product['CODE'] && product['CNAME'] && product['BARCODE'] && !isNaN(parseInt(product['CQTY']))) {
-                const discount = discountRates[product['CLAS']] || 100; 
-                products[product['CODE']] = {
-                    code: product['CODE'],
-                    name: product['CNAME'],
-                    barcode: product['BARCODE'],
-                    qty: parseInt(product['CQTY']),
-                    price: parseFloat(product['PRICE']) || 0,
-                    discount: discount 
-                };
-            }
-        });
+            // --- 鍵盤監聽 (F7, F8, F9, F10) ---
+            document.addEventListener('keydown', (e) => {
+                if (cart.length > 0) {
+                    switch(e.key) {
+                        case 'F10':
+                            e.preventDefault();
+                            performCheckout('現金');
+                            break;
+                        case 'F9':
+                            e.preventDefault();
+                            performCheckout('文化幣');
+                            break;
+                        case 'F8':
+                            e.preventDefault();
+                            performCheckout('LINE PAY');
+                            break;
+                        case 'F7':
+                            e.preventDefault();
+                            performCheckout('信用卡');
+                            break;
+                    }
+                }
+            });
 
-        csvValidationElement.textContent = "CSV檔讀取成功";
-    } catch (error) {
-        console.error('Error loading CSV file:', error);
-        csvValidationElement.textContent = `CSV文件讀取失敗: ${error.message}`;
-    }
-};
-
+            // --- 商品輸入與搜尋邏輯 ---
             const parseProductInput = (input) => {
                 const pattern = /^(\d+)\*([\w-]+)$/;
                 const match = input.match(pattern);
@@ -457,24 +529,9 @@ const loadProducts = async () => {
                 return null;
             };
 
-            const throttle = (func, limit) => {
-                let inThrottle;
-                return function() {
-                    const args = arguments;
-                    const context = this;
-                    if (!inThrottle) {
-                        func.apply(context, args);
-                        inThrottle = true;
-                        setTimeout(() => inThrottle = false, limit);
-                    }
-                };
-            };
-
             productCodeInput.addEventListener('input', (e) => {
                 const codeOrBarcode = e.target.value.trim().toLowerCase(); 
-                if (!e.isTrusted) {
-                    return;
-                }
+                if (!e.isTrusted) return;
 
                 const parsedInput = parseProductInput(codeOrBarcode);
 
@@ -591,55 +648,7 @@ const loadProducts = async () => {
                 document.querySelector('.form-group').appendChild(confirmButton);
             }
 
-            checkoutBtn.addEventListener('click', () => {
-                if (cart.length === 0) {
-                    alert('購物車為空，無法結帳');
-                    return;
-                }
-
-                checkoutBtn.style.backgroundColor = 'green';
-                checkoutBtn.style.transform = 'scale(1.1)'; 
-                checkoutBtn.textContent = '已送出'; 
-                setTimeout(() => {
-                    checkoutBtn.style.backgroundColor = '#8A6739';
-                    checkoutBtn.style.transform = 'scale(1)'; 
-                    checkoutBtn.textContent = 'F10結帳'; 
-                }, 600);
-
-                const totalAmount = parseFloat(totalAmountElement.textContent);
-                const clientId = generateClientId();
-                clients[clientId] = {
-                    id: clientId,
-                    amount: totalAmount,
-                    items: [...cart]
-                };
-
-                cart.forEach(item => {
-                    if (!overallSummary[item.code]) {
-                        overallSummary[item.code] = {
-                            code: item.code,
-                            name: item.name,
-                            totalQuantity: 0,
-                            totalAmount: 0
-                        };
-                    }
-                    overallSummary[item.code].totalQuantity += item.quantity;
-                    overallSummary[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);
-                });
-
-                cart = [];
-                updateCartDisplay();
-                calculateTotal();
-                updateSummaryTable();
-                saveSummary();
-                clientCounter++;
-                localStorage.setItem('clientCounter', JSON.stringify(clientCounter)); 
-                localStorage.removeItem('cart');
-                productCodeInput.focus(); 
-                
-                paidAmountInput.value = 1000;
-            });
-
+            // --- 購物車計算邏輯 ---
             const calculateTotal = () => {
                 let total = 0;
                 cart = cart.filter(item => item.quantity !== 0); 
@@ -650,6 +659,7 @@ const loadProducts = async () => {
                 totalAmountElement.textContent = Math.round(total);
                 calculateChange();
             };
+
             const calculateChange = () => {
                 const totalAmount = parseFloat(totalAmountElement.textContent);
                 const paidAmount = parseFloat(paidAmountInput.value);
@@ -677,12 +687,12 @@ const loadProducts = async () => {
                 cartTableBody.innerHTML = '';
                 cart.forEach(item => {
                     const row = document.createElement('tr');
-row.innerHTML = `
-    <td>${item.name}</td>
-    <td><input type="number" name="price-${item.code}" value="${item.price}" step="0.1" min="0" style="width: 60px;" class="price-input" data-code="${item.code}"></td>
-    <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="-1000" class="quantity-input" data-code="${item.code}"></td>
-    <td><input type="number" name="discount-${item.code}" value="${item.discount}" step="0.1" min="0" max="100" class="discount-input" data-code="${item.code}"></td>
-    <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
+                    row.innerHTML = `
+                        <td>${item.name}</td>
+                        <td><input type="number" name="price-${item.code}" value="${item.price}" step="0.1" min="0" style="width: 60px;" class="price-input" data-code="${item.code}"></td>
+                        <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="-1000" class="quantity-input" data-code="${item.code}"></td>
+                        <td><input type="number" name="discount-${item.code}" value="${item.discount}" step="0.1" min="0" max="100" class="discount-input" data-code="${item.code}"></td>
+                        <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
                     `;
                     cartTableBody.appendChild(row);
                 });
@@ -699,7 +709,6 @@ row.innerHTML = `
                     input.addEventListener('input', debounce((e) => {
                         const code = e.target.dataset.code;
                         const newQuantity = parseInt(e.target.value);
-
                         if (!isNaN(newQuantity)) {
                             const item = cart.find(item => item.code === code);
                             if (item) {
@@ -716,7 +725,6 @@ row.innerHTML = `
                     input.addEventListener('input', debounce((e) => {
                         const code = e.target.dataset.code;
                         const newDiscount = parseFloat(e.target.value); 
-
                         if (!isNaN(newDiscount) && newDiscount >= 0) {
                             const item = cart.find(item => item.code === code);
                             if (item) {
@@ -733,7 +741,6 @@ row.innerHTML = `
                     input.addEventListener('input', debounce((e) => {
                         const code = e.target.dataset.code;
                         const newPrice = parseFloat(e.target.value);
-
                         if (!isNaN(newPrice) && newPrice >= 0) {
                             const item = cart.find(item => item.code === code);
                             if (item) {
@@ -745,7 +752,8 @@ row.innerHTML = `
                         }
                     }, 500)); 
                 });
-
+                
+                checkCartAndAnimateButton();
             };
 
             const saveCart = () => {
@@ -758,6 +766,7 @@ row.innerHTML = `
                 localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
             };
 
+            // --- 總表更新與顯示 (包含付款方式) ---
             const updateSummaryTable = () => {
                 summaryTableBody.innerHTML = '';
                 overallSummaryTableBody.innerHTML = '';
@@ -770,9 +779,12 @@ row.innerHTML = `
 
                 Object.values(clients).forEach(client => {
                     const row = document.createElement('tr');
+                    // 若舊資料沒有 paymentMethod 欄位，預設顯示 '現金'
+                    const method = client.paymentMethod || '現金';
                     row.innerHTML = `
-                        <td><a href="#" class="client-link" data-client-id="${client.id}">${client.id}</td>
+                        <td><a href="#" class="client-link" data-client-id="${client.id}">${client.id}</a></td>
                         <td>${Math.round(client.amount)}</td>
+                        <td>${method}</td>
                         <td><button class="delete-client-btn" data-client-id="${client.id}">刪除</button></td>
                     `;
                     summaryTableBody.appendChild(row);
@@ -818,8 +830,9 @@ row.innerHTML = `
             const showClientDetails = (clientId) => {
                 const client = clients[clientId];
                 if (client) {
+                    const method = client.paymentMethod || '現金';
                     const items = client.items.map(item => `${item.name} x ${item.quantity}`).join('\n');
-                    alert(`客戶 ${clientId} 購買的商品：\n${items}`);
+                    alert(`客戶：${clientId}\n付款方式：${method}\n\n購買商品：\n${items}`);
                 }
             };
 
@@ -842,70 +855,68 @@ row.innerHTML = `
                 }
             };
 
-exportCsvBtn.addEventListener('click', () => {
-    try {
-        console.log('正在準備匯出資料...');
+            // --- CSV 匯出邏輯 (包含付款方式) ---
+            exportCsvBtn.addEventListener('click', () => {
+                try {
+                    console.log('正在準備匯出資料...');
+                    const notes = localStorage.getItem('notes') || '無備註';
 
-        const notes = localStorage.getItem('notes') || '無備註';
+                    const summaryRows = [
+                        ['客戶名稱', '消費金額', '付款方式'], // 新增標題
+                        ...Object.values(clients).map(client => [
+                            client.id, 
+                            Math.round(client.amount),
+                            client.paymentMethod || '現金' // 新增內容
+                        ]),
+                        [],
+                        ['商品代碼', '名稱', '總數量', '總金額'],
+                        ...Object.values(overallSummary).map(item => {
+                            if (!item || !item.code || !item.name) return ['錯誤數據'];
+                            return [item.code, item.name, item.totalQuantity, Math.round(item.totalAmount)];
+                        }),
+                        [],
+                        ['總金額', Math.round(overallTotalAmountElement.textContent || 0)],
+                        [],
+                        ['備註'],
+                        [notes],
+                        [] 
+                    ];
 
-        // 總覽資料（原始匯出部分）
-        const summaryRows = [
-            ['客戶名稱', '消費金額'],
-            ...Object.values(clients).map(client => [client.id, Math.round(client.amount)]),
-            [],
-            ['商品代碼', '名稱', '總數量', '總金額'],
-            ...Object.values(overallSummary).map(item => {
-                if (!item || !item.code || !item.name) {
-                    console.warn('跳過錯誤數據:', item);
-                    return ['錯誤數據'];
+                    const detailsRows = [
+                        ['詳細內容：'], 
+                        ['客戶名稱', '付款方式', '商品名稱', '數量', '單價', '折扣', '小計'],
+                        ...Object.values(clients).flatMap(client =>
+                            client.items.map(item => [
+                                client.id,
+                                client.paymentMethod || '現金',
+                                item.name,
+                                item.quantity,
+                                Math.round(item.price),
+                                `${item.discount}%`,
+                                Math.round(item.price * item.quantity * (item.discount / 100))
+                            ])
+                        )
+                    ];
+
+                    const combinedRows = [...summaryRows, ...detailsRows];
+                    const csvContent = combinedRows.map(e => e.join(",")).join("\n");
+                    const blob = new Blob([`\ufeff${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement("a");
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", `sales_combined_${new Date().toISOString().split('T')[0]}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url); 
+
+                    console.log('匯出完成');
+                } catch (error) {
+                    console.error('CSV匯出錯誤:', error);
+                    alert('CSV匯出過程出現問題，請檢查數據是否完整。');
                 }
-                return [item.code, item.name, item.totalQuantity, Math.round(item.totalAmount)];
-            }),
-            [],
-            ['總金額', Math.round(overallTotalAmountElement.textContent || 0)],
-            [],
-            ['備註'],
-            [notes],
-            [] // 空行分隔區域
-        ];
+            });
 
-        // 詳細內容資料
-        const detailsRows = [
-            ['詳細內容：'], // 標題行
-            ['客戶名稱', '商品名稱', '數量', '單價', '折扣', '小計'],
-            ...Object.values(clients).flatMap(client =>
-                client.items.map(item => [
-                    client.id,
-                    item.name,
-                    item.quantity,
-                    Math.round(item.price),
-                    `${item.discount}%`,
-                    Math.round(item.price * item.quantity * (item.discount / 100))
-                ])
-            )
-        ];
-
-        // 合併總覽和詳細內容
-        const combinedRows = [...summaryRows, ...detailsRows];
-
-        // 匯出 CSV 檔案
-        const csvContent = combinedRows.map(e => e.join(",")).join("\n");
-        const blob = new Blob([`\ufeff${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `sales_combined_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url); // 釋放 URL 資源
-
-        console.log('匯出完成');
-    } catch (error) {
-        console.error('CSV匯出錯誤:', error);
-        alert('CSV匯出過程出現問題，請檢查數據是否完整。');
-    }
-});
             clearAllBtn.addEventListener('click', () => {
                 if (confirm('確定要刪除全部訂單？此操作無法撤銷。')) {
                     if (confirm('再次確認，確定要刪除全部訂單嗎？')) {
@@ -922,13 +933,7 @@ exportCsvBtn.addEventListener('click', () => {
                 }
             });
 
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'F10' && cart.length > 0) { 
-                    e.preventDefault(); 
-                    checkoutBtn.click(); 
-                }
-            });
-
+            // --- 啟動 ---
             loadDiscountRates(); 
             loadProducts().then(() => {
                 updateCartDisplay();
