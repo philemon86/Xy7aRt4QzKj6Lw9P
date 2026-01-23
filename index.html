@@ -97,7 +97,8 @@
             width: 100%;
         }
 
-        .payment-info span {
+        /* 這裡特別指定只有直接在 payment-info 下的 span 才是咖啡色，避免影響按鈕 */
+        .payment-info > span, .payment-details > span {
             color: #8B4513;
             font-weight: bold;
         }
@@ -109,7 +110,7 @@
             text-align: right;
         }
 
-        /* --- 修改：底部四個結帳按鈕的樣式 --- */
+        /* --- 修改重點：底部四個結帳按鈕的樣式 --- */
         .checkout-buttons-area {
             display: flex;
             justify-content: space-between;
@@ -123,7 +124,7 @@
             background-color: #8A6739;
             border: none;
             border-radius: 5px;
-            padding: 10px 5px; /* 調整內距 */
+            padding: 12px 10px;
             text-align: left;
             cursor: pointer;
             transition: all 0.2s;
@@ -131,7 +132,7 @@
             flex-direction: column;
             justify-content: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            padding-left: 15px; /* 左側留白 */
+            padding-left: 15px;
         }
 
         .checkout-btn:hover {
@@ -143,22 +144,26 @@
             transform: translateY(0);
         }
 
-        /* 按鍵代號 (F7-F10) */
-        .btn-key {
-            font-size: 1.8em; /* 放大 */
-            font-weight: bold;
-            color: #F5F5DC; /* 米白色 */
-            margin-bottom: 2px;
+        /* 修正：使用更強的選擇器權重並加上 !important 
+           確保文字絕對是米白色 (#F5F5DC) 
+        */
+        .checkout-btn .btn-key {
+            font-size: 2.2em !important; /* 再放大一點 */
+            font-weight: 800 !important;
+            color: #FFF8DC !important; /* 亮米白 */
+            margin-bottom: 5px;
             display: block;
             font-family: Arial, sans-serif;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3); /* 增加陰影提升對比 */
+            line-height: 1;
         }
 
-        /* 中文說明 */
-        .btn-label {
-            font-size: 0.9em; /* 縮小 */
-            color: #F5F5DC; /* 米白色 */
+        .checkout-btn .btn-label {
+            font-size: 0.9em !important; /* 說明文字維持小巧 */
+            color: #F5F5DC !important; /* 米白 */
             display: block;
-            opacity: 0.9;
+            opacity: 1; /* 確保不透明 */
+            font-weight: normal;
         }
 
         /* ---------------------------------- */
@@ -200,7 +205,6 @@
             box-sizing: border-box;
         }
         
-        /* 金流統計資訊樣式 */
         .stats-info {
             font-size: 0.9em;
             color: #555;
@@ -237,7 +241,6 @@
             }
         }
 
-        /* 按鈕點擊動畫 */
         .animate-click {
             animation: pulse-green 0.5s ease-out;
         }
@@ -400,7 +403,7 @@
             const clearAllBtn = document.getElementById('clear-all-btn');
             const totalOrdersElement = document.getElementById('total-orders');
             const averageAmountElement = document.getElementById('average-amount');
-            const paymentStatsElement = document.getElementById('payment-stats'); // 統計區塊
+            const paymentStatsElement = document.getElementById('payment-stats');
             const notesElement = document.getElementById('notes');
 
             // --- 狀態變數 ---
@@ -495,7 +498,6 @@
 
                 const totalAmount = parseFloat(totalAmountElement.textContent);
                 
-                // 1. 詢問使用者要使用多少文化幣
                 let coinAmountStr = prompt(`訂單總額為 ${totalAmount} 元。\n請輸入文化幣支付金額：`, totalAmount);
                 
                 if (coinAmountStr === null) return;
@@ -512,10 +514,8 @@
                     coinAmount = totalAmount; 
                 }
 
-                // 3. 計算剩餘現金
                 const cashAmount = totalAmount - coinAmount;
                 
-                // 4. 產生複合支付方式名稱
                 let methodStr = "";
                 if (cashAmount > 0 && coinAmount > 0) {
                     methodStr = `文化幣(${coinAmount}) + 現金(${cashAmount})`;
@@ -617,7 +617,7 @@
                 }
             });
 
-            // --- 商品輸入與搜尋邏輯 (略，保持不變) ---
+            // --- 商品輸入與搜尋邏輯 ---
             const parseProductInput = (input) => {
                 const pattern = /^(\d+)\*([\w-]+)$/;
                 const match = input.match(pattern);
@@ -883,14 +883,12 @@
                     } else if (method === '現金') {
                         stats.cash += client.amount;
                     } else if (method.includes('文化幣')) {
-                        // 解析複雜字串: "文化幣(120) + 現金(80)"
-                        // 1. 抓取文化幣金額
+                        // 解析複雜字串
                         const coinMatch = method.match(/文化幣.*?\((\d+)\)/);
                         if (coinMatch && coinMatch[1]) {
                             stats.culture += parseInt(coinMatch[1]);
                         }
                         
-                        // 2. 抓取現金金額 (如果有)
                         const cashMatch = method.match(/現金\((\d+)\)/);
                         if (cashMatch && cashMatch[1]) {
                             stats.cash += parseInt(cashMatch[1]);
@@ -1002,7 +1000,7 @@
                 try {
                     console.log('正在準備匯出資料...');
                     const notes = localStorage.getItem('notes') || '無備註';
-                    const stats = calculatePaymentStats(); // 取得統計數據
+                    const stats = calculatePaymentStats();
 
                     const summaryRows = [
                         ['客戶名稱', '消費金額', '付款方式'], 
