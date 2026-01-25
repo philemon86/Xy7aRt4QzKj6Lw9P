@@ -486,6 +486,7 @@
                     <button id="backup-btn" style="background-color: #4682B4;">備份資料</button>
                     <button id="restore-btn" style="background-color: #20B2AA;">還原資料</button>
                     <button id="export-csv-btn">匯出 CSV</button>
+                    <button id="export-pilot-btn" style="background-color: #2E7D32;">匯出會計檔 (Pilot)</button>
                     <button id="clear-all-btn">刪除全部</button>
                 </div>
             </div>
@@ -704,6 +705,7 @@
             const checkoutBtns = [btnF7, btnF8, btnF9, btnF10];
             
             const exportCsvBtn = document.getElementById('export-csv-btn');
+            const exportPilotBtn = document.getElementById('export-pilot-btn');
             const clearAllBtn = document.getElementById('clear-all-btn');
             const backupBtn = document.getElementById('backup-btn');
             const restoreBtn = document.getElementById('restore-btn');
@@ -766,6 +768,16 @@
                 }
             };
 
+            // --- 核心：產生 Pilot 規格 ERI 指紋碼 ---
+            function generateERI(type) {
+                const prefix = { 'master': '0H5', 'detail': '0H8', 'pay': '01E' }[type];
+                const fingerprint = "0010LU0"; 
+                const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                let suffix = "";
+                for(let i=0; i<6; i++) suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+                return (prefix + fingerprint + suffix).substring(0, 16);
+            }
+
             // --- 日期與初始化 ---
             const currentDate = new Date().toISOString().split('T')[0].replace(/-/g, '/');
             currentDateElement.textContent = `今日日期：${currentDate}`;
@@ -780,12 +792,7 @@
             document.querySelectorAll('.acct-count').forEach(input => {
                 const key = `acct_${input.classList.contains('current')?'cur':'init'}_${input.dataset.val}`;
                 const saved = localStorage.getItem(key);
-                
-                // 修正：如果本地存儲有值則加載，否則保留 HTML 預設值
-                if(saved !== null) {
-                    input.value = saved;
-                }
-                
+                if(saved !== null) { input.value = saved; }
                 input.addEventListener('input', () => {
                     updateAccountingCalc();
                     localStorage.setItem(key, input.value);
@@ -820,12 +827,10 @@
                 try {
                     const response = await fetch('products.csv');
                     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                    
                     const data = await response.text();
                     const lines = data.split('\n');
                     let headers = [];
                     let isHeader = true;
-
                     lines.forEach(line => {
                         const columns = line.split(',');
                         if (isHeader) {
@@ -1113,13 +1118,16 @@
                 POSAudio.success();
                 const totalAmount = parseFloat(totalAmountElement.textContent);
                 const clientId = generateClientId();
+                const masterERI = generateERI('master');
                 
                 clients[clientId] = {
                     id: clientId,
+                    eri: masterERI,
                     amount: totalAmount,
                     paymentMethod: paymentMethod, 
-                    items: JSON.parse(JSON.stringify(cart)),
-                    isValid: true
+                    items: cart.map(i => ({...i, detailERI: generateERI('detail')})),
+                    isValid: true,
+                    ts: new Date().toLocaleTimeString('zh-TW', {hour12:false}).replace(/:/g,'')
                 };
 
                 cart.forEach(item => {
@@ -1309,6 +1317,9 @@
                     `;
                     summaryTableBody.appendChild(row);
                 });
+
+                // 修正：同步更新全域銷售統計
+                overallSummary = tempOverall;
 
                 const sortedSummary = Object.values(tempOverall).sort((a, b) => a.code.localeCompare(b.code));
                 sortedSummary.forEach(item => {
@@ -1521,7 +1532,7 @@
                         if (data.clients) {
                             localStorage.setItem('cart', JSON.stringify(data.cart || []));
                             localStorage.setItem('clients', JSON.stringify(data.clients || {}));
-                            localStorage.setItem('overallSummary', JSON.stringify({})); 
+                            localStorage.setItem('overallSummary', JSON.stringify(data.overallSummary || {})); 
                             localStorage.setItem('clientCounter', JSON.stringify(data.clientCounter || 1));
                             localStorage.setItem('sessionRules', JSON.stringify(data.sessionRules || {}));
                             localStorage.setItem('priceOverrides', JSON.stringify(data.priceOverrides || {}));
@@ -1540,7 +1551,7 @@
                 importFileInput.value = '';
             });
 
-            // CSV 匯出
+            // CSV 匯出 (標準版)
             exportCsvBtn.addEventListener('click', () => {
                 try {
                     const notes = localStorage.getItem('notes') || '無備註';
@@ -1558,7 +1569,6 @@
                         [],
                         ['商品代碼', '名稱', '總數量', '總金額'],
                         ...Object.values(overallSummary).map(item => {
-                            if (!item || !item.code || !item.name) return ['錯誤數據'];
                             return [item.code, item.name, item.totalQuantity, Math.round(item.totalAmount)];
                         }),
                         [],
@@ -1602,7 +1612,7 @@
                     const link = document.createElement("a");
                     const url = URL.createObjectURL(blob);
                     link.setAttribute("href", url);
-                    link.setAttribute("download", `sales_combined_${new Date().toISOString().split('T')[0]}.csv`);
+                    link.setAttribute("download", `sales_POS_${new Date().toISOString().split('T')[0]}.csv`);
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
@@ -1611,6 +1621,52 @@
                     console.error('CSV匯出錯誤:', error);
                     alert('CSV匯出過程出現問題，請檢查數據是否完整。');
                 }
+            });
+
+            // --- 新增：匯出會計檔 (Pilot 版) ---
+            exportPilotBtn.addEventListener('click', () => {
+                const codeFixed = "19890107"; // 固定單號需求
+                const ts = new Date().getTime().toString().slice(-12);
+                const date = currentDate;
+
+                // 1. STKSALE1 (主檔)
+                let s1 = [["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"]];
+                
+                // 2. STKSALE2 (明細)
+                let s2 = [["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]];
+                
+                // 3. VCHRPLUS_SALE1 (付款)
+                let v1 = [["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"]];
+
+                Object.values(clients).forEach(c => {
+                    if(!c.isValid) return;
+                    
+                    const gross = c.items.reduce((a,b)=>a+(b.price*b.qty), 0);
+                    const qtyTotal = c.items.reduce((a,b)=>a+b.qty, 0);
+
+                    // S1
+                    s1.push([c.eri, codeFixed, "02", "0002", date, "NTD", 1, "", "0000", "", 0, gross, c.amount-gross, c.amount, qtyTotal, "POS_USER", "", "書展匯入", "", 3, 3, "", "", date, date, 0, "0000", "", 0, "", "", 0, 0, "", 0, "", 0, "0000", "", 0, "0002", "", "書展", "", 1, 0, "", "", 0, "", ts, "", "", "", ""]);
+
+                    // S2
+                    c.items.forEach((it, idx) => {
+                        s2.push([it.detailERI || generateERI('detail'), c.eri, "", "02", "0002", "0000", it.code, date, 0, codeFixed, idx, "", it.quantity, "本", it.price, it.price*it.quantity, it.quantity, 0, "", "", it.quantity+"本", "NTD", 1, it.price, it.discount, "", "", 0, 0, 0, "", date, "", 0, 0, 0, 0, 0, 0, "", ts, "", ""]);
+                    });
+
+                    // V1
+                    let payCode = c.paymentMethod.includes("現金") ? "5" : "16";
+                    let paySubj = c.paymentMethod.includes("現金") ? "1144.355" : "1144.358";
+                    v1.push([generateERI('pay'), c.eri, 0, payCode, paySubj, 0, -c.amount, "", "", ts]);
+                });
+
+                const downloadCSV = (data, filename) => {
+                    let csv = data.map(row => row.map(v => `"${v}"`).join(",")).join("\n");
+                    let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+                    let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+                };
+
+                downloadCSV(s1, "STKSALE1.csv");
+                setTimeout(() => downloadCSV(s2, "STKSALE2.csv"), 500);
+                setTimeout(() => downloadCSV(v1, "VCHRPLUS_SALE1.csv"), 1000);
             });
 
             clearAllBtn.addEventListener('click', () => {
