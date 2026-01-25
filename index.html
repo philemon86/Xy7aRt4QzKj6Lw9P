@@ -16,7 +16,7 @@
             justify-content: flex-start;
             min-height: 100vh;
             background-color: #F5F5DC;
-            padding-bottom: 50px; /* 預留底部空間 */
+            padding-bottom: 50px;
         }
 
         /* 父級容器 */
@@ -184,7 +184,7 @@
         /* 30秒提醒動畫 */
         .btn-alert {
             animation: heartBeat 1s infinite;
-            background-color: #ff8c00 !important; /* 深橘色提醒 */
+            background-color: #ff8c00 !important;
             transform: scale(1.1);
             z-index: 10;
         }
@@ -219,7 +219,7 @@
 
         .bottom-total {
             border-radius: 8px;
-            margin-top: 10px; /* 調整間距 */
+            margin-top: 10px;
         }
 
         td input[type="number"] {
@@ -305,35 +305,55 @@
         }
 
         /* --- 記帳模式樣式 --- */
-        .accounting-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 10px;
-            margin-bottom: 15px;
+        .accounting-split-wrapper {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .accounting-col {
+            flex: 1;
+            min-width: 300px;
+            border: 1px solid #D2B48C;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #FFF8DC;
+        }
+        .accounting-col h4 {
+            margin-top: 0;
+            color: #8B4513;
+            border-bottom: 1px solid #D2B48C;
+            padding-bottom: 5px;
+            text-align: center;
+        }
+        .accounting-col.initial-col {
+            background-color: #f0f8ff; /* 初始金額欄位底色不同 */
+            border-color: #b0c4de;
         }
 
         .money-input-group {
             display: flex;
-            flex-direction: column;
-            background-color: #FFF8DC;
-            padding: 8px;
-            border-radius: 4px;
-            border: 1px solid #D2B48C;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background-color: rgba(255,255,255,0.6);
+            border-radius: 3px;
         }
 
         .money-input-group label {
-            font-size: 0.9em;
+            font-size: 0.95em;
             font-weight: bold;
-            color: #8B4513;
-            margin-bottom: 5px;
+            color: #555;
+            width: 80px;
         }
 
         .money-input-group input {
-            width: 100%;
+            width: 100px;
             box-sizing: border-box;
             border: 1px solid #ccc;
             padding: 5px;
             text-align: right;
+            border-radius: 3px;
         }
 
         .acct-summary {
@@ -341,6 +361,7 @@
             padding: 15px;
             border-radius: 5px;
             border: 2px solid #8A6739;
+            margin-top: 15px;
         }
 
         .acct-row {
@@ -390,6 +411,61 @@
         
         .btn-void { background-color: #666; color: white; border: none; border-radius: 3px; cursor: pointer; }
         .btn-del { background-color: #a94442; color: white; border: none; border-radius: 3px; cursor: pointer; }
+
+        /* --- 新增：修改付款方式的彈窗樣式 --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none; /* 預設隱藏 */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 300px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            text-align: center;
+            border: 2px solid #8A6739;
+        }
+
+        .modal-title {
+            margin-top: 0;
+            color: #8A6739;
+            margin-bottom: 20px;
+        }
+
+        .modal-btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .modal-btn {
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            cursor: pointer;
+            color: white;
+            transition: transform 0.1s;
+        }
+        
+        .modal-btn:active { transform: scale(0.95); }
+
+        .btn-m-cash { background-color: #28a745; }
+        .btn-m-card { background-color: #007bff; }
+        .btn-m-line { background-color: #20c997; }
+        .btn-m-culture { background-color: #fd7e14; }
+        .btn-m-cancel { background-color: #6c757d; width: 100%; margin-top: 10px; padding: 10px; }
 
     </style>
 </head>
@@ -526,59 +602,50 @@
     <div class="flex-container">
         <div class="container-full">
             <div class="header">
-                <b>記帳模式 (現金盤點)</b>
+                <b>記帳模式 (現金盤點與對帳)</b>
                 <button onclick="clearAccountingInputs()">清空盤點數據</button>
             </div>
+            
             <div class="accounting-container">
-                <div class="accounting-grid">
-                    <div class="money-input-group">
-                        <label>1000 元</label>
-                        <input type="number" class="money-count" data-val="1000" min="0" placeholder="張數">
+                <div class="accounting-split-wrapper">
+                    <div class="accounting-col">
+                        <h4>1. 現有現金盤點</h4>
+                        <div class="money-input-group"><label>1000 元</label><input type="number" class="acct-count current" data-val="1000" min="0"></div>
+                        <div class="money-input-group"><label>500 元</label><input type="number" class="acct-count current" data-val="500" min="0"></div>
+                        <div class="money-input-group"><label>100 元</label><input type="number" class="acct-count current" data-val="100" min="0"></div>
+                        <div class="money-input-group"><label>50 元</label><input type="number" class="acct-count current" data-val="50" min="0"></div>
+                        <div class="money-input-group"><label>10 元</label><input type="number" class="acct-count current" data-val="10" min="0"></div>
+                        <div class="money-input-group"><label>5 元</label><input type="number" class="acct-count current" data-val="5" min="0"></div>
+                        <div class="money-input-group"><label>1 元</label><input type="number" class="acct-count current" data-val="1" min="0"></div>
                     </div>
-                    <div class="money-input-group">
-                        <label>500 元</label>
-                        <input type="number" class="money-count" data-val="500" min="0" placeholder="張數">
+
+                    <div class="accounting-col initial-col">
+                        <h4>2. 初始金額設定 (可修改)</h4>
+                        <div class="money-input-group"><label>1000 元</label><input type="number" class="acct-count initial" data-val="1000" min="0" value="1"></div>
+                        <div class="money-input-group"><label>500 元</label><input type="number" class="acct-count initial" data-val="500" min="0" value="10"></div>
+                        <div class="money-input-group"><label>100 元</label><input type="number" class="acct-count initial" data-val="100" min="0" value="30"></div>
+                        <div class="money-input-group"><label>50 元</label><input type="number" class="acct-count initial" data-val="50" min="0" value="20"></div>
+                        <div class="money-input-group"><label>10 元</label><input type="number" class="acct-count initial" data-val="10" min="0" value="64"></div>
+                        <div class="money-input-group"><label>5 元</label><input type="number" class="acct-count initial" data-val="5" min="0" value="62"></div>
+                        <div class="money-input-group"><label>1 元</label><input type="number" class="acct-count initial" data-val="1" min="0" value="50"></div>
                     </div>
-                    <div class="money-input-group">
-                        <label>100 元</label>
-                        <input type="number" class="money-count" data-val="100" min="0" placeholder="張數">
-                    </div>
-                    <div class="money-input-group">
-                        <label>50 元</label>
-                        <input type="number" class="money-count" data-val="50" min="0" placeholder="個數">
-                    </div>
-                    <div class="money-input-group">
-                        <label>10 元</label>
-                        <input type="number" class="money-count" data-val="10" min="0" placeholder="個數">
-                    </div>
-                    <div class="money-input-group">
-                        <label>5 元</label>
-                        <input type="number" class="money-count" data-val="5" min="0" placeholder="個數">
-                    </div>
-                    <div class="money-input-group">
-                        <label>1 元</label>
-                        <input type="number" class="money-count" data-val="1" min="0" placeholder="個數">
-                    </div>
-                    <div class="money-input-group" style="background-color: #e0f7fa;">
-                        <label>初始備用金</label>
-                        <input type="number" id="initial-cash" value="11000" min="0">
-                    </div>
-                    <div class="money-input-group" style="background-color: #ffebee;">
-                        <label>支出(加油/餐費)</label>
-                        <input type="number" id="expenses-cash" value="0" min="0">
-                    </div>
+                </div>
+
+                <div style="margin-top: 15px; padding: 10px; background-color: #ffebee; border-radius: 4px; border: 1px solid #ffcccb;">
+                    <label style="font-weight:bold;">(-) 額外支出 (加油/餐費憑證)：</label>
+                    <input type="number" id="expenses-cash" value="0" min="0" style="width: 100px; padding: 5px;">
                 </div>
                 
                 <div class="acct-summary">
                     <div class="acct-row">
-                        <span>盤點現金總額 (張數x幣值)：</span>
+                        <span>盤點現金總額：</span>
                         <span id="calc-drawer-total">0</span>
                     </div>
-                    <div class="acct-row">
-                        <span>(-) 初始備用金：</span>
+                    <div class="acct-row" style="color: #666;">
+                        <span>(-) 初始金額總計：</span>
                         <span id="calc-initial">0</span>
                     </div>
-                     <div class="acct-row">
+                     <div class="acct-row" style="color: #666;">
                         <span>(+) 支出費用憑證：</span>
                         <span id="calc-expenses">0</span>
                     </div>
@@ -596,6 +663,19 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="payment-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">選擇新的付款方式</h3>
+            <div class="modal-btn-grid">
+                <button class="modal-btn btn-m-cash" onclick="selectPaymentMethod('現金')">現金</button>
+                <button class="modal-btn btn-m-card" onclick="selectPaymentMethod('信用卡')">信用卡</button>
+                <button class="modal-btn btn-m-line" onclick="selectPaymentMethod('LINE PAY')">LINE PAY</button>
+                <button class="modal-btn btn-m-culture" onclick="selectPaymentMethod('文化幣')">文化幣</button>
+            </div>
+            <button class="modal-btn btn-m-cancel" onclick="closePaymentModal()">取消</button>
         </div>
     </div>
 
@@ -635,8 +715,6 @@
             const notesElement = document.getElementById('notes');
 
             // 記帳模式元素
-            const moneyInputs = document.querySelectorAll('.money-count');
-            const initialCashInput = document.getElementById('initial-cash');
             const expensesCashInput = document.getElementById('expenses-cash');
             const calcDrawerTotalEl = document.getElementById('calc-drawer-total');
             const calcInitialEl = document.getElementById('calc-initial');
@@ -655,14 +733,13 @@
             let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
             let hasShownEmptyCartAlert = false;
             let sessionRules = JSON.parse(localStorage.getItem('sessionRules')) || {};
-
-            // [NEW] 單品價格記憶 (Session Price Overrides)
-            // 當用戶手動改價後，該商品代碼的價格會被記錄，下次加入時優先使用
             let priceOverrides = JSON.parse(localStorage.getItem('priceOverrides')) || {};
-
-            // [NEW] 閒置計時器變數
             let idleTimer = null;
-            const IDLE_TIMEOUT_MS = 30000; // 30秒
+            const IDLE_TIMEOUT_MS = 30000; 
+
+            // Modal 相關變數
+            let editingClientId = null;
+            const paymentModal = document.getElementById('payment-modal');
 
             // --- 音效控制器 ---
             const POSAudio = {
@@ -698,11 +775,23 @@
             });
 
             // 記帳輸入框初始化
-            initialCashInput.value = localStorage.getItem('acctInitial') || '11000';
             expensesCashInput.value = localStorage.getItem('acctExpenses') || '0';
-            moneyInputs.forEach(input => {
-                const saved = localStorage.getItem(`acctMoney_${input.dataset.val}`);
-                if(saved) input.value = saved;
+            
+            document.querySelectorAll('.acct-count').forEach(input => {
+                const key = `acct_${input.classList.contains('current')?'cur':'init'}_${input.dataset.val}`;
+                const saved = localStorage.getItem(key);
+                if(saved !== null) {
+                    input.value = saved;
+                }
+                
+                input.addEventListener('input', () => {
+                    updateAccountingCalc();
+                    localStorage.setItem(key, input.value);
+                });
+            });
+            expensesCashInput.addEventListener('input', () => {
+                updateAccountingCalc();
+                localStorage.setItem('acctExpenses', expensesCashInput.value);
             });
 
             const generateClientId = () => {
@@ -767,18 +856,14 @@
                 }
             };
 
-            // --- 核心折扣與價格邏輯 ---
             const calculateItemDiscount = (item) => {
                 if (item.isManual) return item.discount;
                 if (item.class && sessionRules[item.class] !== undefined) return sessionRules[item.class];
                 return item.defaultDiscount || 100;
             };
 
-            // --- 購物車與 UI ---
             const addProductToCart = (code) => {
-                // 重置閒置計時器
                 resetIdleTimer();
-
                 const product = products[code];
                 const existingItem = cart.find(item => item.code === code);
                 
@@ -787,7 +872,6 @@
                     if (!existingItem.isManual) {
                         existingItem.discount = calculateItemDiscount(existingItem);
                     }
-                    // [NEW] 檢查是否有價格覆寫，若有則強制應用
                     if (priceOverrides[code] !== undefined) {
                         existingItem.price = priceOverrides[code];
                     }
@@ -798,11 +882,9 @@
                         isManual: false,
                         discount: 0 
                     };
-                    // [NEW] 應用已記憶的價格
                     if (priceOverrides[code] !== undefined) {
                         newItem.price = priceOverrides[code];
                     }
-
                     newItem.discount = calculateItemDiscount(newItem);
                     cart.push(newItem);
                 }
@@ -814,11 +896,9 @@
                 productCodeInput.value = ''; 
             };
 
-            // [NEW] 閒置計時器邏輯
             const resetIdleTimer = () => {
                 if (idleTimer) clearTimeout(idleTimer);
                 checkoutBtns.forEach(btn => btn.classList.remove('btn-alert'));
-                
                 if (cart.length > 0) {
                     idleTimer = setTimeout(() => {
                         checkoutBtns.forEach(btn => btn.classList.add('btn-alert'));
@@ -840,7 +920,6 @@
                         statusTitle = `套用分類規則 (${item.class})`;
                     }
 
-                    // 檢查價格是否被覆寫，標示樣式
                     const priceStyle = priceOverrides[item.code] !== undefined ? 'border: 2px solid #8A6739; background-color:#fff8dc;' : '';
 
                     row.innerHTML = `
@@ -862,7 +941,7 @@
                 });
 
                 attachCartEventListeners();
-                resetIdleTimer(); // 每次刷新都重置
+                resetIdleTimer();
             };
 
             const attachCartEventListeners = () => {
@@ -874,7 +953,6 @@
                     };
                 };
 
-                // 數量監聽
                 document.querySelectorAll('.quantity-input').forEach(input => {
                     input.addEventListener('input', debounce((e) => {
                         resetIdleTimer();
@@ -892,7 +970,6 @@
                     }, 500));
                 });
 
-                // 單價監聽 [NEW] 增加價格記憶邏輯
                 document.querySelectorAll('.price-input').forEach(input => {
                     input.addEventListener('input', debounce((e) => {
                         resetIdleTimer();
@@ -902,10 +979,8 @@
                             const item = cart.find(item => item.code === code);
                             if (item) {
                                 item.price = newPrice;
-                                // [NEW] 記錄價格到覆寫表
                                 priceOverrides[code] = newPrice;
                                 localStorage.setItem('priceOverrides', JSON.stringify(priceOverrides));
-                                
                                 calculateTotal();
                                 updateCartDisplay();
                                 saveCart();
@@ -914,7 +989,6 @@
                     }, 500));
                 });
 
-                // 折扣監聽
                 document.querySelectorAll('.discount-input').forEach(input => {
                     input.addEventListener('input', (e) => {
                         resetIdleTimer();
@@ -937,7 +1011,6 @@
                     });
                 });
 
-                // 同步框監聽
                 document.querySelectorAll('.sync-check').forEach(checkbox => {
                     checkbox.addEventListener('change', (e) => {
                         if (e.target.checked) {
@@ -993,7 +1066,6 @@
                 localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
             };
 
-            // --- 混合支付與結帳 ---
             const handleCulturalCoinCheckout = () => {
                 if (cart.length === 0) {
                     if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
@@ -1045,7 +1117,7 @@
                     amount: totalAmount,
                     paymentMethod: paymentMethod, 
                     items: JSON.parse(JSON.stringify(cart)),
-                    isValid: true // [NEW] 預設為有效訂單
+                    isValid: true
                 };
 
                 cart.forEach(item => {
@@ -1056,10 +1128,6 @@
                     overallSummary[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);
                 });
 
-                // [NEW] 結帳完成，清空價格覆寫記憶 (符合"除非刪除整筆訂單就重來"的邏輯，這裡指單次交易結束歸零)
-                // 根據您的需求："輸入在其中之後，就會往後價格都會跟著這價格，除非刪除整筆訂單就重來"
-                // 這裡我們選擇在「結帳後」清除，或者您可以選擇不清除(跨訂單記憶)。
-                // 依照通俗POS邏輯，結帳後通常會重置臨時改價。若您希望跨訂單保留，請註解掉下面這行：
                 priceOverrides = {}; 
                 localStorage.setItem('priceOverrides', JSON.stringify(priceOverrides));
 
@@ -1091,7 +1159,6 @@
                 }
             });
 
-            // --- 搜尋與輸入 ---
             const parseProductInput = (input) => {
                 const pattern = /^(\d+)\*([\w-]+)$/;
                 const match = input.match(pattern);
@@ -1188,11 +1255,10 @@
                 }
             });
 
-            // --- 統計與匯出 ---
             const calculatePaymentStats = () => {
                 let stats = { cash: 0, credit: 0, linepay: 0, culture: 0 };
                 Object.values(clients).forEach(client => {
-                    if(!client.isValid) return; // 跳過作廢訂單
+                    if(!client.isValid) return; 
 
                     const method = client.paymentMethod || '現金';
                     if (method === '信用卡') stats.credit += client.amount;
@@ -1212,19 +1278,15 @@
                 summaryTableBody.innerHTML = '';
                 overallSummaryTableBody.innerHTML = '';
 
-                // 重建 Overall Summary (因為可能會有作廢操作，需動態重算)
                 let tempOverall = {};
                 
-                // 排序並顯示客戶訂單
                 Object.values(clients).sort((a,b) => b.id.localeCompare(a.id)).forEach(client => {
                     const row = document.createElement('tr');
                     const method = client.paymentMethod || '現金';
                     
-                    // 若已作廢，添加樣式
                     if(!client.isValid) {
                         row.classList.add('void-order');
                     } else {
-                        // 只有有效訂單才加入總覽統計
                         client.items.forEach(item => {
                             if (!tempOverall[item.code]) tempOverall[item.code] = { code: item.code, name: item.name, totalQuantity: 0, totalAmount: 0 };
                             tempOverall[item.code].totalQuantity += item.quantity;
@@ -1246,7 +1308,6 @@
                     summaryTableBody.appendChild(row);
                 });
 
-                // 更新總覽表
                 const sortedSummary = Object.values(tempOverall).sort((a, b) => a.code.localeCompare(b.code));
                 sortedSummary.forEach(item => {
                     const row = document.createElement('tr');
@@ -1262,7 +1323,6 @@
                 const overallTotalAmount = sortedSummary.reduce((sum, item) => sum + item.totalAmount, 0);
                 overallTotalAmountElement.textContent = Math.round(overallTotalAmount);
 
-                // 計算有效訂單數
                 const validOrders = Object.values(clients).filter(c => c.isValid).length;
                 const averageOrderAmount = validOrders > 0 ? Math.round(overallTotalAmount / validOrders) : 0;
                 totalOrdersElement.textContent = validOrders;
@@ -1276,44 +1336,25 @@
                     <div class="stat-item">文化幣: <b>${stats.culture}</b></div>
                 `;
 
-                // 更新記帳模式中的系統現金
                 sysCashTotalEl.textContent = stats.cash;
-                updateAccountingCalc(); // 重新計算差異
+                updateAccountingCalc(); 
 
                 attachHistoryEvents();
             };
 
             const attachHistoryEvents = () => {
-                // 修改付款方式
+                // 修改付款方式 (開啟 Modal)
                 document.querySelectorAll('.btn-change-pay').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const clientId = e.target.dataset.clientId;
                         const client = clients[clientId];
                         if(!client.isValid) return alert("已作廢訂單無法修改");
 
-                        const newMethod = prompt("請輸入新付款方式 (1:現金, 2:刷卡, 3:LINE PAY, 4:文化幣)", "1");
-                        if(!newMethod) return;
-
-                        let finalMethod = client.paymentMethod;
-                        if(newMethod === '1' || newMethod === '現金') finalMethod = '現金';
-                        else if(newMethod === '2' || newMethod === '信用卡') finalMethod = '信用卡';
-                        else if(newMethod === '3' || newMethod === 'LINE PAY') finalMethod = 'LINE PAY';
-                        else if(newMethod === '4' || newMethod === '文化幣') {
-                            const coinAmt = prompt("請輸入文化幣金額 (剩餘為現金)", client.amount);
-                            if(coinAmt && !isNaN(coinAmt)) {
-                                const c = parseInt(coinAmt);
-                                const cash = client.amount - c;
-                                finalMethod = `文化幣(${c}) + 現金(${cash})`;
-                            }
-                        }
-                        
-                        clients[clientId].paymentMethod = finalMethod;
-                        saveSummary();
-                        updateSummaryTable();
+                        // 開啟 Modal
+                        openPaymentModal(clientId);
                     });
                 });
 
-                // 作廢/復原
                 document.querySelectorAll('.btn-void').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const clientId = e.target.dataset.clientId;
@@ -1323,7 +1364,6 @@
                     });
                 });
 
-                // 刪除 (JSON刪除)
                 document.querySelectorAll('.btn-del').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const clientId = e.target.dataset.clientId;
@@ -1344,6 +1384,46 @@
                 });
             };
 
+            // --- 新增：Modal 控制邏輯 ---
+            window.openPaymentModal = (clientId) => {
+                editingClientId = clientId;
+                paymentModal.style.display = 'flex';
+            };
+
+            window.closePaymentModal = () => {
+                editingClientId = null;
+                paymentModal.style.display = 'none';
+            };
+
+            window.selectPaymentMethod = (methodType) => {
+                if (!editingClientId) return;
+                const client = clients[editingClientId];
+                let finalMethod = methodType;
+
+                if (methodType === '文化幣') {
+                    // 這裡仍保留 prompt 是因為需要輸入金額，這部分無法省略
+                    // 但使用者已經先點擊了按鈕，所以體驗比之前好
+                    const coinAmt = prompt(`目前總金額 ${client.amount}，請輸入文化幣金額 (剩餘轉為現金)：`, client.amount);
+                    
+                    if (coinAmt && !isNaN(coinAmt)) {
+                        const c = parseInt(coinAmt);
+                        if (c < 0 || c > client.amount) {
+                             alert("金額輸入錯誤");
+                             return;
+                        }
+                        const cash = client.amount - c;
+                        finalMethod = `文化幣(${c}) + 現金(${cash})`;
+                    } else {
+                        return; // 取消或輸入錯誤，不關閉視窗
+                    }
+                }
+
+                clients[editingClientId].paymentMethod = finalMethod;
+                saveSummary();
+                updateSummaryTable();
+                closePaymentModal();
+            };
+
             const showClientDetails = (clientId) => {
                 const client = clients[clientId];
                 if (client) {
@@ -1355,46 +1435,37 @@
 
             // --- 記帳模式邏輯 ---
             window.clearAccountingInputs = () => {
-                moneyInputs.forEach(input => input.value = '');
+                document.querySelectorAll('.acct-count.current').forEach(input => {
+                    input.value = '';
+                    localStorage.removeItem(`acct_cur_${input.dataset.val}`);
+                });
                 updateAccountingCalc();
-                localStorage.removeItem('acctInitial');
-                localStorage.removeItem('acctExpenses');
-                // 清除 moneyInputs localStorage
-                moneyInputs.forEach(input => localStorage.removeItem(`acctMoney_${input.dataset.val}`));
             };
 
             const updateAccountingCalc = () => {
                 let drawerTotal = 0;
-                let formulaStr = "";
+                let initialTotal = 0;
 
-                moneyInputs.forEach(input => {
+                // 左欄: 現有盤點
+                document.querySelectorAll('.acct-count.current').forEach(input => {
                     const val = parseInt(input.dataset.val);
                     const count = parseInt(input.value) || 0;
-                    if(count > 0) {
-                        drawerTotal += val * count;
-                        formulaStr += `${val}*${count}+`;
-                    }
-                    // 儲存
-                    localStorage.setItem(`acctMoney_${val}`, input.value);
+                    drawerTotal += val * count;
                 });
 
-                const initial = parseInt(initialCashInput.value) || 0;
+                // 右欄: 初始金額
+                document.querySelectorAll('.acct-count.initial').forEach(input => {
+                    const val = parseInt(input.dataset.val);
+                    const count = parseInt(input.value) || 0;
+                    initialTotal += val * count;
+                });
+
                 const expenses = parseInt(expensesCashInput.value) || 0;
-
-                localStorage.setItem('acctInitial', initial);
-                localStorage.setItem('acctExpenses', expenses);
-
-                const netCash = drawerTotal - initial + expenses; 
-                // 公式：盤點總額 - 初始備用金 + 支出單據 = 應該收到的營收現金
-                // (因為支出單據是把錢拿走了，所以盤點會少，要加回來才能跟系統營收比對)
-                // 修正邏輯：
-                // 假設系統說營收 1000。
-                // 錢櫃應該有：1000 + 初始(11000) - 支出(100) = 11900。
-                // 盤點到：11900。
-                // 實際營收 = 盤點(11900) - 初始(11000) + 支出(100) = 1000。 正確。
-
+                const netCash = drawerTotal - initialTotal + expenses; 
+                
+                // 更新顯示
                 calcDrawerTotalEl.textContent = drawerTotal;
-                calcInitialEl.textContent = initial;
+                calcInitialEl.textContent = initialTotal;
                 calcExpensesEl.textContent = expenses;
                 calcNetCashEl.textContent = netCash;
 
@@ -1410,10 +1481,6 @@
                     cashDiffRow.style.backgroundColor = '#ffebee';
                 }
             };
-
-            moneyInputs.forEach(input => input.addEventListener('input', updateAccountingCalc));
-            initialCashInput.addEventListener('input', updateAccountingCalc);
-            expensesCashInput.addEventListener('input', updateAccountingCalc);
 
             // 備份
             backupBtn.addEventListener('click', () => {
@@ -1454,7 +1521,6 @@
                         if (data.clients) {
                             localStorage.setItem('cart', JSON.stringify(data.cart || []));
                             localStorage.setItem('clients', JSON.stringify(data.clients || {}));
-                            // overallSummary 改由前端動態重算，保持一致性
                             localStorage.setItem('overallSummary', JSON.stringify({})); 
                             localStorage.setItem('clientCounter', JSON.stringify(data.clientCounter || 1));
                             localStorage.setItem('sessionRules', JSON.stringify(data.sessionRules || {}));
