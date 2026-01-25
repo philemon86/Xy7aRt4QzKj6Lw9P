@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>腓利門雲POS - 記帳與價格管理增強版</title>
+    <title>腓利門雲POS</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         body {
@@ -16,7 +16,7 @@
             justify-content: flex-start;
             min-height: 100vh;
             background-color: #F5F5DC;
-            padding-bottom: 50px;
+            padding-bottom: 50px; /* 預留底部空間 */
         }
 
         /* 父級容器 */
@@ -41,6 +41,7 @@
             position: relative;
         }
 
+        /* 全寬容器用於記帳模式 */
         .container-full {
             background-color: #fff;
             padding: 20px;
@@ -74,8 +75,8 @@
             margin-left: 5px;
         }
         
-        /* 危險操作按鈕 */
-        #btn-delete-menu { background-color: #a94442; }
+        /* 特別標示危險操作 */
+        #clear-all-btn { background-color: #a94442; }
 
         .form-group input, .notes-container textarea {
             width: calc(100% - 20px);
@@ -119,6 +120,11 @@
             width: 100%;
         }
 
+        .payment-info > span, .payment-details > span {
+            color: #8B4513;
+            font-weight: bold;
+        }
+
         .payment-info input#paid-amount {
             max-width: 100px;
             padding: 5px;
@@ -126,7 +132,7 @@
             text-align: right;
         }
 
-        /* 底部四個結帳按鈕 */
+        /* 底部四個結帳按鈕的樣式 */
         .checkout-buttons-area {
             display: flex;
             justify-content: space-between;
@@ -178,7 +184,7 @@
         /* 30秒提醒動畫 */
         .btn-alert {
             animation: heartBeat 1s infinite;
-            background-color: #ff8c00 !important;
+            background-color: #ff8c00 !important; /* 深橘色提醒 */
             transform: scale(1.1);
             z-index: 10;
         }
@@ -213,7 +219,7 @@
 
         .bottom-total {
             border-radius: 8px;
-            margin-top: 10px;
+            margin-top: 10px; /* 調整間距 */
         }
 
         td input[type="number"] {
@@ -351,29 +357,6 @@
             color: #a94442;
         }
 
-        /* 支出項目列表 */
-        #expense-list {
-            margin-top: 5px;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .expense-row {
-            display: flex;
-            gap: 5px;
-            align-items: center;
-        }
-
-        .expense-row input[type="text"] { flex: 2; font-size: 0.9em; padding: 5px; }
-        .expense-row input[type="number"] { flex: 1; font-size: 0.9em; padding: 5px; text-align: right; }
-        .expense-row button { 
-            background-color: #a94442; 
-            padding: 5px 10px; 
-            font-size: 0.8em;
-            height: 30px;
-        }
-
         /* 修改單付款方式按鈕樣式 */
         .btn-change-pay {
             background-color: #fff;
@@ -394,6 +377,9 @@
             text-decoration: line-through;
             color: #999 !important;
             background-color: #f0f0f0;
+        }
+        .void-order span, .void-order a, .void-order button {
+            opacity: 0.6;
         }
         
         .btn-action-group button {
@@ -424,7 +410,7 @@
                     <button id="backup-btn" style="background-color: #4682B4;">備份資料</button>
                     <button id="restore-btn" style="background-color: #20B2AA;">還原資料</button>
                     <button id="export-csv-btn">匯出 CSV</button>
-                    <button id="btn-delete-menu">刪除資料</button>
+                    <button id="clear-all-btn">刪除全部</button>
                 </div>
             </div>
             <div class="form-group">
@@ -490,7 +476,7 @@
     <div class="flex-container">
         <div class="container-half">
             <div class="table-title">
-                單筆消費明細 <br>
+                單筆消費明細 (作廢/刪除/修改付款) <br>
                 統計訂單總數: <span id="total-orders">0</span> | 平均消費: <span id="average-amount">0</span> 元
                 <div id="payment-stats" class="stats-info">
                 </div>
@@ -576,12 +562,10 @@
                     <div class="money-input-group" style="background-color: #e0f7fa;">
                         <label>初始備用金</label>
                         <input type="number" id="initial-cash" value="11000" min="0">
-                        <small style="font-size: 0.7em; color: #666; margin-top:2px;">(預設: 1x50+5x32+10x64+50x20+100x30+500x10+1000x1)</small>
                     </div>
-                    <div class="money-input-group" style="background-color: #ffebee; grid-column: span 2;">
-                        <label>支出/費用 (加油、餐費等)</label>
-                        <div id="expense-list"></div>
-                        <button onclick="addExpenseRow()" style="margin-top: 5px; background-color: #555; font-size: 0.8em; padding: 5px;">+ 新增支出項目</button>
+                    <div class="money-input-group" style="background-color: #ffebee;">
+                        <label>支出(加油/餐費)</label>
+                        <input type="number" id="expenses-cash" value="0" min="0">
                     </div>
                 </div>
                 
@@ -595,7 +579,7 @@
                         <span id="calc-initial">0</span>
                     </div>
                      <div class="acct-row">
-                        <span>(+) 支出費用憑證 (相抵)：</span>
+                        <span>(+) 支出費用憑證：</span>
                         <span id="calc-expenses">0</span>
                     </div>
                     <hr>
@@ -640,7 +624,7 @@
             const checkoutBtns = [btnF7, btnF8, btnF9, btnF10];
             
             const exportCsvBtn = document.getElementById('export-csv-btn');
-            const btnDeleteMenu = document.getElementById('btn-delete-menu');
+            const clearAllBtn = document.getElementById('clear-all-btn');
             const backupBtn = document.getElementById('backup-btn');
             const restoreBtn = document.getElementById('restore-btn');
             const importFileInput = document.getElementById('import-file');
@@ -653,7 +637,7 @@
             // 記帳模式元素
             const moneyInputs = document.querySelectorAll('.money-count');
             const initialCashInput = document.getElementById('initial-cash');
-            const expenseList = document.getElementById('expense-list');
+            const expensesCashInput = document.getElementById('expenses-cash');
             const calcDrawerTotalEl = document.getElementById('calc-drawer-total');
             const calcInitialEl = document.getElementById('calc-initial');
             const calcExpensesEl = document.getElementById('calc-expenses');
@@ -671,10 +655,14 @@
             let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
             let hasShownEmptyCartAlert = false;
             let sessionRules = JSON.parse(localStorage.getItem('sessionRules')) || {};
+
+            // [NEW] 單品價格記憶 (Session Price Overrides)
+            // 當用戶手動改價後，該商品代碼的價格會被記錄，下次加入時優先使用
             let priceOverrides = JSON.parse(localStorage.getItem('priceOverrides')) || {};
 
+            // [NEW] 閒置計時器變數
             let idleTimer = null;
-            const IDLE_TIMEOUT_MS = 30000; 
+            const IDLE_TIMEOUT_MS = 30000; // 30秒
 
             // --- 音效控制器 ---
             const POSAudio = {
@@ -709,37 +697,9 @@
                 localStorage.setItem('notes', notesElement.value);
             });
 
-            // 記帳初始值 (11000)
-            if(!localStorage.getItem('acctInitial')) {
-                initialCashInput.value = '11000';
-            } else {
-                initialCashInput.value = localStorage.getItem('acctInitial');
-            }
-            
-            // 載入支出項目
-            const savedExpenses = JSON.parse(localStorage.getItem('acctExpensesList')) || [];
-            
-            window.addExpenseRow = (name = '', amount = '') => {
-                const row = document.createElement('div');
-                row.className = 'expense-row';
-                row.innerHTML = `
-                    <input type="text" placeholder="品項 (如:餐費)" value="${name}" class="exp-name">
-                    <input type="number" placeholder="金額" value="${amount}" class="exp-amount" min="0">
-                    <button onclick="this.parentElement.remove(); updateAccountingCalc();">X</button>
-                `;
-                expenseList.appendChild(row);
-                
-                row.querySelector('.exp-amount').addEventListener('input', updateAccountingCalc);
-                row.querySelector('.exp-name').addEventListener('input', updateAccountingCalc);
-            };
-
-            if(savedExpenses.length > 0) {
-                savedExpenses.forEach(ex => addExpenseRow(ex.name, ex.amount));
-            } else {
-                // 預設給一行空的
-                addExpenseRow();
-            }
-
+            // 記帳輸入框初始化
+            initialCashInput.value = localStorage.getItem('acctInitial') || '11000';
+            expensesCashInput.value = localStorage.getItem('acctExpenses') || '0';
             moneyInputs.forEach(input => {
                 const saved = localStorage.getItem(`acctMoney_${input.dataset.val}`);
                 if(saved) input.value = saved;
@@ -807,14 +767,18 @@
                 }
             };
 
+            // --- 核心折扣與價格邏輯 ---
             const calculateItemDiscount = (item) => {
                 if (item.isManual) return item.discount;
                 if (item.class && sessionRules[item.class] !== undefined) return sessionRules[item.class];
                 return item.defaultDiscount || 100;
             };
 
+            // --- 購物車與 UI ---
             const addProductToCart = (code) => {
+                // 重置閒置計時器
                 resetIdleTimer();
+
                 const product = products[code];
                 const existingItem = cart.find(item => item.code === code);
                 
@@ -823,6 +787,7 @@
                     if (!existingItem.isManual) {
                         existingItem.discount = calculateItemDiscount(existingItem);
                     }
+                    // [NEW] 檢查是否有價格覆寫，若有則強制應用
                     if (priceOverrides[code] !== undefined) {
                         existingItem.price = priceOverrides[code];
                     }
@@ -833,6 +798,7 @@
                         isManual: false,
                         discount: 0 
                     };
+                    // [NEW] 應用已記憶的價格
                     if (priceOverrides[code] !== undefined) {
                         newItem.price = priceOverrides[code];
                     }
@@ -848,6 +814,7 @@
                 productCodeInput.value = ''; 
             };
 
+            // [NEW] 閒置計時器邏輯
             const resetIdleTimer = () => {
                 if (idleTimer) clearTimeout(idleTimer);
                 checkoutBtns.forEach(btn => btn.classList.remove('btn-alert'));
@@ -873,6 +840,7 @@
                         statusTitle = `套用分類規則 (${item.class})`;
                     }
 
+                    // 檢查價格是否被覆寫，標示樣式
                     const priceStyle = priceOverrides[item.code] !== undefined ? 'border: 2px solid #8A6739; background-color:#fff8dc;' : '';
 
                     row.innerHTML = `
@@ -894,7 +862,7 @@
                 });
 
                 attachCartEventListeners();
-                resetIdleTimer();
+                resetIdleTimer(); // 每次刷新都重置
             };
 
             const attachCartEventListeners = () => {
@@ -924,9 +892,8 @@
                     }, 500));
                 });
 
-                // 單價監聽 (改為 change 事件觸發確認視窗)
+                // 單價監聽 [NEW] 增加價格記憶邏輯
                 document.querySelectorAll('.price-input').forEach(input => {
-                    // 輸入時即時更新計算，但不跳視窗
                     input.addEventListener('input', debounce((e) => {
                         resetIdleTimer();
                         const code = e.target.dataset.code;
@@ -935,31 +902,16 @@
                             const item = cart.find(item => item.code === code);
                             if (item) {
                                 item.price = newPrice;
-                                calculateTotal();
-                                saveCart();
-                            }
-                        }
-                    }, 300));
-
-                    // [FEATURE] 離開焦點或按 Enter 時觸發確認
-                    input.addEventListener('change', (e) => {
-                        const code = e.target.dataset.code;
-                        const newPrice = parseFloat(e.target.value);
-                        const product = products[code];
-                        
-                        // 只有當價格跟原始價格不同，且尚未設定過 override (或與舊override不同) 才詢問
-                        if (product && newPrice !== product.price) {
-                            if (confirm(`偵測到 [${product.name}] 價格變更為 ${newPrice}。\n\n是否將此價格設為「未來加入購物車」的預設價格？`)) {
+                                // [NEW] 記錄價格到覆寫表
                                 priceOverrides[code] = newPrice;
                                 localStorage.setItem('priceOverrides', JSON.stringify(priceOverrides));
                                 
-                                // 加上視覺標示
-                                e.target.style.border = '2px solid #8A6739';
-                                e.target.style.backgroundColor = '#fff8dc';
+                                calculateTotal();
+                                updateCartDisplay();
+                                saveCart();
                             }
                         }
-                        updateCartDisplay(); // 重繪以確保樣式正確
-                    });
+                    }, 500));
                 });
 
                 // 折扣監聽
@@ -985,6 +937,7 @@
                     });
                 });
 
+                // 同步框監聽
                 document.querySelectorAll('.sync-check').forEach(checkbox => {
                     checkbox.addEventListener('change', (e) => {
                         if (e.target.checked) {
@@ -1040,7 +993,7 @@
                 localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
             };
 
-            // --- 支付與結帳 ---
+            // --- 混合支付與結帳 ---
             const handleCulturalCoinCheckout = () => {
                 if (cart.length === 0) {
                     if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
@@ -1092,7 +1045,7 @@
                     amount: totalAmount,
                     paymentMethod: paymentMethod, 
                     items: JSON.parse(JSON.stringify(cart)),
-                    isValid: true
+                    isValid: true // [NEW] 預設為有效訂單
                 };
 
                 cart.forEach(item => {
@@ -1103,7 +1056,10 @@
                     overallSummary[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);
                 });
 
-                // 結帳後清除本次暫存改價 (依需求可保留，這裡暫定清除)
+                // [NEW] 結帳完成，清空價格覆寫記憶 (符合"除非刪除整筆訂單就重來"的邏輯，這裡指單次交易結束歸零)
+                // 根據您的需求："輸入在其中之後，就會往後價格都會跟著這價格，除非刪除整筆訂單就重來"
+                // 這裡我們選擇在「結帳後」清除，或者您可以選擇不清除(跨訂單記憶)。
+                // 依照通俗POS邏輯，結帳後通常會重置臨時改價。若您希望跨訂單保留，請註解掉下面這行：
                 priceOverrides = {}; 
                 localStorage.setItem('priceOverrides', JSON.stringify(priceOverrides));
 
@@ -1236,7 +1192,7 @@
             const calculatePaymentStats = () => {
                 let stats = { cash: 0, credit: 0, linepay: 0, culture: 0 };
                 Object.values(clients).forEach(client => {
-                    if(!client.isValid) return; 
+                    if(!client.isValid) return; // 跳過作廢訂單
 
                     const method = client.paymentMethod || '現金';
                     if (method === '信用卡') stats.credit += client.amount;
@@ -1256,15 +1212,19 @@
                 summaryTableBody.innerHTML = '';
                 overallSummaryTableBody.innerHTML = '';
 
+                // 重建 Overall Summary (因為可能會有作廢操作，需動態重算)
                 let tempOverall = {};
                 
+                // 排序並顯示客戶訂單
                 Object.values(clients).sort((a,b) => b.id.localeCompare(a.id)).forEach(client => {
                     const row = document.createElement('tr');
                     const method = client.paymentMethod || '現金';
                     
+                    // 若已作廢，添加樣式
                     if(!client.isValid) {
                         row.classList.add('void-order');
                     } else {
+                        // 只有有效訂單才加入總覽統計
                         client.items.forEach(item => {
                             if (!tempOverall[item.code]) tempOverall[item.code] = { code: item.code, name: item.name, totalQuantity: 0, totalAmount: 0 };
                             tempOverall[item.code].totalQuantity += item.quantity;
@@ -1286,6 +1246,7 @@
                     summaryTableBody.appendChild(row);
                 });
 
+                // 更新總覽表
                 const sortedSummary = Object.values(tempOverall).sort((a, b) => a.code.localeCompare(b.code));
                 sortedSummary.forEach(item => {
                     const row = document.createElement('tr');
@@ -1301,6 +1262,7 @@
                 const overallTotalAmount = sortedSummary.reduce((sum, item) => sum + item.totalAmount, 0);
                 overallTotalAmountElement.textContent = Math.round(overallTotalAmount);
 
+                // 計算有效訂單數
                 const validOrders = Object.values(clients).filter(c => c.isValid).length;
                 const averageOrderAmount = validOrders > 0 ? Math.round(overallTotalAmount / validOrders) : 0;
                 totalOrdersElement.textContent = validOrders;
@@ -1314,13 +1276,15 @@
                     <div class="stat-item">文化幣: <b>${stats.culture}</b></div>
                 `;
 
+                // 更新記帳模式中的系統現金
                 sysCashTotalEl.textContent = stats.cash;
-                updateAccountingCalc(); 
+                updateAccountingCalc(); // 重新計算差異
 
                 attachHistoryEvents();
             };
 
             const attachHistoryEvents = () => {
+                // 修改付款方式
                 document.querySelectorAll('.btn-change-pay').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const clientId = e.target.dataset.clientId;
@@ -1349,6 +1313,7 @@
                     });
                 });
 
+                // 作廢/復原
                 document.querySelectorAll('.btn-void').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const clientId = e.target.dataset.clientId;
@@ -1358,6 +1323,7 @@
                     });
                 });
 
+                // 刪除 (JSON刪除)
                 document.querySelectorAll('.btn-del').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const clientId = e.target.dataset.clientId;
@@ -1387,48 +1353,49 @@
                 }
             };
 
-            // --- 記帳模式邏輯 (新) ---
+            // --- 記帳模式邏輯 ---
             window.clearAccountingInputs = () => {
                 moneyInputs.forEach(input => input.value = '');
-                // 清空支出
-                expenseList.innerHTML = '';
-                addExpenseRow();
                 updateAccountingCalc();
                 localStorage.removeItem('acctInitial');
-                localStorage.removeItem('acctExpensesList');
+                localStorage.removeItem('acctExpenses');
+                // 清除 moneyInputs localStorage
                 moneyInputs.forEach(input => localStorage.removeItem(`acctMoney_${input.dataset.val}`));
             };
 
-            window.updateAccountingCalc = () => {
+            const updateAccountingCalc = () => {
                 let drawerTotal = 0;
+                let formulaStr = "";
+
                 moneyInputs.forEach(input => {
                     const val = parseInt(input.dataset.val);
                     const count = parseInt(input.value) || 0;
-                    if(count > 0) drawerTotal += val * count;
+                    if(count > 0) {
+                        drawerTotal += val * count;
+                        formulaStr += `${val}*${count}+`;
+                    }
+                    // 儲存
                     localStorage.setItem(`acctMoney_${val}`, input.value);
                 });
 
                 const initial = parseInt(initialCashInput.value) || 0;
-                
-                // 計算動態支出
-                let expensesTotal = 0;
-                const expRows = document.querySelectorAll('.expense-row');
-                const expDataToSave = [];
-                expRows.forEach(row => {
-                    const amt = parseInt(row.querySelector('.exp-amount').value) || 0;
-                    const name = row.querySelector('.exp-name').value;
-                    expensesTotal += amt;
-                    expDataToSave.push({ name, amount: row.querySelector('.exp-amount').value });
-                });
+                const expenses = parseInt(expensesCashInput.value) || 0;
 
                 localStorage.setItem('acctInitial', initial);
-                localStorage.setItem('acctExpensesList', JSON.stringify(expDataToSave));
+                localStorage.setItem('acctExpenses', expenses);
 
-                const netCash = drawerTotal - initial + expensesTotal; 
+                const netCash = drawerTotal - initial + expenses; 
+                // 公式：盤點總額 - 初始備用金 + 支出單據 = 應該收到的營收現金
+                // (因為支出單據是把錢拿走了，所以盤點會少，要加回來才能跟系統營收比對)
+                // 修正邏輯：
+                // 假設系統說營收 1000。
+                // 錢櫃應該有：1000 + 初始(11000) - 支出(100) = 11900。
+                // 盤點到：11900。
+                // 實際營收 = 盤點(11900) - 初始(11000) + 支出(100) = 1000。 正確。
 
                 calcDrawerTotalEl.textContent = drawerTotal;
                 calcInitialEl.textContent = initial;
-                calcExpensesEl.textContent = expensesTotal;
+                calcExpensesEl.textContent = expenses;
                 calcNetCashEl.textContent = netCash;
 
                 const sysCash = parseInt(sysCashTotalEl.textContent) || 0;
@@ -1446,6 +1413,7 @@
 
             moneyInputs.forEach(input => input.addEventListener('input', updateAccountingCalc));
             initialCashInput.addEventListener('input', updateAccountingCalc);
+            expensesCashInput.addEventListener('input', updateAccountingCalc);
 
             // 備份
             backupBtn.addEventListener('click', () => {
@@ -1486,6 +1454,7 @@
                         if (data.clients) {
                             localStorage.setItem('cart', JSON.stringify(data.cart || []));
                             localStorage.setItem('clients', JSON.stringify(data.clients || {}));
+                            // overallSummary 改由前端動態重算，保持一致性
                             localStorage.setItem('overallSummary', JSON.stringify({})); 
                             localStorage.setItem('clientCounter', JSON.stringify(data.clientCounter || 1));
                             localStorage.setItem('sessionRules', JSON.stringify(data.sessionRules || {}));
@@ -1578,30 +1547,12 @@
                 }
             });
 
-            // [NEW] 雙重刪除選項
-            btnDeleteMenu.addEventListener('click', () => {
-                // 建立一個簡單的 Dialog 或者使用 confirm 流程
-                const choice = prompt(
-                    "請選擇刪除模式 (輸入數字)：\n\n" + 
-                    "1. 僅清除「交易紀錄」 (保留商品、設定、備註)\n" + 
-                    "2. 完整重置/Factory Reset (清除所有資料，回復初始狀態)\n\n" +
-                    "取消請按 ESC 或取消"
-                );
-
-                if (choice === '1') {
-                    if (confirm('確定要清空所有訂單紀錄嗎？(無法復原)')) {
-                        // 清空 clients, overallSummary, 重置計數器
-                        clients = {};
-                        overallSummary = {};
-                        clientCounter = 1;
-                        saveSummary();
-                        updateSummaryTable();
-                        alert('交易紀錄已清空。');
-                    }
-                } else if (choice === '2') {
-                    if (confirm('【嚴重警告】這將刪除所有資料包含匯入的商品、設定與交易紀錄。\n確定要執行嗎？')) {
-                        localStorage.clear();
+            clearAllBtn.addEventListener('click', () => {
+                if (confirm('確定要刪除全部訂單？此操作無法撤銷。')) {
+                    if (confirm('再次確認，確定要刪除全部訂單嗎？')) {
+                        localStorage.clear(); 
                         location.reload();
+                        alert('已成功刪除全部訂單。');
                     }
                 }
             });
