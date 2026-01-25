@@ -620,7 +620,7 @@
                     </div>
 
                     <div class="accounting-col initial-col">
-                        <h4>2. 初始金額設定 (可修改)</h4>
+                        <h4>2. 初始金額設定 (固定 11,000)</h4>
                         <div class="money-input-group"><label>1000 元</label><input type="number" class="acct-count initial" data-val="1000" min="0" value="1"></div>
                         <div class="money-input-group"><label>500 元</label><input type="number" class="acct-count initial" data-val="500" min="0" value="10"></div>
                         <div class="money-input-group"><label>100 元</label><input type="number" class="acct-count initial" data-val="100" min="0" value="30"></div>
@@ -780,6 +780,8 @@
             document.querySelectorAll('.acct-count').forEach(input => {
                 const key = `acct_${input.classList.contains('current')?'cur':'init'}_${input.dataset.val}`;
                 const saved = localStorage.getItem(key);
+                
+                // 修正：如果本地存儲有值則加載，否則保留 HTML 預設值
                 if(saved !== null) {
                     input.value = saved;
                 }
@@ -1401,8 +1403,6 @@
                 let finalMethod = methodType;
 
                 if (methodType === '文化幣') {
-                    // 這裡仍保留 prompt 是因為需要輸入金額，這部分無法省略
-                    // 但使用者已經先點擊了按鈕，所以體驗比之前好
                     const coinAmt = prompt(`目前總金額 ${client.amount}，請輸入文化幣金額 (剩餘轉為現金)：`, client.amount);
                     
                     if (coinAmt && !isNaN(coinAmt)) {
@@ -1414,7 +1414,7 @@
                         const cash = client.amount - c;
                         finalMethod = `文化幣(${c}) + 現金(${cash})`;
                     } else {
-                        return; // 取消或輸入錯誤，不關閉視窗
+                        return; 
                     }
                 }
 
