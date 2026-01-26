@@ -1595,19 +1595,36 @@
             });
 
             // --- PILOT 會計匯出 (修正版) ---
+           // --- PILOT 會計匯出 (修正版 v2) ---
             exportPilotBtn.addEventListener('click', () => {
-                const codeFixed = "19890107"; // 鎖定單號
-                const date = currentDate;     // 格式 YYYY/MM/DD
-                const ts = new Date().getTime().toString().slice(-12);
+                // 1. 準備基礎資料
+                const codeFixed = "19890107"; // 鎖定單號 (依照您的要求)
+                const now = new Date();
+                
+                // 產生符合格式的日期字串
+                // SDATE: YYYY/MM/DD
+                const date = now.getFullYear() + '/' + 
+                             String(now.getMonth() + 1).padStart(2, '0') + '/' + 
+                             String(now.getDate()).padStart(2, '0');
+                
+                // LASTUPD: YYMMDDHHMMSS (修正為 12 碼格式)
+                // 年份取後兩位 (2026 -> 26)
+                const yy = String(now.getFullYear()).slice(-2);
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const dd = String(now.getDate()).padStart(2, '0');
+                const hh = String(now.getHours()).padStart(2, '0');
+                const mi = String(now.getMinutes()).padStart(2, '0');
+                const ss = String(now.getSeconds()).padStart(2, '0');
+                const ts = yy + mm + dd + hh + mi + ss;
 
-                // --- PILOT 格式定義 ---
-                // 注意：若會計系統報錯，請依序調整陣列順序
+                // 2. 定義 CSV 標頭 (完全依照上傳範本的順序)
                 let s1 = [["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"]];
                 
                 let s2 = [["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]];
                 
                 let v1 = [["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"]];
 
+                // 3. 遍歷資料填入內容
                 Object.values(clients).forEach(c => {
                     if(!c.isValid) return; // 跳過作廢訂單
                     
@@ -1615,13 +1632,13 @@
                     const gross = c.items.reduce((a,b)=>a+(b.price*b.quantity), 0); // 原價總額
                     const qtyTotal = c.items.reduce((a,b)=>a+b.quantity, 0);
 
-                    // S1: 主檔 (Master)
+                    // S1: 主檔 (Master) - 修正數值格式 (去除字串引號與補零)
                     s1.push([
-                        mERI, codeFixed, "02", "0002", date, "NTD", 1, "", "0000", "", 
-                        0, gross, c.amount-gross, c.amount, qtyTotal, "POS_USER", "", "書展匯入", "", 3, 
-                        3, "", "", date, date, 0, "0000", "", 0, "", 
-                        "", 0, 0, "", 0, "", 0, "0000", "", 0, 
-                        "0002", "", "書展", "", 1, 0, "", "", 0, "", 
+                        mERI, codeFixed, 2, 2, date, "NTD", 1, "", 0, "", 
+                        0, Math.round(gross), Math.round(c.amount-gross), Math.round(c.amount), qtyTotal, "POS_USER", "", "書展匯入", "", 3, 
+                        3, "", "", date, date, Math.round(c.amount), 0, "", 0, "", 
+                        "", 0, 0, "", 0, "", 0, 0, "", 0, 
+                        2, "", "書展", "", 1, 0, "", "", 0, "", 
                         ts, "", "", "", ""
                     ]);
 
@@ -1629,8 +1646,8 @@
                     c.items.forEach((it, idx) => {
                         const dERI = it.detailERI || generateERI('detail');
                         s2.push([
-                            dERI, mERI, "", "02", "0002", "0000", it.code, date, 0, codeFixed, 
-                            idx, "", it.quantity, "本", it.price, it.price*it.quantity, it.quantity, 0, "", "", 
+                            dERI, mERI, "", 2, 2, 0, it.code, date, 0, codeFixed, 
+                            idx, "", it.quantity, "本", it.price, Math.round(it.price*it.quantity), it.quantity, 0, "", "", 
                             it.quantity+"本", "NTD", 1, it.price, it.discount, "", "", 0, 0, 0, 
                             "", date, "", 0, 0, 0, 0, 0, 0, "", 
                             ts, "", ""
@@ -1641,19 +1658,31 @@
                     let payCode = "5"; // 預設現金
                     let paySubj = "1144.355"; 
                     
+                    // 簡單判斷支付方式
                     if (c.paymentMethod.includes("信用卡")) { payCode = "16"; paySubj = "1144.358"; }
-                    if (c.paymentMethod.includes("LINE PAY")) { payCode = "16"; paySubj = "1144.358"; }
+                    else if (c.paymentMethod.includes("LINE PAY")) { payCode = "16"; paySubj = "1144.358"; } // 假設 LINE PAY 同信用卡
                     
-                    // 注意：若是混合支付，此處邏輯需根據會計要求拆分，目前以主支付方式為準
                     v1.push([
-                        generateERI('pay'), mERI, 0, payCode, paySubj, 0, -c.amount, "", "", ts
+                        generateERI('pay'), mERI, 0, payCode, paySubj, 0, -Math.round(c.amount), "", "", ts
                     ]);
                 });
 
+                // 4. 下載功能 (UTF-8 BOM)
                 const downloadCSV = (data, filename) => {
-                    let csv = data.map(row => row.map(v => `"${v}"`).join(",")).join("\n");
+                    // 將陣列轉為 CSV 字串，確保所有欄位值都被正確轉換
+                    let csv = data.map(row => 
+                        row.map(v => {
+                            if (v === null || v === undefined) return "";
+                            return `"${v}"`;
+                        }).join(",")
+                    ).join("\r\n"); // Windows 系統偏好 \r\n 換行
+
+                    // 加入 BOM 以便讓 Excel/舊系統識別為 UTF-8
                     let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-                    let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+                    let a = document.createElement('a'); 
+                    a.href = URL.createObjectURL(blob); 
+                    a.download = filename; 
+                    a.click();
                 };
 
                 // 觸發三次下載
@@ -1680,3 +1709,4 @@
     </script>
 </body>
 </html>
+
