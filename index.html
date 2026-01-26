@@ -3,11 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>腓利門雲POS</title>
+    <title>腓利門雲POS - 2026書展版</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
+        /* --- 核心配色：大地色系優化 --- */
+        :root {
+            --bg-color: #F4E4C1;       /* 沙漠砂 (背景) */
+            --primary-btn: #A0522D;    /* 陶土褐 (主要按鈕) */
+            --primary-btn-hover: #8B4513;
+            --border-color: #D2B48C;   /* 淺褐 (邊框) */
+            --input-bg: #FFF8DC;       /* 玉米絲 (輸入框) */
+            --text-color: #333;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
@@ -15,8 +25,9 @@
             align-items: center;
             justify-content: flex-start;
             min-height: 100vh;
-            background-color: #F5F5DC;
+            background-color: var(--bg-color);
             padding-bottom: 50px;
+            color: var(--text-color);
         }
 
         /* 父級容器 */
@@ -33,12 +44,13 @@
             background-color: #fff;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             width: 48%;
             margin-bottom: 20px;
             min-height: 300px;
             box-sizing: border-box;
             position: relative;
+            border-top: 4px solid var(--primary-btn);
         }
 
         /* 全寬容器用於記帳模式 */
@@ -46,14 +58,15 @@
             background-color: #fff;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             width: 100%;
             margin-bottom: 20px;
             box-sizing: border-box;
+            border-top: 4px solid var(--primary-btn);
         }
 
         .header, .form-group, .table-container, .payment-info, .notes-container, .accounting-container {
-            border: 1px solid #D2B48C;
+            border: 1px solid var(--border-color);
             padding: 10px;
             border-radius: 4px;
             margin-bottom: 20px;
@@ -66,47 +79,53 @@
         }
 
         .header button, .form-group button, .btn-group button, .acct-btn {
-            background-color: #8A6739;
+            background-color: var(--primary-btn);
             color: white;
             border: none;
-            padding: 10px;
+            padding: 10px 15px;
             border-radius: 4px;
             cursor: pointer;
             margin-left: 5px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .header button:hover, .form-group button:hover {
+            background-color: var(--primary-btn-hover);
         }
         
-        /* 特別標示危險操作 */
         #clear-all-btn { background-color: #a94442; }
+        #clear-all-btn:hover { background-color: #8a3331; }
 
         .form-group input, .notes-container textarea {
             width: calc(100% - 20px);
-            padding: 10px;
-            font-size: 1em;
-            border: 1px solid #D2B48C;
+            padding: 12px;
+            font-size: 1.1em;
+            border: 1px solid var(--border-color);
             border-radius: 4px;
-            background-color: #E6E2B2;
+            background-color: var(--input-bg);
         }
 
         .notes-container textarea {
             resize: none;
-            background-color: #E6E2B2;
             height: 100px;
         }
 
         .total {
-            font-size: 1.5em;
+            font-size: 1.8em;
             font-weight: bold;
-            color: #F5F5DC;
-            background-color: #8A6739;
-            padding: 10px;
+            color: #FFF;
+            background-color: var(--primary-btn);
+            padding: 15px;
             border-radius: 8px 8px 0 0;
             text-align: right;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
         }
 
         .payment-info {
             background-color: #FFFFFF;
             border-radius: 0 0 8px 8px;
-            border-top: 2px solid #8A6739;
+            border-top: 2px solid var(--primary-btn);
             padding: 15px;
             display: flex;
             flex-direction: column; 
@@ -121,15 +140,17 @@
         }
 
         .payment-info > span, .payment-details > span {
-            color: #8B4513;
+            color: var(--primary-btn);
             font-weight: bold;
+            font-size: 1.2em;
         }
 
         .payment-info input#paid-amount {
-            max-width: 100px;
+            max-width: 120px;
             padding: 5px;
-            font-size: 1.2em;
+            font-size: 1.4em;
             text-align: right;
+            border: 2px solid var(--border-color);
         }
 
         /* 底部四個結帳按鈕的樣式 */
@@ -143,10 +164,10 @@
 
         .checkout-btn {
             flex: 1; 
-            background-color: #8A6739;
+            background-color: var(--primary-btn);
             border: none;
             border-radius: 5px;
-            padding: 12px 10px;
+            padding: 15px 10px;
             text-align: left;
             cursor: pointer;
             transition: all 0.2s;
@@ -158,7 +179,7 @@
         }
 
         .checkout-btn:hover {
-            background-color: #6d522d;
+            background-color: var(--primary-btn-hover);
             transform: translateY(-2px);
         }
 
@@ -185,13 +206,13 @@
         .btn-alert {
             animation: heartBeat 1s infinite;
             background-color: #ff8c00 !important;
-            transform: scale(1.1);
+            transform: scale(1.05);
             z-index: 10;
         }
 
         @keyframes heartBeat {
             0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+            50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
 
@@ -204,18 +225,19 @@
         }
 
         th, td {
-            padding: 5px;
+            padding: 8px;
             text-align: left;
-            border-bottom: 1px solid #D2B48C;
+            border-bottom: 1px solid var(--border-color);
             vertical-align: middle;
         }
 
         th {
             font-size: 0.9em;
-            color: #8B4513;
+            color: var(--primary-btn);
+            background-color: #f9f4e8;
         }
 
-        td { font-size: 0.8em; }
+        td { font-size: 0.9em; }
 
         .bottom-total {
             border-radius: 8px;
@@ -223,10 +245,12 @@
         }
 
         td input[type="number"] {
-            width: 50px;
+            width: 60px;
             padding: 5px;
-            font-size: 0.9em;
+            font-size: 1em;
             box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 3px;
         }
         
         .stats-info {
@@ -234,7 +258,7 @@
             color: #555;
             margin-top: 5px;
             padding-top: 5px;
-            border-top: 1px dashed #D2B48C;
+            border-top: 1px dashed var(--border-color);
             line-height: 1.6;
         }
         
@@ -243,7 +267,7 @@
             margin-right: 15px;
         }
         
-        .stat-item b { color: #8A6739; }
+        .stat-item b { color: var(--primary-btn); }
 
         @media (max-width: 768px) {
             .flex-container {
@@ -262,9 +286,9 @@
         .animate-click { animation: pulse-green 0.5s ease-out; }
 
         @keyframes pulse-green {
-            0% { transform: scale(1); background-color: #8A6739; }
+            0% { transform: scale(1); background-color: var(--primary-btn); }
             50% { transform: scale(1.05); background-color: #28a745; }
-            100% { transform: scale(1); background-color: #8A6739; }
+            100% { transform: scale(1); background-color: var(--primary-btn); }
         }
 
         .discount-wrapper {
@@ -277,11 +301,11 @@
             display: none;
             margin-top: 4px;
             font-size: 0.75em;
-            color: #8B4513;
+            color: var(--primary-btn);
             background-color: #fff8dc;
             padding: 2px 4px;
             border-radius: 3px;
-            border: 1px solid #D2B48C;
+            border: 1px solid var(--border-color);
             position: absolute;
             top: 100%;
             left: 0;
@@ -313,15 +337,15 @@
         .accounting-col {
             flex: 1;
             min-width: 300px;
-            border: 1px solid #D2B48C;
+            border: 1px solid var(--border-color);
             border-radius: 4px;
             padding: 10px;
             background-color: #FFF8DC;
         }
         .accounting-col h4 {
             margin-top: 0;
-            color: #8B4513;
-            border-bottom: 1px solid #D2B48C;
+            color: var(--primary-btn);
+            border-bottom: 1px solid var(--border-color);
             padding-bottom: 5px;
             text-align: center;
         }
@@ -360,7 +384,7 @@
             background-color: #f9f9f9;
             padding: 15px;
             border-radius: 5px;
-            border: 2px solid #8A6739;
+            border: 2px solid var(--primary-btn);
             margin-top: 15px;
         }
 
@@ -378,30 +402,26 @@
             color: #a94442;
         }
 
-        /* 修改單付款方式按鈕樣式 */
         .btn-change-pay {
             background-color: #fff;
-            border: 1px solid #8A6739;
-            color: #8A6739;
+            border: 1px solid var(--primary-btn);
+            color: var(--primary-btn);
             padding: 2px 6px;
             font-size: 0.8em;
             cursor: pointer;
             border-radius: 3px;
         }
         .btn-change-pay:hover {
-            background-color: #8A6739;
+            background-color: var(--primary-btn);
             color: white;
         }
 
-        /* 作廢樣式 */
         .void-order {
             text-decoration: line-through;
             color: #999 !important;
             background-color: #f0f0f0;
         }
-        .void-order span, .void-order a, .void-order button {
-            opacity: 0.6;
-        }
+        .void-order span, .void-order a, .void-order button { opacity: 0.6; }
         
         .btn-action-group button {
             margin-left: 2px;
@@ -412,7 +432,7 @@
         .btn-void { background-color: #666; color: white; border: none; border-radius: 3px; cursor: pointer; }
         .btn-del { background-color: #a94442; color: white; border: none; border-radius: 3px; cursor: pointer; }
 
-        /* --- 新增：修改付款方式的彈窗樣式 --- */
+        /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -420,7 +440,7 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
-            display: none; /* 預設隱藏 */
+            display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -433,12 +453,12 @@
             width: 300px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             text-align: center;
-            border: 2px solid #8A6739;
+            border: 2px solid var(--primary-btn);
         }
 
         .modal-title {
             margin-top: 0;
-            color: #8A6739;
+            color: var(--primary-btn);
             margin-bottom: 20px;
         }
 
@@ -476,36 +496,35 @@
         <div class="container-half">
             <div class="header">
                 <div>
-                    <img src="image/logo.png" alt="腓利門Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
-                    <span id="title">腓利門雲POS</span>
+                    <span id="title" style="font-size:1.5em; font-weight:bold; color: var(--primary-btn);">腓利門雲POS</span>
                 </div>
             </div>
             <div class="header" style="justify-content: flex-end;">
-                <span id="current-date" style="margin-right: auto;"></span>
+                <span id="current-date" style="margin-right: auto; font-weight:bold;"></span>
                 <div class="btn-group">
-                    <button id="backup-btn" style="background-color: #4682B4;">備份資料</button>
-                    <button id="restore-btn" style="background-color: #20B2AA;">還原資料</button>
+                    <button id="backup-btn" style="background-color: #4682B4;">備份</button>
+                    <button id="restore-btn" style="background-color: #20B2AA;">還原</button>
                     <button id="export-csv-btn">匯出 CSV</button>
-                    <button id="export-pilot-btn" style="background-color: #2E7D32;">匯出會計檔 (Pilot)</button>
-                    <button id="clear-all-btn">刪除全部</button>
+                    <button id="export-pilot-btn" style="background-color: #2E7D32;">匯出 Pilot 會計檔</button>
+                    <button id="clear-all-btn">清空</button>
                 </div>
             </div>
             <div class="form-group">
-                <label for="product-code">請輸入商品代碼/條碼：</label>
-                <input type="text" id="product-code" placeholder="請輸入商品代碼/條碼">
-                <div id="product-info"></div>
+                <label for="product-code">商品掃描 (輸入代碼/條碼)：</label>
+                <input type="text" id="product-code" placeholder="掃描後按 Enter 自動加入" autofocus>
+                <div id="product-info" style="color: var(--primary-btn); margin-top:5px; font-weight:bold; height: 1.2em;"></div>
             </div>
             <div class="form-group search-container">
-                <label for="keyword-search">輸入關鍵字搜尋商品：</label>
-                <input type="text" id="keyword-search" placeholder="名稱 / 代碼 / 條碼 皆可搜尋">
-                <div id="search-results" class="search-results"></div>
+                <label for="keyword-search">關鍵字搜尋：</label>
+                <input type="text" id="keyword-search" placeholder="名稱 / 代碼 / 條碼">
+                <div id="search-results" class="search-results" style="margin-top:10px;"></div>
             </div>
-            <div id="csv-validation"></div>
+            <div id="db-status" style="font-size:0.8em; color:gray; text-align:right;"></div>
         </div>
 
         <div class="container-half">
             <div class="table-container">
-                <div class="table-title">結帳明細</div>
+                <div class="table-title" style="font-weight:bold; color:var(--primary-btn); margin-bottom:5px;">本次結帳明細</div>
                 <table id="cart-table">
                     <thead>
                         <tr>
@@ -524,14 +543,14 @@
             
             <div class="payment-info">
                 <div class="payment-details">
-                    <span>實付金額：<input type="number" id="paid-amount" value="1000" placeholder="輸入實付金額"></span>
+                    <span>實付金額：<input type="number" id="paid-amount" value="1000"></span>
                     <span>找錢：<span id="change-amount">0</span> 元</span>
                 </div>
                 
                 <div class="checkout-buttons-area">
                     <button id="btn-f7" class="checkout-btn">
                         <span class="btn-key">F7</span>
-                        <span class="btn-label">信用卡結帳</span>
+                        <span class="btn-label">信用卡</span>
                     </button>
                     <button id="btn-f8" class="checkout-btn">
                         <span class="btn-key">F8</span>
@@ -543,7 +562,7 @@
                     </button>
                     <button id="btn-f10" class="checkout-btn">
                         <span class="btn-key">F10</span>
-                        <span class="btn-label">現金結帳</span>
+                        <span class="btn-label">現金</span>
                     </button>
                 </div>
             </div>
@@ -553,8 +572,8 @@
     <div class="flex-container">
         <div class="container-half">
             <div class="table-title">
-                單筆消費明細 (作廢/刪除/修改付款) <br>
-                統計訂單總數: <span id="total-orders">0</span> | 平均消費: <span id="average-amount">0</span> 元
+                <b>歷史訂單 (作廢/刪除/修改付款)</b> <br>
+                訂單數: <span id="total-orders">0</span> | 平均消費: <span id="average-amount">0</span> 元
                 <div id="payment-stats" class="stats-info">
                 </div>
             </div>
@@ -562,9 +581,9 @@
                 <table id="summary-table">
                     <thead>
                         <tr>
-                            <th>客戶名稱</th>
-                            <th>消費金額</th>
-                            <th>付款方式</th>
+                            <th>單號</th>
+                            <th>金額</th>
+                            <th>付款</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -573,30 +592,30 @@
                 </table>
             </div>
             <div class="notes-container">
-                <label for="notes">訂單備註：</label>
+                <label for="notes">備註：</label>
                 <textarea id="notes"></textarea>
             </div>
         </div>
 
         <div class="container-half">
             <div class="table-title">
-                消費總覽
+                <b>今日銷售總覽</b>
             </div>
             <div class="table-container" style="max-height: 350px; overflow-y: auto;">
                 <table id="overall-summary-table">
                     <thead>
                         <tr>
-                            <th>商品代碼</th>
-                            <th>產品名稱</th>
-                            <th>數量小計</th>
-                            <th>金額小計</th>
+                            <th>代碼</th>
+                            <th>品名</th>
+                            <th>總量</th>
+                            <th>總額</th>
                         </tr>
                     </thead>
                     <tbody>
                     </tbody>
                 </table>
             </div>
-            <div class="total bottom-total">營收總金額：<span id="overall-total-amount">0</span> 元</div>
+            <div class="total bottom-total" style="font-size:1.5em;">營收總計：<span id="overall-total-amount">0</span> 元</div>
         </div>
     </div>
 
@@ -633,7 +652,7 @@
                 </div>
 
                 <div style="margin-top: 15px; padding: 10px; background-color: #ffebee; border-radius: 4px; border: 1px solid #ffcccb;">
-                    <label style="font-weight:bold;">(-) 額外支出 (加油/餐費憑證)：</label>
+                    <label style="font-weight:bold;">(-) 額外支出 (憑證)：</label>
                     <input type="number" id="expenses-cash" value="0" min="0" style="width: 100px; padding: 5px;">
                 </div>
                 
@@ -689,7 +708,7 @@
             const productCodeInput = document.getElementById('product-code');
             const paidAmountInput = document.getElementById('paid-amount');
             const productInfoElement = document.getElementById('product-info');
-            const csvValidationElement = document.getElementById('csv-validation');
+            const dbStatusElement = document.getElementById('db-status');
             const cartTableBody = document.querySelector('#cart-table tbody');
             const totalAmountElement = document.getElementById('total-amount');
             const changeAmountElement = document.getElementById('change-amount');
@@ -743,6 +762,14 @@
             let editingClientId = null;
             const paymentModal = document.getElementById('payment-modal');
 
+            // --- 商品資料庫 Hybrid 模式 (手動備用資料庫) ---
+            // 若 CSV 讀取失敗，將使用此處資料。請在此填入您的書籍資料。
+            const productDB = {
+                "9789861234567": { code: "9789861234567", name: "範例書籍A", price: 350, qty: 100, class: "01" },
+                "A001": { code: "A001", name: "測試商品B", price: 500, qty: 50, class: "02" },
+                // 格式： "條碼/代碼": { code: "重複代碼", name: "書名", price: 價格, qty: 庫存, class: "分類代號" }
+            };
+
             // --- 音效控制器 ---
             const POSAudio = {
                 ctx: new (window.AudioContext || window.webkitAudioContext)(),
@@ -768,8 +795,9 @@
                 }
             };
 
-            // --- 核心：產生 Pilot 規格 ERI 指紋碼 ---
+            // --- Pilot 規格工具 ---
             function generateERI(type) {
+                // ERI 產生邏輯: 0H5(主)/0H8(詳)/01E(付) + 固定指紋 + 亂數
                 const prefix = { 'master': '0H5', 'detail': '0H8', 'pay': '01E' }[type];
                 const fingerprint = "0010LU0"; 
                 const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -780,7 +808,7 @@
 
             // --- 日期與初始化 ---
             const currentDate = new Date().toISOString().split('T')[0].replace(/-/g, '/');
-            currentDateElement.textContent = `今日日期：${currentDate}`;
+            currentDateElement.textContent = `日期：${currentDate}`;
             notesElement.value = localStorage.getItem('notes') || '';
             notesElement.addEventListener('input', () => {
                 localStorage.setItem('notes', notesElement.value);
@@ -812,6 +840,7 @@
             };
 
             const loadDiscountRates = () => {
+                // 書房專用折扣表
                 discountRates = {
                     "POS": 100, "02-2": 100, "09-2": 90, "09-5": 100, "09-4": 100, "09-1": 100, 
                     "09-3": 90, "06-1": 100, "07-1": 90, "07-2": 90, "07-3": 90, "07-4": 90, 
@@ -822,11 +851,11 @@
                 };
             };
 
+            // --- 修改後的商品讀取邏輯 (支援 CSV 與 內建DB) ---
             const loadProducts = async () => {
-                if (!csvValidationElement) return;
                 try {
                     const response = await fetch('products.csv');
-                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                    if (!response.ok) throw new Error('無法讀取CSV');
                     
                     const data = await response.text();
                     const lines = data.split('\n');
@@ -845,23 +874,33 @@
                             product[header] = columns[index]?.trim();
                         });
 
-                        if (product['CODE'] && product['CNAME'] && product['BARCODE'] && !isNaN(parseInt(product['CQTY']))) {
+                        if (product['CODE'] && product['CNAME']) {
                             const defaultDiscount = discountRates[product['CLAS']] || 100;
                             products[product['CODE']] = {
                                 code: product['CODE'],
                                 name: product['CNAME'],
                                 barcode: product['BARCODE'],
-                                qty: parseInt(product['CQTY']),
+                                qty: parseInt(product['CQTY']) || 0,
                                 price: parseFloat(product['PRICE']) || 0,
                                 class: product['CLAS'], 
                                 defaultDiscount: defaultDiscount
                             };
                         }
                     });
-                    csvValidationElement.textContent = "CSV檔讀取成功";
+                    dbStatusElement.textContent = "已載入外部 CSV 商品資料";
+                    dbStatusElement.style.color = "green";
                 } catch (error) {
-                    console.error('Error loading CSV file:', error);
-                    csvValidationElement.textContent = `CSV文件讀取失敗: ${error.message}`;
+                    console.warn('CSV讀取失敗，切換至內建測試資料庫', error);
+                    // 切換至內建 productDB
+                    Object.values(productDB).forEach(p => {
+                         const defaultDiscount = discountRates[p.class] || 100;
+                         products[p.code] = {
+                             ...p,
+                             defaultDiscount: defaultDiscount
+                         };
+                    });
+                    dbStatusElement.textContent = "CSV讀取失敗，使用內建/測試資料";
+                    dbStatusElement.style.color = "orange";
                 }
             };
 
@@ -903,6 +942,7 @@
                 calculateTotal();
                 saveCart();
                 productCodeInput.value = ''; 
+                productCodeInput.focus(); // 確保焦點回到輸入框
             };
 
             const resetIdleTimer = () => {
@@ -1178,25 +1218,35 @@
                 return null;
             };
 
-            productCodeInput.addEventListener('input', (e) => {
-                resetIdleTimer();
-                const codeOrBarcode = e.target.value.trim().toLowerCase(); 
-                if (!e.isTrusted) return;
-                const parsedInput = parseProductInput(codeOrBarcode);
+            productCodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const codeOrBarcode = e.target.value.trim().toLowerCase();
+                    const parsedInput = parseProductInput(codeOrBarcode);
+                    let product = null;
 
-                if (parsedInput) {
-                    const product = products[parsedInput.code];
-                    if (product) {
-                        if (parsedInput.quantity) product.quantity = parsedInput.quantity;
-                        addProductToCart(product.code);
-                        e.target.value = ''; 
-                        productInfoElement.textContent = '';
+                    if (parsedInput) {
+                        product = products[parsedInput.code];
+                        if (product) product.quantity = parsedInput.quantity;
+                    } else {
+                        product = Object.values(products).find(p => p.code.toLowerCase() === codeOrBarcode || (p.barcode && p.barcode.includes(codeOrBarcode)));
                     }
-                } else {
-                    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-                    if (product) productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
-                    else productInfoElement.textContent = '';
+
+                    if (product) {
+                        addProductToCart(product.code);
+                        e.target.value = ''; // 清空
+                        productInfoElement.textContent = `已加入: ${product.name}`;
+                    } else {
+                        alert('找不到商品'); POSAudio.error();
+                    }
                 }
+            });
+
+            productCodeInput.addEventListener('input', (e) => {
+                const codeOrBarcode = e.target.value.trim().toLowerCase();
+                // 僅做提示，不做加入動作
+                const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || (product.barcode && product.barcode.includes(codeOrBarcode)));
+                if (product) productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元`;
+                else productInfoElement.textContent = '';
             });
 
             keywordSearchInput.addEventListener('input', (e) => {
@@ -1216,55 +1266,17 @@
                     const resultItem = document.createElement('div');
                     resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元`;
                     const selectButton = document.createElement('button');
-                    selectButton.textContent = '送出計算';
+                    selectButton.textContent = '加入';
+                    selectButton.style.marginLeft = "10px";
                     selectButton.addEventListener('click', () => {
-                        productCodeInput.value = product.code;
                         addProductToCart(product.code);
-                        productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
+                        productInfoElement.textContent = `${product.name}`;
                         searchResultsElement.innerHTML = '';
                         keywordSearchInput.value = ''; 
                     });
                     resultItem.appendChild(selectButton);
                     searchResultsElement.appendChild(resultItem);
                 });
-
-                if (matchedProducts.length > 3) {
-                    const showMoreButton = document.createElement('button');
-                    showMoreButton.textContent = `顯示更多 (還有 ${matchedProducts.length - 3} 筆)`;
-                    showMoreButton.addEventListener('click', () => {
-                        searchResultsElement.innerHTML = '';
-                        matchedProducts.slice(0, 20).forEach(product => {
-                            const resultItem = document.createElement('div');
-                            resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元`;
-                            const selectButton = document.createElement('button');
-                            selectButton.textContent = '送出計算';
-                            selectButton.addEventListener('click', () => {
-                                productCodeInput.value = product.code;
-                                addProductToCart(product.code);
-                                productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元 庫存:${product.qty}`;
-                                searchResultsElement.innerHTML = '';
-                                keywordSearchInput.value = ''; 
-                            });
-                            resultItem.appendChild(selectButton);
-                            searchResultsElement.appendChild(resultItem);
-                        });
-                    });
-                    searchResultsElement.appendChild(showMoreButton);
-                }
-            });
-
-            productCodeInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    const codeOrBarcode = e.target.value.trim().toLowerCase();
-                    const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || product.barcode === codeOrBarcode);
-                    if (product) {
-                        addProductToCart(product.code);
-                        e.target.value = ''; 
-                        productInfoElement.textContent = '';
-                    } else {
-                        alert('找不到商品'); POSAudio.error();
-                    }
-                }
             });
 
             const calculatePaymentStats = () => {
@@ -1300,7 +1312,15 @@
                     if(!client.isValid) {
                         row.classList.add('void-order');
                     } else {
-                        if (method.includes("現金")) tempSysCash += client.amount;
+                        if (method.includes("現金")) {
+                            // 若是混合支付，需解析出現金部分
+                            if(method.includes("文化幣")) {
+                                const cashMatch = method.match(/現金\((\d+)\)/);
+                                if (cashMatch && cashMatch[1]) tempSysCash += parseInt(cashMatch[1]);
+                            } else {
+                                tempSysCash += client.amount;
+                            }
+                        }
                         client.items.forEach(item => {
                             if (!tempOverall[item.code]) tempOverall[item.code] = { code: item.code, name: item.name, totalQuantity: 0, totalAmount: 0 };
                             tempOverall[item.code].totalQuantity += item.quantity;
@@ -1322,7 +1342,7 @@
                     summaryTableBody.appendChild(row);
                 });
 
-                overallSummary = tempOverall; // 關鍵修正：確保匯出前總覽物件最新
+                overallSummary = tempOverall; 
 
                 const sortedSummary = Object.values(overallSummary).sort((a, b) => a.code.localeCompare(b.code));
                 sortedSummary.forEach(item => {
@@ -1346,10 +1366,10 @@
                 
                 const stats = calculatePaymentStats();
                 paymentStatsElement.innerHTML = `
-                    <div class="stat-item">現金總計: <b>${stats.cash}</b></div>
-                    <div class="stat-item">信用卡: <b>${stats.credit}</b></div>
-                    <div class="stat-item">LINE PAY: <b>${stats.linepay}</b></div>
-                    <div class="stat-item">文化幣: <b>${stats.culture}</b></div>
+                    <div class="stat-item">現金: <b>${stats.cash}</b></div>
+                    <div class="stat-item">刷卡: <b>${stats.credit}</b></div>
+                    <div class="stat-item">LINE: <b>${stats.linepay}</b></div>
+                    <div class="stat-item">文化: <b>${stats.culture}</b></div>
                 `;
 
                 sysCashTotalEl.textContent = stats.cash;
@@ -1365,8 +1385,6 @@
                         const clientId = e.target.dataset.clientId;
                         const client = clients[clientId];
                         if(!client.isValid) return alert("已作廢訂單無法修改");
-
-                        // 開啟 Modal
                         openPaymentModal(clientId);
                     });
                 });
@@ -1383,7 +1401,7 @@
                 document.querySelectorAll('.btn-del').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const clientId = e.target.dataset.clientId;
-                        if (confirm('【警告】這將完全刪除此筆資料(JSON紀錄)，無法復原。\n確定要刪除嗎？')) {
+                        if (confirm('【警告】這將完全刪除此筆資料，無法復原。確定要刪除嗎？')) {
                             delete clients[clientId];
                             saveSummary();
                             updateSummaryTable();
@@ -1400,7 +1418,7 @@
                 });
             };
 
-            // --- 新增：Modal 控制邏輯 ---
+            // --- Modal 控制邏輯 ---
             window.openPaymentModal = (clientId) => {
                 editingClientId = clientId;
                 paymentModal.style.display = 'flex';
@@ -1418,18 +1436,12 @@
 
                 if (methodType === '文化幣') {
                     const coinAmt = prompt(`目前總金額 ${client.amount}，請輸入文化幣金額 (剩餘轉為現金)：`, client.amount);
-                    
                     if (coinAmt && !isNaN(coinAmt)) {
                         const c = parseInt(coinAmt);
-                        if (c < 0 || c > client.amount) {
-                             alert("金額輸入錯誤");
-                             return;
-                        }
+                        if (c < 0 || c > client.amount) { alert("金額輸入錯誤"); return; }
                         const cash = client.amount - c;
                         finalMethod = `文化幣(${c}) + 現金(${cash})`;
-                    } else {
-                        return; 
-                    }
+                    } else { return; }
                 }
 
                 clients[editingClientId].paymentMethod = finalMethod;
@@ -1496,15 +1508,10 @@
                 }
             };
 
-            // 備份
+            // 備份與還原
             backupBtn.addEventListener('click', () => {
                 const backupData = {
-                    cart: cart,
-                    clients: clients,
-                    overallSummary: overallSummary,
-                    clientCounter: clientCounter,
-                    sessionRules: sessionRules, 
-                    priceOverrides: priceOverrides,
+                    cart, clients, overallSummary, clientCounter, sessionRules, priceOverrides,
                     notes: notesElement.value,
                     timestamp: new Date().toISOString()
                 };
@@ -1513,16 +1520,13 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-                a.download = `pos_backup_${dateStr}.json`;
+                a.download = `pos_backup_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
-                alert('備份已下載！');
             });
 
-            // 還原
             restoreBtn.addEventListener('click', () => {
-                if (confirm('注意：還原備份將會「覆蓋」目前的訂單資料。確定要繼續嗎？')) importFileInput.click();
+                if (confirm('注意：還原將覆蓋目前訂單資料。')) importFileInput.click();
             });
 
             importFileInput.addEventListener('change', (e) => {
@@ -1540,15 +1544,10 @@
                             localStorage.setItem('sessionRules', JSON.stringify(data.sessionRules || {}));
                             localStorage.setItem('priceOverrides', JSON.stringify(data.priceOverrides || {}));
                             localStorage.setItem('notes', data.notes || '');
-                            alert('資料還原成功！網頁將重新整理。');
+                            alert('還原成功！');
                             location.reload();
-                        } else {
-                            alert('錯誤：備份檔案格式不正確。');
                         }
-                    } catch (err) {
-                        console.error(err);
-                        alert('錯誤：無法解析備份檔案。');
-                    }
+                    } catch (err) { alert('備份檔案格式錯誤'); }
                 };
                 reader.readAsText(file);
                 importFileInput.value = '';
@@ -1557,9 +1556,7 @@
             // CSV 匯出 (標準版)
             exportCsvBtn.addEventListener('click', () => {
                 try {
-                    // 重新產生最新總覽
                     updateSummaryTable();
-
                     const notes = localStorage.getItem('notes') || '無備註';
                     const stats = calculatePaymentStats();
                     const overallTotalAmount = Object.values(overallSummary).reduce((sum, item) => sum + item.totalAmount, 0);
@@ -1567,96 +1564,90 @@
                     const summaryRows = [
                         ['客戶名稱', '消費金額', '付款方式', '狀態'], 
                         ...Object.values(clients).map(client => [
-                            client.id, 
-                            Math.round(client.amount),
-                            client.paymentMethod || '現金',
-                            client.isValid ? '有效' : '已作廢'
+                            client.id, Math.round(client.amount), client.paymentMethod || '現金', client.isValid ? '有效' : '已作廢'
                         ]),
-                        [],
-                        ['商品代碼', '名稱', '總數量', '總金額'],
+                        [], ['商品代碼', '名稱', '總數量', '總金額'],
                         ...Object.values(overallSummary).map(item => [item.code, item.name, item.totalQuantity, Math.round(item.totalAmount)]),
-                        [],
-                        ['總金額', Math.round(overallTotalAmount)],
-                        ['現金總收', stats.cash],
-                        ['信用卡總收', stats.credit],
-                        ['LINE PAY總收', stats.linepay],
-                        ['文化幣總收', stats.culture],
-                        [],
-                        ['備註'],
-                        [notes],
-                        [],
-                        ['盤點記錄'],
-                        ['盤點現金總額', calcDrawerTotalEl.textContent],
-                        ['初始備用金', calcInitialEl.textContent],
-                        ['支出憑證', calcExpensesEl.textContent],
-                        ['實際現金營收', calcNetCashEl.textContent],
-                        ['差異金額', cashDiffEl.textContent]
+                        [], ['總金額', Math.round(overallTotalAmount)],
+                        ['現金總收', stats.cash], ['信用卡總收', stats.credit], ['LINE PAY總收', stats.linepay], ['文化幣總收', stats.culture],
+                        [], ['備註', notes], [],
+                        ['盤點記錄'], ['盤點現金總額', calcDrawerTotalEl.textContent], ['初始備用金', calcInitialEl.textContent],
+                        ['支出憑證', calcExpensesEl.textContent], ['實際現金營收', calcNetCashEl.textContent], ['差異金額', cashDiffEl.textContent]
                     ];
 
                     const detailsRows = [
-                        ['詳細內容：'], 
-                        ['客戶名稱', '付款方式', '商品名稱', '數量', '單價', '折扣', '小計', '狀態'],
+                        ['詳細內容：'], ['客戶名稱', '付款方式', '商品名稱', '數量', '單價', '折扣', '小計', '狀態'],
                         ...Object.values(clients).flatMap(client =>
                             client.items.map(item => [
-                                client.id,
-                                client.paymentMethod || '現金',
-                                item.name,
-                                item.quantity,
-                                Math.round(item.price),
-                                `${item.discount}%`,
-                                Math.round(item.price * item.quantity * (item.discount / 100)),
-                                client.isValid ? '有效' : '已作廢'
+                                client.id, client.paymentMethod || '現金', item.name, item.quantity, Math.round(item.price),
+                                `${item.discount}%`, Math.round(item.price * item.quantity * (item.discount / 100)), client.isValid ? '有效' : '已作廢'
                             ])
                         )
                     ];
 
-                    const combinedRows = [...summaryRows, ...detailsRows];
-                    const csvContent = combinedRows.map(e => e.join(",")).join("\n");
+                    const csvContent = [...summaryRows, ...detailsRows].map(e => e.join(",")).join("\n");
                     const blob = new Blob([`\ufeff${csvContent}`], { type: 'text/csv;charset=utf-8;' });
                     const link = document.createElement("a");
-                    const url = URL.createObjectURL(blob);
-                    link.setAttribute("href", url);
-                    link.setAttribute("download", `sales_report_POS_${new Date().toISOString().split('T')[0]}.csv`);
-                    document.body.appendChild(link);
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `sales_report_POS_${new Date().toISOString().split('T')[0]}.csv`;
                     link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url); 
-                } catch (error) {
-                    console.error('CSV匯出錯誤:', error);
-                    alert('CSV匯出過程出現問題，請檢查數據是否完整。');
-                }
+                } catch (error) { alert('CSV匯出錯誤'); }
             });
 
-            // --- 新增：匯出會計檔 (Pilot 版) ---
+            // --- PILOT 會計匯出 (修正版) ---
             exportPilotBtn.addEventListener('click', () => {
-                const codeFixed = "19890107"; 
-                const date = currentDate;
+                const codeFixed = "19890107"; // 鎖定單號
+                const date = currentDate;     // 格式 YYYY/MM/DD
                 const ts = new Date().getTime().toString().slice(-12);
 
+                // --- PILOT 格式定義 ---
+                // 注意：若會計系統報錯，請依序調整陣列順序
                 let s1 = [["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"]];
+                
                 let s2 = [["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]];
+                
                 let v1 = [["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"]];
 
                 Object.values(clients).forEach(c => {
-                    if(!c.isValid) return;
+                    if(!c.isValid) return; // 跳過作廢訂單
                     
                     const mERI = c.eri || generateERI('master');
-                    const gross = c.items.reduce((a,b)=>a+(b.price*b.quantity), 0);
+                    const gross = c.items.reduce((a,b)=>a+(b.price*b.quantity), 0); // 原價總額
                     const qtyTotal = c.items.reduce((a,b)=>a+b.quantity, 0);
 
-                    // S1
-                    s1.push([mERI, codeFixed, "02", "0002", date, "NTD", 1, "", "0000", "", 0, gross, c.amount-gross, c.amount, qtyTotal, "POS_USER", "", "書展匯入", "", 3, 3, "", "", date, date, 0, "0000", "", 0, "", "", 0, 0, "", 0, "", 0, "0000", "", 0, "0002", "", "書展", "", 1, 0, "", "", 0, "", ts, "", "", "", ""]);
+                    // S1: 主檔 (Master)
+                    s1.push([
+                        mERI, codeFixed, "02", "0002", date, "NTD", 1, "", "0000", "", 
+                        0, gross, c.amount-gross, c.amount, qtyTotal, "POS_USER", "", "書展匯入", "", 3, 
+                        3, "", "", date, date, 0, "0000", "", 0, "", 
+                        "", 0, 0, "", 0, "", 0, "0000", "", 0, 
+                        "0002", "", "書展", "", 1, 0, "", "", 0, "", 
+                        ts, "", "", "", ""
+                    ]);
 
-                    // S2
+                    // S2: 明細檔 (Details)
                     c.items.forEach((it, idx) => {
                         const dERI = it.detailERI || generateERI('detail');
-                        s2.push([dERI, mERI, "", "02", "0002", "0000", it.code, date, 0, codeFixed, idx, "", it.quantity, "本", it.price, it.price*it.quantity, it.quantity, 0, "", "", it.quantity+"本", "NTD", 1, it.price, it.discount, "", "", 0, 0, 0, "", date, "", 0, 0, 0, 0, 0, 0, "", ts, "", ""]);
+                        s2.push([
+                            dERI, mERI, "", "02", "0002", "0000", it.code, date, 0, codeFixed, 
+                            idx, "", it.quantity, "本", it.price, it.price*it.quantity, it.quantity, 0, "", "", 
+                            it.quantity+"本", "NTD", 1, it.price, it.discount, "", "", 0, 0, 0, 
+                            "", date, "", 0, 0, 0, 0, 0, 0, "", 
+                            ts, "", ""
+                        ]);
                     });
 
-                    // V1
-                    let payCode = c.paymentMethod.includes("現金") ? "5" : "16";
-                    let paySubj = c.paymentMethod.includes("現金") ? "1144.355" : "1144.358";
-                    v1.push([generateERI('pay'), mERI, 0, payCode, paySubj, 0, -c.amount, "", "", ts]);
+                    // V1: 傳票/付款方式 (Voucher)
+                    let payCode = "5"; // 預設現金
+                    let paySubj = "1144.355"; 
+                    
+                    if (c.paymentMethod.includes("信用卡")) { payCode = "16"; paySubj = "1144.358"; }
+                    if (c.paymentMethod.includes("LINE PAY")) { payCode = "16"; paySubj = "1144.358"; }
+                    
+                    // 注意：若是混合支付，此處邏輯需根據會計要求拆分，目前以主支付方式為準
+                    v1.push([
+                        generateERI('pay'), mERI, 0, payCode, paySubj, 0, -c.amount, "", "", ts
+                    ]);
                 });
 
                 const downloadCSV = (data, filename) => {
@@ -1665,22 +1656,20 @@
                     let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
                 };
 
+                // 觸發三次下載
                 downloadCSV(s1, "STKSALE1.csv");
                 setTimeout(() => downloadCSV(s2, "STKSALE2.csv"), 500);
                 setTimeout(() => downloadCSV(v1, "VCHRPLUS_SALE1.csv"), 1000);
             });
 
             clearAllBtn.addEventListener('click', () => {
-                if (confirm('確定要刪除全部訂單？此操作無法撤銷。')) {
-                    if (confirm('再次確認，確定要刪除全部訂單嗎？')) {
-                        localStorage.clear(); 
-                        location.reload();
-                        alert('已成功刪除全部訂單。');
-                    }
+                if (confirm('確定要清空所有資料？(含訂單與設定)')) {
+                    localStorage.clear(); 
+                    location.reload();
                 }
             });
 
-            // --- 啟動 ---
+            // --- 啟動程序 ---
             loadDiscountRates(); 
             loadProducts().then(() => {
                 updateCartDisplay();
@@ -1691,4 +1680,3 @@
     </script>
 </body>
 </html>
-
