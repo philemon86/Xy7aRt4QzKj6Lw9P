@@ -1594,21 +1594,21 @@
                 } catch (error) { alert('CSV匯出錯誤'); }
             });
 
-            // --- PILOT 會計匯出 (修正版) ---
-           // --- PILOT 會計匯出 (修正版 v2) ---
+// --- PILOT 會計匯出 (修正版 v3 - 針對 STKSALE2 格式修復) ---
             exportPilotBtn.addEventListener('click', () => {
-                // 1. 準備基礎資料
-                const codeFixed = "19890107"; // 鎖定單號 (依照您的要求)
-                const now = new Date();
+                // 1. 基礎設定 (依照您的要求固定代碼)
+                const codeFixed = "19890107";     // 固定單號
+                const custCode = "0002";          // 客戶代碼 (固定四碼)
+                const whCode = "0000";            // 倉庫代碼 (固定四碼)
+                const staffCode = "0002";         // 員工/部門代碼 (建議統一四碼)
                 
-                // 產生符合格式的日期字串
-                // SDATE: YYYY/MM/DD
+                const now = new Date();
+                // 日期格式: YYYY/MM/DD
                 const date = now.getFullYear() + '/' + 
                              String(now.getMonth() + 1).padStart(2, '0') + '/' + 
                              String(now.getDate()).padStart(2, '0');
                 
-                // LASTUPD: YYMMDDHHMMSS (修正為 12 碼格式)
-                // 年份取後兩位 (2026 -> 26)
+                // 時間戳記 LASTUPD: YYMMDDHHMMSS (12碼)
                 const yy = String(now.getFullYear()).slice(-2);
                 const mm = String(now.getMonth() + 1).padStart(2, '0');
                 const dd = String(now.getDate()).padStart(2, '0');
@@ -1617,67 +1617,113 @@
                 const ss = String(now.getSeconds()).padStart(2, '0');
                 const ts = yy + mm + dd + hh + mi + ss;
 
-                // 2. 定義 CSV 標頭 (完全依照上傳範本的順序)
+                // 2. 定義 CSV 標頭 (完全依照 STKSALE1/2 範本順序)
                 let s1 = [["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"]];
                 
                 let s2 = [["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]];
                 
                 let v1 = [["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"]];
 
-                // 3. 遍歷資料填入內容
+                // 3. 填入資料
                 Object.values(clients).forEach(c => {
                     if(!c.isValid) return; // 跳過作廢訂單
                     
                     const mERI = c.eri || generateERI('master');
-                    const gross = c.items.reduce((a,b)=>a+(b.price*b.quantity), 0); // 原價總額
+                    const gross = c.items.reduce((a,b)=>a+(b.price*b.quantity), 0);
                     const qtyTotal = c.items.reduce((a,b)=>a+b.quantity, 0);
 
-                    // S1: 主檔 (Master) - 修正數值格式 (去除字串引號與補零)
+                    // --- S1: 主檔 (Master) ---
                     s1.push([
-                        mERI, codeFixed, 2, 2, date, "NTD", 1, "", 0, "", 
-                        0, Math.round(gross), Math.round(c.amount-gross), Math.round(c.amount), qtyTotal, "POS_USER", "", "書展匯入", "", 3, 
-                        3, "", "", date, date, Math.round(c.amount), 0, "", 0, "", 
-                        "", 0, 0, "", 0, "", 0, 0, "", 0, 
-                        2, "", "書展", "", 1, 0, "", "", 0, "", 
-                        ts, "", "", "", ""
+                        mERI,           // ERI
+                        codeFixed,      // CODE (單號)
+                        staffCode,      // STAFF (修正: 0002)
+                        custCode,       // CUST (修正: 0002)
+                        date,           // SDATE
+                        "NTD",          // CURR
+                        1,              // RATE
+                        "",             // PROJNO
+                        whCode,         // GWN (修正: 0000)
+                        "",             // ADDR
+                        0,              // TAX
+                        Math.round(gross),          // AMT
+                        Math.round(c.amount-gross), // PLUSSUB
+                        Math.round(c.amount),       // TOTAL
+                        qtyTotal,       // QTY
+                        "POS_USER",     // EDITOR
+                        "",             // MEMO
+                        "書展匯入",      // REMARK
+                        "", 3, 3, "", "", date, date, 
+                        Math.round(c.amount), // COST
+                        0, "", 0, "", "", 0, 0, "", 0, "", 0, 0, "", 0, 
+                        custCode,       // BILCUST (帳單客戶也用 0002)
+                        "", "書展", "", 1, 0, "", "", 0, "", 
+                        ts, "", "", "", "" // LASTUPD
                     ]);
 
-                    // S2: 明細檔 (Details)
+                    // --- S2: 明細檔 (Details) --- 
+                    // 修正重點：PROD 是商品，CODE 是單號，CUST/GWN 補零
                     c.items.forEach((it, idx) => {
                         const dERI = it.detailERI || generateERI('detail');
                         s2.push([
-                            dERI, mERI, "", 2, 2, 0, it.code, date, 0, codeFixed, 
-                            idx, "", it.quantity, "本", it.price, Math.round(it.price*it.quantity), it.quantity, 0, "", "", 
-                            it.quantity+"本", "NTD", 1, it.price, it.discount, "", "", 0, 0, 0, 
-                            "", date, "", 0, 0, 0, 0, 0, 0, "", 
-                            ts, "", ""
+                            dERI,           // ERI
+                            mERI,           // MASTERI
+                            "",             // SRCERI
+                            staffCode,      // STAFF (修正: 0002)
+                            custCode,       // CUST (修正: 0002)
+                            whCode,         // GWN (修正: 0000)
+                            it.code,        // PROD (這裡是商品條碼/代碼)
+                            date,           // SDATE
+                            0,              // TYPE
+                            codeFixed,      // CODE (這裡是單號 19890107)
+                            idx,            // SERIAL
+                            "",             // SPEC
+                            it.quantity,    // QTY
+                            "本",           // UNIT
+                            it.price,       // PRICE
+                            Math.round(it.price*it.quantity), // AMT
+                            it.quantity,    // REALQTY
+                            0, "", "",      // SUBQTY, REMARK...
+                            it.quantity+"本", // QTYSTR
+                            "NTD", 1,       // CURR, RATE
+                            it.price,       // STDPRC
+                            it.discount,    // DISCOUNT
+                            "", "", 0, 0, 0, "", date, "", 0, 0, 0, 0, 0, 0, "", 
+                            ts, "", ""      // LASTUPD
                         ]);
                     });
 
-                    // V1: 傳票/付款方式 (Voucher)
-                    let payCode = "5"; // 預設現金
+                    // --- V1: 傳票 (Voucher) ---
+                    let payCode = "5"; 
                     let paySubj = "1144.355"; 
                     
-                    // 簡單判斷支付方式
-                    if (c.paymentMethod.includes("信用卡")) { payCode = "16"; paySubj = "1144.358"; }
-                    else if (c.paymentMethod.includes("LINE PAY")) { payCode = "16"; paySubj = "1144.358"; } // 假設 LINE PAY 同信用卡
+                    if (c.paymentMethod.includes("信用卡") || c.paymentMethod.includes("LINE")) { 
+                        payCode = "16"; 
+                        paySubj = "1144.358"; 
+                    }
                     
                     v1.push([
-                        generateERI('pay'), mERI, 0, payCode, paySubj, 0, -Math.round(c.amount), "", "", ts
+                        generateERI('pay'), 
+                        mERI, 
+                        0, 
+                        payCode, 
+                        paySubj, 
+                        0, 
+                        -Math.round(c.amount), 
+                        "", "", ts
                     ]);
                 });
 
-                // 4. 下載功能 (UTF-8 BOM)
+                // 4. 下載功能 (強制字串格式)
                 const downloadCSV = (data, filename) => {
-                    // 將陣列轉為 CSV 字串，確保所有欄位值都被正確轉換
+                    // 使用 map 確保所有值都包在雙引號內，這樣 0002 就不會變成 2
                     let csv = data.map(row => 
                         row.map(v => {
                             if (v === null || v === undefined) return "";
-                            return `"${v}"`;
+                            return `"${v}"`; 
                         }).join(",")
-                    ).join("\r\n"); // Windows 系統偏好 \r\n 換行
+                    ).join("\r\n");
 
-                    // 加入 BOM 以便讓 Excel/舊系統識別為 UTF-8
+                    // 加入 BOM (Byte Order Mark) 讓 Excel 識別中文
                     let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
                     let a = document.createElement('a'); 
                     a.href = URL.createObjectURL(blob); 
@@ -1685,12 +1731,11 @@
                     a.click();
                 };
 
-                // 觸發三次下載
                 downloadCSV(s1, "STKSALE1.csv");
                 setTimeout(() => downloadCSV(s2, "STKSALE2.csv"), 500);
                 setTimeout(() => downloadCSV(v1, "VCHRPLUS_SALE1.csv"), 1000);
             });
-
+            
             clearAllBtn.addEventListener('click', () => {
                 if (confirm('確定要清空所有資料？(含訂單與設定)')) {
                     localStorage.clear(); 
@@ -1709,4 +1754,5 @@
     </script>
 </body>
 </html>
+
 
