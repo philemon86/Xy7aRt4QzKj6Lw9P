@@ -1594,7 +1594,7 @@
                 } catch (error) { alert('CSV匯出錯誤'); }
             });
 
-// --- PILOT 會計匯出 (修正版 v4 - 格式最終修復) ---
+// --- PILOT 會計匯出 (修正版 v4 - 欄位錯位終極修復) ---
             exportPilotBtn.addEventListener('click', () => {
                 // 1. 基礎設定
                 const codeFixed = "19890107";     // 固定單號
@@ -1607,7 +1607,7 @@
                              String(now.getMonth() + 1).padStart(2, '0') + '/' + 
                              String(now.getDate()).padStart(2, '0');
                 
-                // LASTUPD: YYMMDDHHMMSS
+                // LASTUPD: YYMMDDHHMMSS (12碼)
                 const yy = String(now.getFullYear()).slice(-2);
                 const mm = String(now.getMonth() + 1).padStart(2, '0');
                 const dd = String(now.getDate()).padStart(2, '0');
@@ -1616,14 +1616,14 @@
                 const ss = String(now.getSeconds()).padStart(2, '0');
                 const ts = yy + mm + dd + hh + mi + ss;
 
-                // 2. 定義標頭 (Headers)
+                // 2. 定義標頭 (完全依照您的範本)
                 let s1 = [["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"]];
                 
                 let s2 = [["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]];
                 
                 let v1 = [["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"]];
 
-                // 3. 填入資料 (關鍵修正：空欄位使用 null)
+                // 3. 填入資料 (關鍵修正：使用 null 代表空欄位，避免 "", 造成錯位)
                 Object.values(clients).forEach(c => {
                     if(!c.isValid) return; 
                     
@@ -1631,7 +1631,7 @@
                     const gross = c.items.reduce((a,b)=>a+(b.price*b.quantity), 0);
                     const qtyTotal = c.items.reduce((a,b)=>a+b.quantity, 0);
 
-                    // --- S1: 主檔 ---
+                    // --- S1: 主檔 (Master) ---
                     s1.push([
                         mERI, codeFixed, staffCode, custCode, date, "NTD", 1, null, whCode, null, 
                         0, Math.round(gross), Math.round(c.amount-gross), Math.round(c.amount), qtyTotal, "POS_USER", null, "書展匯入", null, 3, 
@@ -1641,8 +1641,8 @@
                         ts, null, null, null, null
                     ]);
 
-                    // --- S2: 明細檔 (關鍵修正) --- 
-                    // 修正說明：所有原本為 "" 的欄位都改為 null，避免 CSV 輸出為 "", 導致欄位判讀位移
+                    // --- S2: 明細檔 (Details) --- 
+                    // 修正說明：PROJNO, INVNO 等欄位改用 null，輸出時會變成 ,, 確保日期不會往前位移
                     c.items.forEach((it, idx) => {
                         const dERI = it.detailERI || generateERI('detail');
                         s2.push([
@@ -1652,7 +1652,7 @@
                             staffCode,      // STAFF
                             custCode,       // CUST
                             whCode,         // GWN
-                            it.code,        // PROD (商品)
+                            it.code,        // PROD (商品代碼)
                             date,           // SDATE
                             0,              // TYPE
                             codeFixed,      // CODE (單號)
@@ -1663,18 +1663,18 @@
                             it.price,       // PRICE
                             Math.round(it.price*it.quantity), // AMT
                             it.quantity,    // REALQTY
-                            0, null, null,  // SUBQTY, REMARK, PRODDESC (改為 null)
+                            0, null, null,  // SUBQTY, REMARK, PRODDESC
                             it.quantity+"本", // QTYSTR
                             "NTD", 1,       // CURR, RATE
                             it.price,       // STDPRC
                             it.discount,    // DISCOUNT
-                            null, null, 0, 0, 0, // PROJNO, INVNO (改為 null), INVQTY, SAMPLE, INVRETURN
-                            null, date, null, 0, 0, 0, 0, 0, 0, null, // VPNO (改為 null), VLIDDATE...
+                            null, null, 0, 0, 0, // PROJNO, INVNO(null), INVQTY, SAMPLE, INVRETURN(0)
+                            null, date, null, 0, 0, 0, 0, 0, 0, null, // VPNO(null), VLIDDATE(date)...
                             ts, null, null  // LASTUPD, POSREMARK...
                         ]);
                     });
 
-                    // --- V1: 傳票 ---
+                    // --- V1: 傳票 (Voucher) ---
                     let payCode = "5"; 
                     let paySubj = "1144.355"; 
                     if (c.paymentMethod.includes("信用卡") || c.paymentMethod.includes("LINE")) { 
@@ -1686,17 +1686,18 @@
                     ]);
                 });
 
-                // 4. 下載功能 (優化 CSV 格式)
+                // 4. 下載功能 (格式最終優化)
                 const downloadCSV = (data, filename) => {
                     let csv = data.map(row => 
                         row.map(v => {
-                            // 修正：如果是 null 或 undefined，回傳空字串 (不加引號)，產生 ,, 效果
+                            // 關鍵修正：如果是 null 或 undefined，回傳空字串 (不加引號)，產生 ,, 效果
                             if (v === null || v === undefined) return "";
-                            // 其他值強制加引號，確保文字格式正確 (如 "0002")
+                            // 其他值強制加引號，確保 0002 不會變 2
                             return `"${v}"`; 
                         }).join(",")
                     ).join("\r\n");
 
+                    // 加入 BOM
                     let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
                     let a = document.createElement('a'); 
                     a.href = URL.createObjectURL(blob); 
@@ -1720,6 +1721,7 @@
     </script>
 </body>
 </html>
+
 
 
 
