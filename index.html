@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>腓利門雲POS - 2026書展版 (會計整合版)</title>
+    <title>腓利門雲POS</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         /* --- 核心配色：大地色系優化 --- */
@@ -1596,8 +1596,8 @@
                 } catch (error) { alert('CSV匯出錯誤'); }
             });
 
-            // --- PILOT 會計匯出 (修正版 v10 - 嚴格格式保護 + 製單員修正 + 自動轉碼) ---
-            exportPilotBtn.addEventListener('click', () => {
+// --- PILOT 會計匯出 (修正版 v12 - 含文化幣科目 61 + ASCII 安全模式) ---
+            document.getElementById('export-pilot-btn').onclick = () => {
                 const codeFixed = "19890107";     
                 const custCode = "0002";          
                 const whCode = "0000";            
@@ -1616,78 +1616,108 @@
                 const ss = String(now.getSeconds()).padStart(2, '0');
                 const ts = yy + mm + dd + hh + mi + ss;
 
+                // 隨機碼產生器
+                const rnd = () => "0010LU0" + Math.random().toString(36).substr(2,6).toUpperCase();
+
+                // S1 標頭 (55欄)
                 let s1 = [["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"]];
+                
+                // S2 標頭
                 let s2 = [["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]];
+                
+                // V1 標頭
                 let v1 = [["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"]];
 
                 Object.values(clients).forEach(c => {
                     if(!c.isValid) return; 
                     
-                    const mERI = c.eri || generateERI('master');
-                    const gross = c.items.reduce((a,b)=>a+(b.price*b.quantity), 0);
-                    const qtyTotal = c.items.reduce((a,b)=>a+b.quantity, 0);
+                    const mERI = c.eri || ("0H5" + rnd());
+                    
+                    let gross = 0, qty = 0;
+                    c.items.forEach(i => { gross += i.price * i.quantity; qty += i.quantity; });
 
-                    // S1: Editor 改為 黃畀予
+                    // --- S1: 主檔 (將中文改為英文 POS，避免位移) ---
                     s1.push([
                         mERI, codeFixed, staffCode, custCode, date, "NTD", 1, "", whCode, "", 
-                        0, Math.round(gross), Math.round(c.amount-gross), Math.round(c.amount), qtyTotal, "黃畀予", "", "書展匯入", "", 3, 
-                        3, "", "", date, date, Math.round(c.amount), "0000", "", 0, "", 
-                        "", 0, 0, "", 0, "", 0, "0000", "", 0, 
-                        custCode, "", "書展", "", 1, 0, "", "", 0, "", 
+                        0, Math.round(gross), Math.round(c.amount-gross), Math.round(c.amount), qty, 
+                        "POS", "", "POS_Import", "", 3, 3, 
+                        date, "", date, date, Math.round(c.amount), 
+                        "0000", "", 0, "", "", 0, 0, "", 0, "", 0, "0000", "", 0, 
+                        custCode, "", "POS", "", 1, 0, "", "", 0, "", 
                         ts, "", "", "", ""
                     ]);
 
+                    // --- S2: 明細檔 ---
                     c.items.forEach((it, idx) => {
-                        const dERI = it.detailERI || generateERI('detail');
+                        const dERI = it.detailERI || ("0H8"+rnd());
                         s2.push([
                             dERI, mERI, "", staffCode, custCode, whCode,
-                            it.code, // 這裡已經是會計代碼
-                            date, 0, codeFixed, idx, "", 
-                            it.quantity, "本", // UNIT 使用 "本"
-                            it.price, Math.round(it.price*it.quantity), it.quantity, 0, "", "", 
-                            it.quantity + "本", // QTYSTR
-                            "NTD", 1, it.price, it.discount || 100, 
+                            it.code, date, 0, codeFixed, idx, "", 
+                            it.quantity, "", it.price, Math.round(it.price*it.quantity), it.quantity, 0, "", "", 
+                            it.quantity, "NTD", 1, it.price, it.discount||100, 
                             "", "", 0, 0, 0, "", date, "", 0, 0, 0, 0, 0, 0, "", 
                             ts, "", ""
                         ]);
                     });
 
-                    let payCode = "5"; 
-                    let paySubj = "1144.355"; 
-                    if (c.paymentMethod.includes("信用卡") || c.paymentMethod.includes("LINE")) { 
-                        payCode = "16"; paySubj = "1144.358"; 
+                    // --- V1: 傳票 (新增文化幣 61 邏輯) ---
+                    // 1. 解析付款方式
+                    let cultureAmt = 0;
+                    let mainAmt = c.amount;
+
+                    if (c.paymentMethod.includes("文化幣")) {
+                        const match = c.paymentMethod.match(/文化幣.*?\((\d+)\)/);
+                        if (match && match[1]) {
+                            cultureAmt = parseInt(match[1]);
+                            mainAmt = c.amount - cultureAmt;
+                        } else if (c.paymentMethod === "文化幣") {
+                             // 若整筆都是文化幣
+                             cultureAmt = c.amount;
+                             mainAmt = 0;
+                        }
                     }
-                    v1.push([generateERI('pay'), mERI, 0, payCode, paySubj, 0, -Math.round(c.amount), "", "", ts]);
+
+                    let serialCount = 0;
+
+                    // 2. 如果有文化幣，寫入一筆 61
+                    if (cultureAmt > 0) {
+                         v1.push([("01E"+rnd()), mERI, serialCount++, "61", "1144.61", 0, -Math.round(cultureAmt), "", "", ts]);
+                    }
+
+                    // 3. 如果還有剩餘金額 (現金/信用卡/LINE)
+                    if (mainAmt > 0) {
+                        let payCode = "5"; 
+                        let paySubj = "1144.355"; 
+                        if (c.paymentMethod.includes("信用卡") || c.paymentMethod.includes("LINE")) { 
+                            payCode = "16"; paySubj = "1144.358"; 
+                        }
+                        v1.push([("01E"+rnd()), mERI, serialCount++, payCode, paySubj, 0, -Math.round(mainAmt), "", "", ts]);
+                    }
                 });
 
-                const downloadCSV = (data, filename) => {
-                    let csv = data.map(row => 
-                        row.map(v => {
-                            if (v === null || v === undefined) return '""';
-                            return `"${v}"`; 
-                        }).join(",")
-                    ).join("\r\n");
-
+                // 下載功能
+                const dl = (d, n) => {
+                    const csv = d.map(r => r.map(v => `"${v===null||v===undefined?"":v}"`).join(',')).join('\r\n');
                     let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
                     let a = document.createElement('a'); 
                     a.href = URL.createObjectURL(blob); 
-                    a.download = filename; 
+                    a.download = n; 
                     a.click();
                 };
 
-                downloadCSV(s1, "STKSALE1.csv");
-                setTimeout(() => downloadCSV(s2, "STKSALE2.csv"), 500);
-                setTimeout(() => downloadCSV(v1, "VCHRPLUS_SALE1.csv"), 1000);
-            });
+                dl(s1, "STKSALE1.csv");
+                setTimeout(() => dl(s2, "STKSALE2.csv"), 500);
+                setTimeout(() => dl(v1, "VCHRPLUS_SALE1.csv"), 1000);
+            };
 
             // 修復清空按鈕
-            clearAllBtn.addEventListener('click', () => {
+            document.getElementById('clear-all-btn').onclick = () => {
                 if (confirm('確定要刪除全部訂單？(將清除所有資料並重整)')) {
                     localStorage.clear();
                     alert('資料已清空，系統將重新載入。');
                     location.reload();
                 }
-            });
+            };
 
             loadDiscountRates(); 
             loadProducts().then(() => {
@@ -1699,3 +1729,4 @@
     </script>
 </body>
 </html>
+
