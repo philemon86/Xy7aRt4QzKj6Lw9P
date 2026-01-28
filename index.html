@@ -1594,13 +1594,13 @@
                 } catch (error) { alert('CSV匯出錯誤'); }
             });
 
-// --- PILOT 會計匯出 (修正版 v4 - 欄位錯位終極修復) ---
+// --- PILOT 會計匯出 (修正版 v6 - 嚴格依照正確檔案格式) ---
             exportPilotBtn.addEventListener('click', () => {
                 // 1. 基礎設定
                 const codeFixed = "19890107";     // 固定單號
-                const custCode = "0002";          // 客戶代碼 (固定四碼)
-                const whCode = "0000";            // 倉庫代碼 (固定四碼)
-                const staffCode = "0002";         // 員工/部門代碼
+                const custCode = "0002";          // 客戶代碼
+                const whCode = "0000";            // 倉庫代碼
+                const staffCode = "0002";         // 員工代碼
                 
                 const now = new Date();
                 const date = now.getFullYear() + '/' + 
@@ -1616,14 +1616,14 @@
                 const ss = String(now.getSeconds()).padStart(2, '0');
                 const ts = yy + mm + dd + hh + mi + ss;
 
-                // 2. 定義標頭 (完全依照您的範本)
+                // 2. 定義標頭 (Headers) - 嚴格依照您提供的正確檔案
                 let s1 = [["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"]];
                 
                 let s2 = [["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]];
                 
                 let v1 = [["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"]];
 
-                // 3. 填入資料 (關鍵修正：使用 null 代表空欄位，避免 "", 造成錯位)
+                // 3. 填入資料 (關鍵：直接使用空字串 ""，不使用 null)
                 Object.values(clients).forEach(c => {
                     if(!c.isValid) return; 
                     
@@ -1631,50 +1631,67 @@
                     const gross = c.items.reduce((a,b)=>a+(b.price*b.quantity), 0);
                     const qtyTotal = c.items.reduce((a,b)=>a+b.quantity, 0);
 
-                    // --- S1: 主檔 (Master) ---
+                    // --- S1: 主檔 (55欄) ---
                     s1.push([
-                        mERI, codeFixed, staffCode, custCode, date, "NTD", 1, null, whCode, null, 
-                        0, Math.round(gross), Math.round(c.amount-gross), Math.round(c.amount), qtyTotal, "POS_USER", null, "書展匯入", null, 3, 
-                        3, null, null, date, date, Math.round(c.amount), 0, null, 0, null, 
-                        null, 0, 0, null, 0, null, 0, 0, null, 0, 
-                        custCode, null, "書展", null, 1, 0, null, null, 0, null, 
-                        ts, null, null, null, null
+                        mERI, codeFixed, staffCode, custCode, date, "NTD", 1, "", whCode, "", 
+                        0, Math.round(gross), Math.round(c.amount-gross), Math.round(c.amount), qtyTotal, "POS_USER", "", "書展匯入", "", 3, 
+                        3, "", "", date, date, Math.round(c.amount), "0000", "", 0, "", 
+                        "", 0, 0, "", 0, "", 0, "0000", "", 0, 
+                        custCode, "", "書展", "", 1, 0, "", "", 0, "", 
+                        ts, "", "", "", ""
                     ]);
 
-                    // --- S2: 明細檔 (Details) --- 
-                    // 修正說明：PROJNO, INVNO 等欄位改用 null，輸出時會變成 ,, 確保日期不會往前位移
+                    // --- S2: 明細檔 (43欄 - 嚴格對齊) --- 
                     c.items.forEach((it, idx) => {
                         const dERI = it.detailERI || generateERI('detail');
                         s2.push([
-                            dERI,           // ERI
-                            mERI,           // MASTERI
-                            null,           // SRCERI
-                            staffCode,      // STAFF
-                            custCode,       // CUST
-                            whCode,         // GWN
-                            it.code,        // PROD (商品代碼)
-                            date,           // SDATE
-                            0,              // TYPE
-                            codeFixed,      // CODE (單號)
-                            idx,            // SERIAL
-                            null,           // SPEC
-                            it.quantity,    // QTY
-                            "本",           // UNIT
-                            it.price,       // PRICE
-                            Math.round(it.price*it.quantity), // AMT
-                            it.quantity,    // REALQTY
-                            0, null, null,  // SUBQTY, REMARK, PRODDESC
-                            it.quantity+"本", // QTYSTR
-                            "NTD", 1,       // CURR, RATE
-                            it.price,       // STDPRC
-                            it.discount,    // DISCOUNT
-                            null, null, 0, 0, 0, // PROJNO, INVNO(null), INVQTY, SAMPLE, INVRETURN(0)
-                            null, date, null, 0, 0, 0, 0, 0, 0, null, // VPNO(null), VLIDDATE(date)...
-                            ts, null, null  // LASTUPD, POSREMARK...
+                            dERI,               // 0: ERI
+                            mERI,               // 1: MASTERI
+                            "",                 // 2: SRCERI
+                            staffCode,          // 3: STAFF
+                            custCode,           // 4: CUST
+                            whCode,             // 5: GWN
+                            it.code,            // 6: PROD
+                            date,               // 7: SDATE
+                            0,                  // 8: TYPE
+                            codeFixed,          // 9: CODE
+                            idx,                // 10: SERIAL
+                            "",                 // 11: SPEC
+                            it.quantity,        // 12: QTY
+                            "本",               // 13: UNIT
+                            it.price,           // 14: PRICE
+                            Math.round(it.price*it.quantity), // 15: AMT
+                            it.quantity,        // 16: REALQTY
+                            0,                  // 17: SUBQTY
+                            "",                 // 18: REMARK
+                            "",                 // 19: PRODDESC
+                            it.quantity+"本",   // 20: QTYSTR
+                            "NTD",              // 21: CURR
+                            1,                  // 22: RATE
+                            it.price,           // 23: STDPRC
+                            it.discount,        // 24: DISCOUNT
+                            "",                 // 25: PROJNO (關鍵修正：明確空字串)
+                            "",                 // 26: INVNO  (關鍵修正：明確空字串)
+                            0,                  // 27: INVQTY
+                            0,                  // 28: SAMPLE
+                            0,                  // 29: INVRETURN (之前錯誤點)
+                            "",                 // 30: VPNO
+                            date,               // 31: VLIDDATE
+                            "",                 // 32: REFNO
+                            0,                  // 33: INVPRC
+                            0,                  // 34: INVAMT
+                            0,                  // 35: INVAMT1
+                            0,                  // 36: GIFT
+                            0,                  // 37: MFLAG
+                            0,                  // 38: SUBAMT
+                            "",                 // 39: APCODE
+                            ts,                 // 40: LASTUPD
+                            "",                 // 41: POSREMARK1
+                            ""                  // 42: POSREMARK2
                         ]);
                     });
 
-                    // --- V1: 傳票 (Voucher) ---
+                    // --- V1: 傳票 (10欄) ---
                     let payCode = "5"; 
                     let paySubj = "1144.355"; 
                     if (c.paymentMethod.includes("信用卡") || c.paymentMethod.includes("LINE")) { 
@@ -1682,22 +1699,22 @@
                     }
                     
                     v1.push([
-                        generateERI('pay'), mERI, 0, payCode, paySubj, 0, -Math.round(c.amount), null, null, ts
+                        generateERI('pay'), mERI, 0, payCode, paySubj, 0, -Math.round(c.amount), "", "", ts
                     ]);
                 });
 
-                // 4. 下載功能 (格式最終優化)
+                // 4. 下載功能 (簡化邏輯：強制對所有欄位加引號)
                 const downloadCSV = (data, filename) => {
                     let csv = data.map(row => 
                         row.map(v => {
-                            // 關鍵修正：如果是 null 或 undefined，回傳空字串 (不加引號)，產生 ,, 效果
-                            if (v === null || v === undefined) return "";
-                            // 其他值強制加引號，確保 0002 不會變 2
+                            // 修正：無論是什麼值，前後都加雙引號
+                            // 這樣空字串 "" 會變成 """"，數字 0 會變成 "0"
+                            // 完全符合您上傳的正確檔案格式
+                            if (v === null || v === undefined) return '""';
                             return `"${v}"`; 
                         }).join(",")
                     ).join("\r\n");
 
-                    // 加入 BOM
                     let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
                     let a = document.createElement('a'); 
                     a.href = URL.createObjectURL(blob); 
@@ -1721,6 +1738,7 @@
     </script>
 </body>
 </html>
+
 
 
 
