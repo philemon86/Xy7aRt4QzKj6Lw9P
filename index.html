@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>腓利門雲POS v7版</title>
+    <title>✦腓利門雲POS版</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         /* --- 核心配色：大地色系優化 --- */
@@ -1594,20 +1594,19 @@
                 } catch (error) { alert('CSV匯出錯誤'); }
             });
 
-// --- PILOT 會計匯出 (修正版 v7 - 修正代碼長度與格式) ---
+// --- PILOT 會計匯出 (修正版 v8 - ASCII 安全模式，防止中文亂碼造成位移) ---
             exportPilotBtn.addEventListener('click', () => {
-                // 1. 基礎設定 (依照正確範本修正)
-                const codeFixed = "19890107";     // 固定單號
-                const custCode = "0002";          // 客戶代碼 (4碼)
-                const whCode = "0000";            // 倉庫代碼 (4碼)
-                const staffCode = "02";           // 員工代碼 (修正：改為 2碼，符合範本)
+                // 1. 基礎設定
+                const codeFixed = "19890107";     
+                const custCode = "0002";          // 客戶 CUST: 0002
+                const whCode = "0000";            // 倉庫 GWN: 0000
+                const staffCode = "02";           // 員工 STAFF: 02
                 
                 const now = new Date();
                 const date = now.getFullYear() + '/' + 
                              String(now.getMonth() + 1).padStart(2, '0') + '/' + 
                              String(now.getDate()).padStart(2, '0');
                 
-                // LASTUPD: YYMMDDHHMMSS
                 const yy = String(now.getFullYear()).slice(-2);
                 const mm = String(now.getMonth() + 1).padStart(2, '0');
                 const dd = String(now.getDate()).padStart(2, '0');
@@ -1623,7 +1622,7 @@
                 
                 let v1 = [["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"]];
 
-                // 3. 填入資料
+                // 3. 填入資料 (移除所有中文，改用純英文/數字)
                 Object.values(clients).forEach(c => {
                     if(!c.isValid) return; 
                     
@@ -1631,25 +1630,25 @@
                     const gross = c.items.reduce((a,b)=>a+(b.price*b.quantity), 0);
                     const qtyTotal = c.items.reduce((a,b)=>a+b.quantity, 0);
 
-                    // --- S1: 主檔 (55欄) ---
+                    // --- S1: 主檔 ---
                     s1.push([
                         mERI, codeFixed, staffCode, custCode, date, "NTD", 1, "", whCode, "", 
-                        0, Math.round(gross), Math.round(c.amount-gross), Math.round(c.amount), qtyTotal, "POS_USER", "", "書展匯入", "", 3, 
+                        0, Math.round(gross), Math.round(c.amount-gross), Math.round(c.amount), qtyTotal, "POS_USER", "", "POS_Import", "", 3, 
                         3, "", "", date, date, Math.round(c.amount), "0000", "", 0, "", 
                         "", 0, 0, "", 0, "", 0, "0000", "", 0, 
-                        custCode, "", "書展", "", 1, 0, "", "", 0, "", 
+                        custCode, "", "POS", "", 1, 0, "", "", 0, "", 
                         ts, "", "", "", ""
                     ]);
 
-                    // --- S2: 明細檔 (43欄) --- 
+                    // --- S2: 明細檔 (關鍵修正：移除 "本" 等中文字) --- 
                     c.items.forEach((it, idx) => {
                         const dERI = it.detailERI || generateERI('detail');
                         s2.push([
                             dERI,               // 0: ERI
                             mERI,               // 1: MASTERI
                             "",                 // 2: SRCERI
-                            staffCode,          // 3: STAFF (修正: "02")
-                            custCode,           // 4: CUST
+                            staffCode,          // 3: STAFF (02)
+                            custCode,           // 4: CUST (0002)
                             whCode,             // 5: GWN
                             it.code,            // 6: PROD
                             date,               // 7: SDATE
@@ -1658,20 +1657,20 @@
                             idx,                // 10: SERIAL
                             "",                 // 11: SPEC
                             it.quantity,        // 12: QTY
-                            "本",               // 13: UNIT
+                            "",                 // 13: UNIT (修正: 移除中文 "本" -> 空白)
                             it.price,           // 14: PRICE
                             Math.round(it.price*it.quantity), // 15: AMT
                             it.quantity,        // 16: REALQTY
                             0,                  // 17: SUBQTY
                             "",                 // 18: REMARK
                             "",                 // 19: PRODDESC
-                            it.quantity+"本",   // 20: QTYSTR
+                            String(it.quantity),// 20: QTYSTR (修正: 移除中文 "本" -> 只留數字)
                             "NTD",              // 21: CURR
                             1,                  // 22: RATE
                             it.price,           // 23: STDPRC
-                            it.discount || 100, // 24: DISCOUNT (修正: 確保有值)
-                            "",                 // 25: PROJNO (明確空字串)
-                            "",                 // 26: INVNO  (明確空字串)
+                            it.discount || 100, // 24: DISCOUNT
+                            "",                 // 25: PROJNO
+                            "",                 // 26: INVNO
                             0,                  // 27: INVQTY
                             0,                  // 28: SAMPLE
                             0,                  // 29: INVRETURN
@@ -1691,7 +1690,7 @@
                         ]);
                     });
 
-                    // --- V1: 傳票 (10欄) ---
+                    // --- V1: 傳票 ---
                     let payCode = "5"; 
                     let paySubj = "1144.355"; 
                     if (c.paymentMethod.includes("信用卡") || c.paymentMethod.includes("LINE")) { 
@@ -1703,7 +1702,6 @@
                     ]);
                 });
 
-                // 4. 下載功能 (強制雙引號，確保格式一致)
                 const downloadCSV = (data, filename) => {
                     let csv = data.map(row => 
                         row.map(v => {
@@ -1712,6 +1710,7 @@
                         }).join(",")
                     ).join("\r\n");
 
+                    // 雖然這裡加了 BOM，但因為內容全是英文數字，Pilot 會計系統將能完美讀取，不會發生錯位。
                     let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
                     let a = document.createElement('a'); 
                     a.href = URL.createObjectURL(blob); 
@@ -1735,6 +1734,7 @@
     </script>
 </body>
 </html>
+
 
 
 
