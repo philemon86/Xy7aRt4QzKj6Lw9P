@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>V10腓利門雲POS</title>
+    <title>V11腓利門雲POS</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         /* --- 核心配色：大地色系優化 --- */
@@ -899,11 +899,11 @@
                 } catch (error) {
                     console.warn('CSV讀取失敗，切換至內建測試資料庫', error);
                     Object.values(productDB).forEach(p => {
-                         const defaultDiscount = discountRates[p.class] || 100;
-                         products[p.code] = {
+                          const defaultDiscount = discountRates[p.class] || 100;
+                          products[p.code] = {
                              ...p,
                              defaultDiscount: defaultDiscount
-                         };
+                          };
                     });
                     dbStatusElement.textContent = "CSV讀取失敗，使用內建/測試資料";
                     dbStatusElement.style.color = "orange";
@@ -1116,6 +1116,7 @@
 
             paidAmountInput.addEventListener('input', calculateChange);
             const saveCart = () => { localStorage.setItem('cart', JSON.stringify(cart)); };
+            const saveSummary = () => {
                 localStorage.setItem('clients', JSON.stringify(clients));
                 localStorage.setItem('overallSummary', JSON.stringify(overallSummary));
                 localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
@@ -1605,9 +1606,9 @@
                                 String(now.getHours()).padStart(2, '0') + 
                                 String(now.getMinutes()).padStart(2, '0');
 
-                const custCode = "0002";          
-                const whCode = "0000";            
-                const staffCode = "02";           
+                const custCode = "0002";           
+                const whCode = "0000";             
+                const staffCode = "02";            
                 
                 const date = now.getFullYear() + '/' + 
                              String(now.getMonth() + 1).padStart(2, '0') + '/' + 
@@ -1713,24 +1714,6 @@
 
                 dl(s1, "STKSALE1.csv"); setTimeout(() => dl(s2, "STKSALE2.csv"), 500); setTimeout(() => dl(v1, "VCHRPLUS_SALE1.csv"), 1000);
             };
-
-                    let sn = 0;
-                    if (cultureAmt > 0) v1.push([("01E"+rnd()), mERI, sn++, "61", "1144.61", 0, -Math.round(cultureAmt), "", "", ts]);
-                    if (mainAmt > 0) {
-                        let pc = "5", ps = "1144.355"; 
-                        if (c.paymentMethod.includes("信用卡") || c.paymentMethod.includes("LINE")) { pc = "16"; ps = "1144.358"; }
-                        v1.push([("01E"+rnd()), mERI, sn++, pc, ps, 0, -Math.round(mainAmt), "", "", ts]);
-                    }
-                });
-
-                const dl = (d, n) => {
-                    const csv = d.map(r => r.map(v => `"${v===null||v===undefined?"":v}"`).join(',')).join('\r\n');
-                    let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-                    let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = n; a.click();
-                };
-
-                dl(s1, "STKSALE1.csv"); setTimeout(() => dl(s2, "STKSALE2.csv"), 500); setTimeout(() => dl(v1, "VCHRPLUS_SALE1.csv"), 1000);
-            };
             
             // 修復清空按鈕
             document.getElementById('clear-all-btn').onclick = () => {
@@ -1751,8 +1734,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
