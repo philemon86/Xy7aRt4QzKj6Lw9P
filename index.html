@@ -1116,7 +1116,6 @@
 
             paidAmountInput.addEventListener('input', calculateChange);
             const saveCart = () => { localStorage.setItem('cart', JSON.stringify(cart)); };
-            const saveSummary = () => {
                 localStorage.setItem('clients', JSON.stringify(clients));
                 localStorage.setItem('overallSummary', JSON.stringify(overallSummary));
                 localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
@@ -1752,6 +1751,7 @@
     </script>
 </body>
 </html>
+
 
 
 
