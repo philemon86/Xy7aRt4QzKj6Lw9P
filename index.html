@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>腓利門雲POS - 2026書展版</title>
+    <title>腓利門雲POS v7版</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         /* --- 核心配色：大地色系優化 --- */
@@ -1594,20 +1594,20 @@
                 } catch (error) { alert('CSV匯出錯誤'); }
             });
 
-// --- PILOT 會計匯出 (修正版 v6 - 嚴格依照正確檔案格式) ---
+// --- PILOT 會計匯出 (修正版 v7 - 修正代碼長度與格式) ---
             exportPilotBtn.addEventListener('click', () => {
-                // 1. 基礎設定
+                // 1. 基礎設定 (依照正確範本修正)
                 const codeFixed = "19890107";     // 固定單號
-                const custCode = "0002";          // 客戶代碼
-                const whCode = "0000";            // 倉庫代碼
-                const staffCode = "0002";         // 員工代碼
+                const custCode = "0002";          // 客戶代碼 (4碼)
+                const whCode = "0000";            // 倉庫代碼 (4碼)
+                const staffCode = "02";           // 員工代碼 (修正：改為 2碼，符合範本)
                 
                 const now = new Date();
                 const date = now.getFullYear() + '/' + 
                              String(now.getMonth() + 1).padStart(2, '0') + '/' + 
                              String(now.getDate()).padStart(2, '0');
                 
-                // LASTUPD: YYMMDDHHMMSS (12碼)
+                // LASTUPD: YYMMDDHHMMSS
                 const yy = String(now.getFullYear()).slice(-2);
                 const mm = String(now.getMonth() + 1).padStart(2, '0');
                 const dd = String(now.getDate()).padStart(2, '0');
@@ -1616,14 +1616,14 @@
                 const ss = String(now.getSeconds()).padStart(2, '0');
                 const ts = yy + mm + dd + hh + mi + ss;
 
-                // 2. 定義標頭 (Headers) - 嚴格依照您提供的正確檔案
+                // 2. 定義標頭
                 let s1 = [["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"]];
                 
                 let s2 = [["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]];
                 
                 let v1 = [["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"]];
 
-                // 3. 填入資料 (關鍵：直接使用空字串 ""，不使用 null)
+                // 3. 填入資料
                 Object.values(clients).forEach(c => {
                     if(!c.isValid) return; 
                     
@@ -1641,14 +1641,14 @@
                         ts, "", "", "", ""
                     ]);
 
-                    // --- S2: 明細檔 (43欄 - 嚴格對齊) --- 
+                    // --- S2: 明細檔 (43欄) --- 
                     c.items.forEach((it, idx) => {
                         const dERI = it.detailERI || generateERI('detail');
                         s2.push([
                             dERI,               // 0: ERI
                             mERI,               // 1: MASTERI
                             "",                 // 2: SRCERI
-                            staffCode,          // 3: STAFF
+                            staffCode,          // 3: STAFF (修正: "02")
                             custCode,           // 4: CUST
                             whCode,             // 5: GWN
                             it.code,            // 6: PROD
@@ -1669,12 +1669,12 @@
                             "NTD",              // 21: CURR
                             1,                  // 22: RATE
                             it.price,           // 23: STDPRC
-                            it.discount,        // 24: DISCOUNT
-                            "",                 // 25: PROJNO (關鍵修正：明確空字串)
-                            "",                 // 26: INVNO  (關鍵修正：明確空字串)
+                            it.discount || 100, // 24: DISCOUNT (修正: 確保有值)
+                            "",                 // 25: PROJNO (明確空字串)
+                            "",                 // 26: INVNO  (明確空字串)
                             0,                  // 27: INVQTY
                             0,                  // 28: SAMPLE
-                            0,                  // 29: INVRETURN (之前錯誤點)
+                            0,                  // 29: INVRETURN
                             "",                 // 30: VPNO
                             date,               // 31: VLIDDATE
                             "",                 // 32: REFNO
@@ -1703,13 +1703,10 @@
                     ]);
                 });
 
-                // 4. 下載功能 (簡化邏輯：強制對所有欄位加引號)
+                // 4. 下載功能 (強制雙引號，確保格式一致)
                 const downloadCSV = (data, filename) => {
                     let csv = data.map(row => 
                         row.map(v => {
-                            // 修正：無論是什麼值，前後都加雙引號
-                            // 這樣空字串 "" 會變成 """"，數字 0 會變成 "0"
-                            // 完全符合您上傳的正確檔案格式
                             if (v === null || v === undefined) return '""';
                             return `"${v}"`; 
                         }).join(",")
@@ -1738,6 +1735,7 @@
     </script>
 </body>
 </html>
+
 
 
 
