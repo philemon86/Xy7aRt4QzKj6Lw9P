@@ -1596,14 +1596,20 @@
                 } catch (error) { alert('CSV匯出錯誤'); }
             });
 
-// --- PILOT 會計匯出 (修正版 v12 - 含文化幣科目 61 + ASCII 安全模式) ---
+// --- PILOT 會計匯出 (修正版 v14 - 修正明細金額為「折扣後淨值」，解決帳不平問題) ---
             document.getElementById('export-pilot-btn').onclick = () => {
-                const codeFixed = "19890107";     
+                const now = new Date();
+                // 動態單號: YYYYMMDDHHmm
+                const orderId = String(now.getFullYear()) + 
+                                String(now.getMonth() + 1).padStart(2, '0') + 
+                                String(now.getDate()).padStart(2, '0') + 
+                                String(now.getHours()).padStart(2, '0') + 
+                                String(now.getMinutes()).padStart(2, '0');
+
                 const custCode = "0002";          
                 const whCode = "0000";            
                 const staffCode = "02";           
                 
-                const now = new Date();
                 const date = now.getFullYear() + '/' + 
                              String(now.getMonth() + 1).padStart(2, '0') + '/' + 
                              String(now.getDate()).padStart(2, '0');
@@ -1616,16 +1622,11 @@
                 const ss = String(now.getSeconds()).padStart(2, '0');
                 const ts = yy + mm + dd + hh + mi + ss;
 
-                // 隨機碼產生器
                 const rnd = () => "0010LU0" + Math.random().toString(36).substr(2,6).toUpperCase();
 
-                // S1 標頭 (55欄)
+                // 標頭
                 let s1 = [["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"]];
-                
-                // S2 標頭
                 let s2 = [["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]];
-                
-                // V1 標頭
                 let v1 = [["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"]];
 
                 Object.values(clients).forEach(c => {
@@ -1633,83 +1634,79 @@
                     
                     const mERI = c.eri || ("0H5" + rnd());
                     
-                    let gross = 0, qty = 0;
-                    c.items.forEach(i => { gross += i.price * i.quantity; qty += i.quantity; });
+                    // 計算整單的 原價總額(Gross) 與 淨值總額(Net)
+                    let totalGross = 0;
+                    c.items.forEach(i => { totalGross += i.price * i.quantity; });
+                    const totalNet = Math.round(c.amount);
+                    const totalDiff = totalNet - Math.round(totalGross); // 折讓金額 (負數)
+                    
+                    const totalQty = c.items.reduce((a,b)=>a+b.quantity, 0);
 
-                    // --- S1: 主檔 (將中文改為英文 POS，避免位移) ---
+                    // --- S1: 主檔 ---
                     s1.push([
-                        mERI, codeFixed, staffCode, custCode, date, "NTD", 1, "", whCode, "", 
-                        0, Math.round(gross), Math.round(c.amount-gross), Math.round(c.amount), qty, 
+                        mERI, orderId, staffCode, custCode, date, "NTD", 1, "", whCode, "", 
+                        0, Math.round(totalGross), Math.round(totalDiff), totalNet, totalQty, 
                         "POS", "", "POS_Import", "", 3, 3, 
-                        date, "", date, date, Math.round(c.amount), 
+                        date, "", date, date, totalNet, 
                         "0000", "", 0, "", "", 0, 0, "", 0, "", 0, "0000", "", 0, 
                         custCode, "", "POS", "", 1, 0, "", "", 0, "", 
                         ts, "", "", "", ""
                     ]);
 
-                    // --- S2: 明細檔 ---
+                    // --- S2: 明細檔 (關鍵修正) ---
                     c.items.forEach((it, idx) => {
                         const dERI = it.detailERI || ("0H8"+rnd());
+                        const discountRate = it.discount || 100;
+                        
+                        // [修正] 計算單項的淨值 (Net Price)
+                        // 範例: 原價150, 79折 => 118.5
+                        const netPrice = it.price * (discountRate / 100);
+                        const netAmt = Math.round(netPrice * it.quantity);
+
                         s2.push([
                             dERI, mERI, "", staffCode, custCode, whCode,
-                            it.code, date, 0, codeFixed, idx, "", 
-                            it.quantity, "", it.price, Math.round(it.price*it.quantity), it.quantity, 0, "", "", 
-                            it.quantity, "NTD", 1, it.price, it.discount||100, 
+                            it.code, date, 0, orderId, idx, 
+                            it.price, // [修正] SPEC 欄位填入「原價」(參考正確檔案)
+                            it.quantity, "", // UNIT 留空保平安
+                            netPrice, // [修正] PRICE 填入「折扣後單價」
+                            netAmt,   // [修正] AMT 填入「折扣後總額」
+                            it.quantity, 0, "", "", 
+                            it.quantity, // QTYSTR
+                            "NTD", 1, it.price, discountRate, 
                             "", "", 0, 0, 0, "", date, "", 0, 0, 0, 0, 0, 0, "", 
                             ts, "", ""
                         ]);
                     });
 
-                    // --- V1: 傳票 (新增文化幣 61 邏輯) ---
-                    // 1. 解析付款方式
-                    let cultureAmt = 0;
-                    let mainAmt = c.amount;
-
+                    // --- V1: 傳票 ---
+                    let cultureAmt = 0, mainAmt = c.amount;
                     if (c.paymentMethod.includes("文化幣")) {
                         const match = c.paymentMethod.match(/文化幣.*?\((\d+)\)/);
                         if (match && match[1]) {
-                            cultureAmt = parseInt(match[1]);
-                            mainAmt = c.amount - cultureAmt;
+                            cultureAmt = parseInt(match[1]); mainAmt = c.amount - cultureAmt;
                         } else if (c.paymentMethod === "文化幣") {
-                             // 若整筆都是文化幣
-                             cultureAmt = c.amount;
-                             mainAmt = 0;
+                             cultureAmt = c.amount; mainAmt = 0;
                         }
                     }
 
-                    let serialCount = 0;
-
-                    // 2. 如果有文化幣，寫入一筆 61
-                    if (cultureAmt > 0) {
-                         v1.push([("01E"+rnd()), mERI, serialCount++, "61", "1144.61", 0, -Math.round(cultureAmt), "", "", ts]);
-                    }
-
-                    // 3. 如果還有剩餘金額 (現金/信用卡/LINE)
+                    let sn = 0;
+                    if (cultureAmt > 0) v1.push([("01E"+rnd()), mERI, sn++, "61", "1144.61", 0, -Math.round(cultureAmt), "", "", ts]);
                     if (mainAmt > 0) {
-                        let payCode = "5"; 
-                        let paySubj = "1144.355"; 
-                        if (c.paymentMethod.includes("信用卡") || c.paymentMethod.includes("LINE")) { 
-                            payCode = "16"; paySubj = "1144.358"; 
-                        }
-                        v1.push([("01E"+rnd()), mERI, serialCount++, payCode, paySubj, 0, -Math.round(mainAmt), "", "", ts]);
+                        let pc = "5", ps = "1144.355"; 
+                        if (c.paymentMethod.includes("信用卡") || c.paymentMethod.includes("LINE")) { pc = "16"; ps = "1144.358"; }
+                        v1.push([("01E"+rnd()), mERI, sn++, pc, ps, 0, -Math.round(mainAmt), "", "", ts]);
                     }
                 });
 
-                // 下載功能
                 const dl = (d, n) => {
                     const csv = d.map(r => r.map(v => `"${v===null||v===undefined?"":v}"`).join(',')).join('\r\n');
                     let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-                    let a = document.createElement('a'); 
-                    a.href = URL.createObjectURL(blob); 
-                    a.download = n; 
-                    a.click();
+                    let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = n; a.click();
                 };
 
-                dl(s1, "STKSALE1.csv");
-                setTimeout(() => dl(s2, "STKSALE2.csv"), 500);
-                setTimeout(() => dl(v1, "VCHRPLUS_SALE1.csv"), 1000);
+                dl(s1, "STKSALE1.csv"); setTimeout(() => dl(s2, "STKSALE2.csv"), 500); setTimeout(() => dl(v1, "VCHRPLUS_SALE1.csv"), 1000);
             };
-
+            
             // 修復清空按鈕
             document.getElementById('clear-all-btn').onclick = () => {
                 if (confirm('確定要刪除全部訂單？(將清除所有資料並重整)')) {
@@ -1729,4 +1726,5 @@
     </script>
 </body>
 </html>
+
 
