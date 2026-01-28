@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>✦腓利門雲POS版</title>
+    <title>腓利門雲POS - 2026書展版 (會計整合版)</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         /* --- 核心配色：大地色系優化 --- */
@@ -30,7 +30,6 @@
             color: var(--text-color);
         }
 
-        /* 父級容器 */
         .flex-container {
             display: flex;
             flex-wrap: wrap;
@@ -53,7 +52,6 @@
             border-top: 4px solid var(--primary-btn);
         }
 
-        /* 全寬容器用於記帳模式 */
         .container-full {
             background-color: #fff;
             padding: 20px;
@@ -153,7 +151,6 @@
             border: 2px solid var(--border-color);
         }
 
-        /* 底部四個結帳按鈕的樣式 */
         .checkout-buttons-area {
             display: flex;
             justify-content: space-between;
@@ -202,7 +199,6 @@
             font-weight: normal;
         }
 
-        /* 30秒提醒動畫 */
         .btn-alert {
             animation: heartBeat 1s infinite;
             background-color: #ff8c00 !important;
@@ -350,7 +346,7 @@
             text-align: center;
         }
         .accounting-col.initial-col {
-            background-color: #f0f8ff; /* 初始金額欄位底色不同 */
+            background-color: #f0f8ff;
             border-color: #b0c4de;
         }
 
@@ -700,6 +696,9 @@
     </div>
 
     <script>
+        // --- 內建會計系統商品對照表 (自動產生) ---
+        const ACCOUNTING_MAPPING = {"B308A": "B308A", "S047D": "S047D", "4712120550506": "12055", "9781932184037": "9781932184037", "9789570472530": "CUNPCS077AZTI", "9789867893406": "C201", "9789867893390": "C200", "9789867893383": "C202", "4712120550308": "E013G", "9789862773348": "G292", "4712120550414": "12046", "9786267385552": "L456", "9789865228804": "L268", "9789575569426": "L284", "9789865229986": "L322", "9786267385736": "L463", "9786267554163": "L505", "9786267554156": "L506", "9786267554170": "L508", "9786267385200": "L445", "9786267385002": "L442", "9789864004942": "A237", "9789865226183": "L188", "9789864003846": "A173", "9786267239336": "L361", "9789864004386": "A205", "9786267239510": "L371", "9786267239459": "L374", "9786267239466": "L375", "9786267239855": "L396", "9786267239862": "L397", "9789864003051": "A135", "9789864004058": "A189", "9786267554125": "L507", "9786267385965": "L473", "9786267385279": "L451", "9786267385064": "L444", "9786267385224": "L448", "9786267239817": "L393", "9786267239589": "L377", "9789865229672": "L312", "9789864004737": "A226", "9789864004744": "A227", "9789864004904": "A234", "9789864004911": "A235", "9789575876548": "TT0007", "9789575876555": "TT0007", "9789575877323": "TT0008", "9789575877811": "TT0022", "9789575877699": "TT0023", "9789575875763": "TT0024", "9789575876203": "TT0026", "9789575875596": "TT0027", "9789575874988": "TT0029", "9789575875398": "TT0030", "9789575875183": "TT0031", "9789575875756": "TT0033", "9789575874285": "TT0036", "9789575877705": "TT0037", "9789575876210": "TT0038", "9789575875565": "TT0039", "9789575876227": "TT0040", "9789575876562": "TT0041", "9789575873998": "TT0042", "9789575874292": "TT0043", "9789575873837": "TT0044", "9789575875022": "TT0045", "9789575875404": "TT0046", "9789575874001": "TT0047", "9789575874308": "TT0048", "9789575875411": "TT0049", "9789575874315": "TT0050", "9789575874018": "TT0051", "9789575873530": "TT0052", "9789575874551": "TT0053", "9789575874568": "TT0055", "9789575877835": "TT0056", "9789861986566": "C1077", "9789861986429": "C1067", "9789861983053": "C846", "9789579337588": "C271", "9789861985392": "C1004", "9789861983992": "C914", "9789861984609": "C955", "9789861985385": "C1005", "9789861984364": "C941", "9789861984685": "C958", "9789861985286": "C999", "9789861984098": "C922", "9789861985170": "C992", "9789861985163": "C993", "9789861988294": "C1162", "9789861988898": "C1193", "9789861983794": "C900", "9789861989017": "C1198", "9789861984036": "C917", "9789861986276": "C1060", "9789861985798": "C1031", "9789861986115": "C1051", "9789861986511": "C1074", "9789861986702": "C1081", "9789861987518": "C1123", "9789861988300": "C1163", "9789861986870": "C1090", "9789861988584": "C1181", "9789861989673": "C1236", "9789861989918": "C1243", "9789861984920": "C977", "9789861984630": "C956", "9789861985057": "C984", "9789861984227": "C934", "9789861984319": "C939", "9789861984388": "C943", "9789861984555": "C952", "9789861984593": "C954", "9789861986719": "C1082", "9789861987587": "C1126", "9789861989260": "C1210", "9789861985040": "C983", "9789861983572": "C888", "9789861983930": "C911", "9789861986689": "C1080", "9789861985552": "C1014", "9789861986030": "C1045", "9789861983220": "C858", "9789861984722": "C961", "9789861985651": "C1021", "9789861984913": "C976", "9789861989024": "C1199", "9789861983756": "C897", "9789861984906": "C975", "9789861986528": "C1073", "9789861987556": "C1125", "9789861987624": "C1129", "9789861987723": "C1134", "9789861984715": "C960", "9789861985538": "C1013", "9789861986016": "C1043", "9789861988973": "C1197", "9789861989048": "C1200", "9789861989642": "C1233", "9789861983725": "C895", "9789861984029": "C916", "9789861985521": "C1012", "9789861986023": "C1044", "9789861987488": "C1121", "9789861988225": "C1158", "9789861989390": "C1218", "9789861989505": "C1225", "9789861983695": "C894", "9789861983879": "C905", "9789861983923": "C910", "9789861984258": "C935", "9789861984487": "C949", "9789861985323": "C1000", "9789861985644": "C1020", "9789861986283": "C1061", "9789861986412": "C1066", "9789861986634": "C1079", "9789861987228": "C1109", "9789861987730": "C1135", "9789861988638": "C1183", "9789861988935": "C1195", "9789861989444": "C1222", "9789861989666": "C1235", "9789861984043": "C918", "9789861983374": "C871", "9789861983381": "C872", "9789861984265": "C936", "9789861983190": "C856", "9789861984210": "C933", "9789861984401": "C945", "9789861985866": "C1035", "9789861987235": "C1110", "9789861983800": "C901", "9789861985187": "C994", "9789861985484": "C1009", "9789861986290": "C1062", "9789861987013": "C1098", "9789861983602": "C890", "9789861983619": "C891", "9789861984760": "C964", "9789861984777": "C965", "9789861985620": "C1019", "9789861986474": "C1070", "9789861987051": "C1102", "9789861987068": "C1103", "9789861987075": "C1104", "9789861983633": "C892", "9789861984081": "C921", "9789861984463": "C947", "9789861984623": "C957", "9789861985200": "C995", "9789861986450": "C1069", "9789861986504": "C1072", "9789861987174": "C1108", "9789861988171": "C1154", "9789861983176": "C854", "9789861983442": "C876", "9789861983459": "C877", "9789861983589": "C889", "9789861983824": "C903", "9789861983947": "C912", "9789861983985": "C913", "9789861984616": "C959", "9789861984661": "C953", "9789861985156": "C991", "9789861985279": "C998", "9789861985576": "C1016", "9789861985835": "C1033", "9789861986061": "C1047", "9789861986252": "C1058", "9789861986344": "C1065", "9789861986481": "C1071", "9789861986955": "C1095", "9789861987259": "C1111", "9789861987594": "C1127", "9789861987631": "C1130", "9789861987648": "C1131", "9789861988218": "C1157", "9789861988287": "C1161", "9789861988942": "C1196", "9789861989208": "C1207", "9789861989222": "C1208", "9789861989239": "C1209", "9789861989277": "C1211", "9789861989499": "C1224", "9789861984425": "C946", "9789861984586": "C950", "9789861985613": "C1018", "9789861985859": "C1034", "9789861986139": "C1053", "9789861987112": "C1106", "9789861987549": "C1124", "9789861983350": "C869", "9789861983367": "C870", "9789861983770": "C899", "9789861983763": "C898", "9789861983916": "C909", "9789861984074": "C920", "9789861984104": "C923", "9789861984166": "C928", "9789861984180": "C930", "9789861984395": "C944", "9789861984821": "C969", "9789861984845": "C971", "9789861985514": "C1011", "9789861985873": "C1036", "9789861986078": "C1048", "9789861986085": "C1049", "9789861986221": "C1056", "9789861986856": "C1089", "9789861986962": "C1096", "9789861987655": "C1132", "9789861988164": "C1153", "9789861988591": "C1182", "9789861988645": "C1184", "9789861989185": "C1205", "9789861989437": "C1221", "9789861989475": "C1223", "9789861989659": "C1234", "9789861983275": "C863", "9789861983282": "C864", "9789861983299": "C865", "9789861983411": "C873", "9789861983435": "C875", "9789861983732": "C896", "9789861983909": "C908", "9789861984302": "C938", "9789861984333": "C940", "9789861984562": "C951", "9789861984814": "C968", "9789861985019": "C980", "9789861985033": "C982", "9789861985224": "C997", "9789861985507": "C1010", "9789861985804": "C1032", "9789861986047": "C1046", "9789861986122": "C1052", "9789861986306": "C1063", "9789861986313": "C1064", "9789861986979": "C1097", "9789861987099": "C1105", "9789861987167": "C1107", "9789861987310": "C1113", "9789861987334": "C1115", "9789861987341": "C1116", "9789861987358": "C1117", "9789861988232": "C1159", "9789861989192": "C1206", "9789861989512": "C1226", "9789861989536": "C1228", "9789861989543": "C1229", "9789861989567": "C1231", "9789861989635": "C1232"};
+
         document.addEventListener('DOMContentLoaded', () => {
             // --- DOM 元素獲取 ---
             const currentDateElement = document.getElementById('current-date');
@@ -762,12 +761,9 @@
             let editingClientId = null;
             const paymentModal = document.getElementById('payment-modal');
 
-            // --- 商品資料庫 Hybrid 模式 (手動備用資料庫) ---
-            // 若 CSV 讀取失敗，將使用此處資料。請在此填入您的書籍資料。
+            // --- 商品資料庫 Hybrid 模式 ---
             const productDB = {
                 "9789861234567": { code: "9789861234567", name: "範例書籍A", price: 350, qty: 100, class: "01" },
-                "A001": { code: "A001", name: "測試商品B", price: 500, qty: 50, class: "02" },
-                // 格式： "條碼/代碼": { code: "重複代碼", name: "書名", price: 價格, qty: 庫存, class: "分類代號" }
             };
 
             // --- 音效控制器 ---
@@ -797,7 +793,6 @@
 
             // --- Pilot 規格工具 ---
             function generateERI(type) {
-                // ERI 產生邏輯: 0H5(主)/0H8(詳)/01E(付) + 固定指紋 + 亂數
                 const prefix = { 'master': '0H5', 'detail': '0H8', 'pay': '01E' }[type];
                 const fingerprint = "0010LU0"; 
                 const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -840,7 +835,6 @@
             };
 
             const loadDiscountRates = () => {
-                // 書房專用折扣表
                 discountRates = {
                     "POS": 100, "02-2": 100, "09-2": 90, "09-5": 100, "09-4": 100, "09-1": 100, 
                     "09-3": 90, "06-1": 100, "07-1": 90, "07-2": 90, "07-3": 90, "07-4": 90, 
@@ -851,7 +845,7 @@
                 };
             };
 
-            // --- 修改後的商品讀取邏輯 (支援 CSV 與 內建DB) ---
+            // --- 修改後的商品讀取邏輯 (整合自動對照) ---
             const loadProducts = async () => {
                 try {
                     const response = await fetch('products.csv');
@@ -875,9 +869,17 @@
                         });
 
                         if (product['CODE'] && product['CNAME']) {
+                            // 自動對照：若對照表中有此 Barcode，則使用會計系統代碼覆蓋
+                            let finalCode = product['CODE'];
+                            if (product['BARCODE'] && ACCOUNTING_MAPPING[product['BARCODE']]) {
+                                finalCode = ACCOUNTING_MAPPING[product['BARCODE']];
+                            } else if (ACCOUNTING_MAPPING[product['CODE']]) { // 備用：若 CODE 欄位本身是條碼
+                                finalCode = ACCOUNTING_MAPPING[product['CODE']];
+                            }
+
                             const defaultDiscount = discountRates[product['CLAS']] || 100;
-                            products[product['CODE']] = {
-                                code: product['CODE'],
+                            products[finalCode] = { // 使用轉換後的代碼作為 Key
+                                code: finalCode,
                                 name: product['CNAME'],
                                 barcode: product['BARCODE'],
                                 qty: parseInt(product['CQTY']) || 0,
@@ -885,13 +887,17 @@
                                 class: product['CLAS'], 
                                 defaultDiscount: defaultDiscount
                             };
+                            
+                            // 為了讓掃描條碼也能找到轉碼後的商品，我們保留條碼索引
+                            if (product['BARCODE'] && product['BARCODE'] !== finalCode) {
+                                products[product['BARCODE']] = products[finalCode]; // 讓條碼也指向同一個商品物件
+                            }
                         }
                     });
-                    dbStatusElement.textContent = "已載入外部 CSV 商品資料";
+                    dbStatusElement.textContent = "已載入外部 CSV 商品資料 (含會計對照)";
                     dbStatusElement.style.color = "green";
                 } catch (error) {
                     console.warn('CSV讀取失敗，切換至內建測試資料庫', error);
-                    // 切換至內建 productDB
                     Object.values(productDB).forEach(p => {
                          const defaultDiscount = discountRates[p.class] || 100;
                          products[p.code] = {
@@ -913,15 +919,16 @@
             const addProductToCart = (code) => {
                 resetIdleTimer();
                 const product = products[code];
-                const existingItem = cart.find(item => item.code === code);
+                // 這裡拿到的 product 已經是經過轉碼的物件，其 .code 屬性就是會計代碼
+                if (!product) { alert('找不到商品'); return; }
+                
+                const realCode = product.code; // 確保使用會計代碼
+                const existingItem = cart.find(item => item.code === realCode);
                 
                 if (existingItem) {
                     existingItem.quantity += 1;
                     if (!existingItem.isManual) {
                         existingItem.discount = calculateItemDiscount(existingItem);
-                    }
-                    if (priceOverrides[code] !== undefined) {
-                        existingItem.price = priceOverrides[code];
                     }
                 } else {
                     const newItem = { 
@@ -930,8 +937,8 @@
                         isManual: false,
                         discount: 0 
                     };
-                    if (priceOverrides[code] !== undefined) {
-                        newItem.price = priceOverrides[code];
+                    if (priceOverrides[realCode] !== undefined) {
+                        newItem.price = priceOverrides[realCode];
                     }
                     newItem.discount = calculateItemDiscount(newItem);
                     cart.push(newItem);
@@ -942,7 +949,7 @@
                 calculateTotal();
                 saveCart();
                 productCodeInput.value = ''; 
-                productCodeInput.focus(); // 確保焦點回到輸入框
+                productCodeInput.focus(); 
             };
 
             const resetIdleTimer = () => {
@@ -972,7 +979,7 @@
                     const priceStyle = priceOverrides[item.code] !== undefined ? 'border: 2px solid #8A6739; background-color:#fff8dc;' : '';
 
                     row.innerHTML = `
-                        <td>${item.name} <br><small style="color:#888;">${item.class || '無分類'}</small></td>
+                        <td>${item.name} <br><small style="color:#888;">${item.code}</small></td>
                         <td><input type="number" name="price-${item.code}" value="${item.price}" step="0.1" min="0" style="width: 60px; ${priceStyle}" class="price-input" data-code="${item.code}"></td>
                         <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="-1000" class="quantity-input" data-code="${item.code}"></td>
                         <td>
@@ -1220,20 +1227,23 @@
 
             productCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    const codeOrBarcode = e.target.value.trim().toLowerCase();
+                    const codeOrBarcode = e.target.value.trim();
                     const parsedInput = parseProductInput(codeOrBarcode);
                     let product = null;
 
                     if (parsedInput) {
-                        product = products[parsedInput.code];
+                        // 嘗試直接代碼，或透過條碼尋找
+                        product = products[parsedInput.code] || Object.values(products).find(p => p.barcode === parsedInput.code);
                         if (product) product.quantity = parsedInput.quantity;
                     } else {
-                        product = Object.values(products).find(p => p.code.toLowerCase() === codeOrBarcode || (p.barcode && p.barcode.includes(codeOrBarcode)));
+                        // 嘗試直接代碼，或透過條碼尋找
+                        product = products[codeOrBarcode] || Object.values(products).find(p => p.barcode === codeOrBarcode);
                     }
 
                     if (product) {
+                        // 注意：這裡 addProductToCart 接收的參數應該是 product.code (會計代碼)
                         addProductToCart(product.code);
-                        e.target.value = ''; // 清空
+                        e.target.value = ''; 
                         productInfoElement.textContent = `已加入: ${product.name}`;
                     } else {
                         alert('找不到商品'); POSAudio.error();
@@ -1242,9 +1252,8 @@
             });
 
             productCodeInput.addEventListener('input', (e) => {
-                const codeOrBarcode = e.target.value.trim().toLowerCase();
-                // 僅做提示，不做加入動作
-                const product = Object.values(products).find(product => product.code.toLowerCase() === codeOrBarcode || (product.barcode && product.barcode.includes(codeOrBarcode)));
+                const codeOrBarcode = e.target.value.trim();
+                const product = products[codeOrBarcode] || Object.values(products).find(p => p.barcode === codeOrBarcode);
                 if (product) productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元`;
                 else productInfoElement.textContent = '';
             });
@@ -1260,7 +1269,9 @@
                 );
 
                 searchResultsElement.innerHTML = '';
-                const displayProducts = matchedProducts.slice(0, 3); 
+                // 去除重複 (因為條碼和代碼可能指向同一物件)
+                const uniqueProducts = Array.from(new Set(matchedProducts));
+                const displayProducts = uniqueProducts.slice(0, 3); 
 
                 displayProducts.forEach(product => {
                     const resultItem = document.createElement('div');
@@ -1313,7 +1324,6 @@
                         row.classList.add('void-order');
                     } else {
                         if (method.includes("現金")) {
-                            // 若是混合支付，需解析出現金部分
                             if(method.includes("文化幣")) {
                                 const cashMatch = method.match(/現金\((\d+)\)/);
                                 if (cashMatch && cashMatch[1]) tempSysCash += parseInt(cashMatch[1]);
@@ -1379,7 +1389,6 @@
             };
 
             const attachHistoryEvents = () => {
-                // 修改付款方式 (開啟 Modal)
                 document.querySelectorAll('.btn-change-pay').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const clientId = e.target.dataset.clientId;
@@ -1418,7 +1427,6 @@
                 });
             };
 
-            // --- Modal 控制邏輯 ---
             window.openPaymentModal = (clientId) => {
                 editingClientId = clientId;
                 paymentModal.style.display = 'flex';
@@ -1459,7 +1467,6 @@
                 }
             };
 
-            // --- 記帳模式邏輯 ---
             window.clearAccountingInputs = () => {
                 document.querySelectorAll('.acct-count.current').forEach(input => {
                     input.value = '';
@@ -1472,14 +1479,12 @@
                 let drawerTotal = 0;
                 let initialTotal = 0;
 
-                // 左欄: 現有盤點
                 document.querySelectorAll('.acct-count.current').forEach(input => {
                     const val = parseInt(input.dataset.val);
                     const count = parseInt(input.value) || 0;
                     drawerTotal += val * count;
                 });
 
-                // 右欄: 初始金額
                 document.querySelectorAll('.acct-count.initial').forEach(input => {
                     const val = parseInt(input.dataset.val);
                     const count = parseInt(input.value) || 0;
@@ -1489,7 +1494,6 @@
                 const expenses = parseInt(expensesCashInput.value) || 0;
                 const netCash = drawerTotal - initialTotal + expenses; 
                 
-                // 更新顯示
                 calcDrawerTotalEl.textContent = drawerTotal;
                 calcInitialEl.textContent = initialTotal;
                 calcExpensesEl.textContent = expenses;
@@ -1508,7 +1512,6 @@
                 }
             };
 
-            // 備份與還原
             backupBtn.addEventListener('click', () => {
                 const backupData = {
                     cart, clients, overallSummary, clientCounter, sessionRules, priceOverrides,
@@ -1553,7 +1556,6 @@
                 importFileInput.value = '';
             });
 
-            // CSV 匯出 (標準版)
             exportCsvBtn.addEventListener('click', () => {
                 try {
                     updateSummaryTable();
@@ -1594,13 +1596,12 @@
                 } catch (error) { alert('CSV匯出錯誤'); }
             });
 
-// --- PILOT 會計匯出 (修正版 v8 - ASCII 安全模式，防止中文亂碼造成位移) ---
+            // --- PILOT 會計匯出 (修正版 v10 - 嚴格格式保護 + 製單員修正 + 自動轉碼) ---
             exportPilotBtn.addEventListener('click', () => {
-                // 1. 基礎設定
                 const codeFixed = "19890107";     
-                const custCode = "0002";          // 客戶 CUST: 0002
-                const whCode = "0000";            // 倉庫 GWN: 0000
-                const staffCode = "02";           // 員工 STAFF: 02
+                const custCode = "0002";          
+                const whCode = "0000";            
+                const staffCode = "02";           
                 
                 const now = new Date();
                 const date = now.getFullYear() + '/' + 
@@ -1615,14 +1616,10 @@
                 const ss = String(now.getSeconds()).padStart(2, '0');
                 const ts = yy + mm + dd + hh + mi + ss;
 
-                // 2. 定義標頭
                 let s1 = [["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"]];
-                
                 let s2 = [["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]];
-                
                 let v1 = [["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"]];
 
-                // 3. 填入資料 (移除所有中文，改用純英文/數字)
                 Object.values(clients).forEach(c => {
                     if(!c.isValid) return; 
                     
@@ -1630,76 +1627,37 @@
                     const gross = c.items.reduce((a,b)=>a+(b.price*b.quantity), 0);
                     const qtyTotal = c.items.reduce((a,b)=>a+b.quantity, 0);
 
-                    // --- S1: 主檔 ---
+                    // S1: Editor 改為 黃畀予
                     s1.push([
                         mERI, codeFixed, staffCode, custCode, date, "NTD", 1, "", whCode, "", 
-                        0, Math.round(gross), Math.round(c.amount-gross), Math.round(c.amount), qtyTotal, "POS_USER", "", "POS_Import", "", 3, 
+                        0, Math.round(gross), Math.round(c.amount-gross), Math.round(c.amount), qtyTotal, "黃畀予", "", "書展匯入", "", 3, 
                         3, "", "", date, date, Math.round(c.amount), "0000", "", 0, "", 
                         "", 0, 0, "", 0, "", 0, "0000", "", 0, 
-                        custCode, "", "POS", "", 1, 0, "", "", 0, "", 
+                        custCode, "", "書展", "", 1, 0, "", "", 0, "", 
                         ts, "", "", "", ""
                     ]);
 
-                    // --- S2: 明細檔 (關鍵修正：移除 "本" 等中文字) --- 
                     c.items.forEach((it, idx) => {
                         const dERI = it.detailERI || generateERI('detail');
                         s2.push([
-                            dERI,               // 0: ERI
-                            mERI,               // 1: MASTERI
-                            "",                 // 2: SRCERI
-                            staffCode,          // 3: STAFF (02)
-                            custCode,           // 4: CUST (0002)
-                            whCode,             // 5: GWN
-                            it.code,            // 6: PROD
-                            date,               // 7: SDATE
-                            0,                  // 8: TYPE
-                            codeFixed,          // 9: CODE
-                            idx,                // 10: SERIAL
-                            "",                 // 11: SPEC
-                            it.quantity,        // 12: QTY
-                            "",                 // 13: UNIT (修正: 移除中文 "本" -> 空白)
-                            it.price,           // 14: PRICE
-                            Math.round(it.price*it.quantity), // 15: AMT
-                            it.quantity,        // 16: REALQTY
-                            0,                  // 17: SUBQTY
-                            "",                 // 18: REMARK
-                            "",                 // 19: PRODDESC
-                            String(it.quantity),// 20: QTYSTR (修正: 移除中文 "本" -> 只留數字)
-                            "NTD",              // 21: CURR
-                            1,                  // 22: RATE
-                            it.price,           // 23: STDPRC
-                            it.discount || 100, // 24: DISCOUNT
-                            "",                 // 25: PROJNO
-                            "",                 // 26: INVNO
-                            0,                  // 27: INVQTY
-                            0,                  // 28: SAMPLE
-                            0,                  // 29: INVRETURN
-                            "",                 // 30: VPNO
-                            date,               // 31: VLIDDATE
-                            "",                 // 32: REFNO
-                            0,                  // 33: INVPRC
-                            0,                  // 34: INVAMT
-                            0,                  // 35: INVAMT1
-                            0,                  // 36: GIFT
-                            0,                  // 37: MFLAG
-                            0,                  // 38: SUBAMT
-                            "",                 // 39: APCODE
-                            ts,                 // 40: LASTUPD
-                            "",                 // 41: POSREMARK1
-                            ""                  // 42: POSREMARK2
+                            dERI, mERI, "", staffCode, custCode, whCode,
+                            it.code, // 這裡已經是會計代碼
+                            date, 0, codeFixed, idx, "", 
+                            it.quantity, "本", // UNIT 使用 "本"
+                            it.price, Math.round(it.price*it.quantity), it.quantity, 0, "", "", 
+                            it.quantity + "本", // QTYSTR
+                            "NTD", 1, it.price, it.discount || 100, 
+                            "", "", 0, 0, 0, "", date, "", 0, 0, 0, 0, 0, 0, "", 
+                            ts, "", ""
                         ]);
                     });
 
-                    // --- V1: 傳票 ---
                     let payCode = "5"; 
                     let paySubj = "1144.355"; 
                     if (c.paymentMethod.includes("信用卡") || c.paymentMethod.includes("LINE")) { 
                         payCode = "16"; paySubj = "1144.358"; 
                     }
-                    
-                    v1.push([
-                        generateERI('pay'), mERI, 0, payCode, paySubj, 0, -Math.round(c.amount), "", "", ts
-                    ]);
+                    v1.push([generateERI('pay'), mERI, 0, payCode, paySubj, 0, -Math.round(c.amount), "", "", ts]);
                 });
 
                 const downloadCSV = (data, filename) => {
@@ -1710,7 +1668,6 @@
                         }).join(",")
                     ).join("\r\n");
 
-                    // 雖然這裡加了 BOM，但因為內容全是英文數字，Pilot 會計系統將能完美讀取，不會發生錯位。
                     let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
                     let a = document.createElement('a'); 
                     a.href = URL.createObjectURL(blob); 
@@ -1722,8 +1679,16 @@
                 setTimeout(() => downloadCSV(s2, "STKSALE2.csv"), 500);
                 setTimeout(() => downloadCSV(v1, "VCHRPLUS_SALE1.csv"), 1000);
             });
-            
-            // --- 啟動程序 ---
+
+            // 修復清空按鈕
+            clearAllBtn.addEventListener('click', () => {
+                if (confirm('確定要刪除全部訂單？(將清除所有資料並重整)')) {
+                    localStorage.clear();
+                    alert('資料已清空，系統將重新載入。');
+                    location.reload();
+                }
+            });
+
             loadDiscountRates(); 
             loadProducts().then(() => {
                 updateCartDisplay();
@@ -1734,10 +1699,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
