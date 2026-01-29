@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V17腓利門雲POS</title>
+  <title>V18腓利門雲POS</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
   <style>
     /* --- 核心配色：大地色系優化 --- */
@@ -1694,11 +1694,8 @@
       exportPilotBtn.onclick = () => {
         const now = new Date();
 
-        const orderId = String(now.getFullYear()) +
-          String(now.getMonth() + 1).padStart(2, '0') +
-          String(now.getDate()).padStart(2, '0') +
-          String(now.getHours()).padStart(2, '0') +
-          String(now.getMinutes()).padStart(2, '0');
+        // ❌ orderId 不再使用（避免 S1 CODE 重複造成 lg.pk.invalid）
+        // const orderId = ...
 
         const custCode = "0002";
         const whCode = "0000";
@@ -1749,7 +1746,7 @@
           // S1
           let r1_map = {};
           r1_map["ERI"] = mERI;
-          r1_map["CODE"] = orderId;
+          r1_map["CODE"] = mERI;  // ✅ 改這行：用 mERI 當唯一鍵，避免 lg.pk.invalid
           r1_map["STAFF"] = staffCode;
           r1_map["CUST"] = custCode;
           r1_map["SDATE"] = date;
@@ -1870,36 +1867,32 @@
           }
         });
 
-// ✅ PILOT 下載工具：不輸出表頭、全欄位加引號、CRLF、無 BOM
-const dl = (rows, filename) => {
-  const esc = (v) => {
-    if (v === null || v === undefined) return "";
-    // 避免科學記號 / 非字串：統一轉字串
-    let s = String(v);
-    // CSV 內若有雙引號，需用 "" 轉義
-    s = s.replace(/"/g, '""');
-    return s;
-  };
+        // ✅ PILOT 下載工具：不輸出表頭、全欄位加引號、CRLF、無 BOM
+        const dl = (rows, filename) => {
+          const esc = (v) => {
+            if (v === null || v === undefined) return "";
+            let s = String(v);
+            s = s.replace(/"/g, '""');
+            return s;
+          };
 
-  // 只輸出資料列（不含 header）
-  const csvContent = rows
-    .map(r => r.map(v => `"${esc(v)}"`).join(','))
-    .join('\r\n'); // CRLF
+          const csvContent = rows
+            .map(r => r.map(v => `"${esc(v)}"`).join(','))
+            .join('\r\n');
 
-  // ✅ 不要 BOM（不要 \ufeff）
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
-};
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = filename;
+          a.click();
+          URL.revokeObjectURL(a.href);
+        };
 
-
-dl(s1_rows, "STKSALE1.csv");
-setTimeout(() => dl(s2_rows, "STKSALE2.csv"), 500);
-setTimeout(() => dl(v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
+        dl(s1_rows, "STKSALE1.csv");
+        setTimeout(() => dl(s2_rows, "STKSALE2.csv"), 500);
+        setTimeout(() => dl(v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
       };
+
 
       // ===== 啟動 =====
       loadDiscountRates();
@@ -1916,5 +1909,6 @@ setTimeout(() => dl(v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
   </script>
 </body>
 </html>
+
 
 
