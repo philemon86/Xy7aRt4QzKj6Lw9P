@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>V12腓利門雲POS - 修復匯出與掃描</title>
+    <title>V13腓利門雲POS</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         /* --- 核心配色：大地色系優化 --- */
@@ -505,11 +505,16 @@
                     <button id="clear-all-btn">清空</button>
                 </div>
             </div>
+            
             <div class="form-group">
                 <label for="product-code">商品掃描 (輸入代碼/條碼)：</label>
-                <input type="text" id="product-code" placeholder="掃描後按 Enter 自動加入" autofocus autocomplete="off">
+                <form id="scan-form" onsubmit="return false;" style="display: flex; gap: 5px;">
+                    <input type="text" id="product-code" placeholder="掃描後按 Enter 自動加入" autofocus autocomplete="off" style="flex:1;">
+                    <button type="submit" style="white-space: nowrap;">加入</button>
+                </form>
                 <div id="product-info" style="color: var(--primary-btn); margin-top:5px; font-weight:bold; height: 1.2em;"></div>
             </div>
+
             <div class="form-group search-container">
                 <label for="keyword-search">關鍵字搜尋：</label>
                 <input type="text" id="keyword-search" placeholder="名稱 / 代碼 / 條碼">
@@ -705,6 +710,7 @@
             const keywordSearchInput = document.getElementById('keyword-search');
             const searchResultsElement = document.getElementById('search-results');
             const productCodeInput = document.getElementById('product-code');
+            const scanForm = document.getElementById('scan-form');
             const paidAmountInput = document.getElementById('paid-amount');
             const productInfoElement = document.getElementById('product-info');
             const dbStatusElement = document.getElementById('db-status');
@@ -1225,32 +1231,30 @@
                 return null;
             };
 
-            // 修正條碼輸入問題：改用 keydown 確保事件被捕捉，並加入 preventDefault
-            productCodeInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault(); // 防止表單提交或其他預設行為
-                    const codeOrBarcode = e.target.value.trim();
-                    if (!codeOrBarcode) return; // 空值不處理
+            // 修正條碼輸入問題：改用 form submit 事件
+            scanForm.addEventListener('submit', (e) => {
+                e.preventDefault(); // 防止頁面刷新
+                const codeOrBarcode = productCodeInput.value.trim();
+                if (!codeOrBarcode) return; // 空值不處理
 
-                    const parsedInput = parseProductInput(codeOrBarcode);
-                    let product = null;
+                const parsedInput = parseProductInput(codeOrBarcode);
+                let product = null;
 
-                    if (parsedInput) {
-                        product = products[parsedInput.code] || Object.values(products).find(p => p.barcode === parsedInput.code);
-                        if (product) product.quantity = parsedInput.quantity;
-                    } else {
-                        product = products[codeOrBarcode] || Object.values(products).find(p => p.barcode === codeOrBarcode);
-                    }
+                if (parsedInput) {
+                    product = products[parsedInput.code] || Object.values(products).find(p => p.barcode === parsedInput.code);
+                    if (product) product.quantity = parsedInput.quantity;
+                } else {
+                    product = products[codeOrBarcode] || Object.values(products).find(p => p.barcode === codeOrBarcode);
+                }
 
-                    if (product) {
-                        addProductToCart(product.code);
-                        e.target.value = ''; 
-                        productInfoElement.textContent = `已加入: ${product.name}`;
-                    } else {
-                        alert('找不到商品'); 
-                        POSAudio.error();
-                        e.target.select(); // 選取文字方便重打
-                    }
+                if (product) {
+                    addProductToCart(product.code);
+                    productCodeInput.value = ''; 
+                    productInfoElement.textContent = `已加入: ${product.name}`;
+                } else {
+                    alert('找不到商品'); 
+                    POSAudio.error();
+                    productCodeInput.select(); // 選取文字方便重打
                 }
             });
 
@@ -1655,43 +1659,46 @@
                     const diff = netTotal - grossTotal; 
 
                     // --- S1 主檔 Row ---
-                    let r1 = new Array(s1_header.length).fill("");
-                    r1[0] = mERI; // ERI
-                    r1[1] = orderId; // CODE
-                    r1[2] = staffCode; // STAFF
-                    r1[3] = custCode; // CUST
-                    r1[4] = date; // SDATE
-                    r1[5] = "NTD"; // CURR
-                    r1[6] = 1; // RATE
-                    r1[8] = whCode; // GWN
-                    r1[10] = 0; // TAX
-                    r1[11] = grossTotal; // AMT (原價總額)
-                    r1[12] = diff; // PLUSSUB
-                    r1[13] = netTotal; // TOTAL (淨額)
-                    r1[14] = totalQty; // QTY
-                    r1[15] = "POS"; // EDITOR
-                    r1[17] = "POS_Import"; // REMARK
-                    r1[19] = 3; // TAXCATE
-                    r1[20] = 3; // INVCATE
-                    r1[21] = date; // INVDATE
-                    r1[23] = date; // BILDATE
-                    r1[24] = date; // RADVDATE
-                    r1[25] = netTotal; // COST
-                    r1[26] = "0000"; // DPTNO
-                    r1[28] = 0; // TYPE
-                    r1[31] = 0; // PRNIMMED
-                    r1[32] = 0; // PRNONCE
-                    r1[34] = 0; // ACCGEN
-                    r1[36] = 0; // INVAMT
-                    r1[37] = "0000"; // COMPNO
-                    r1[39] = 0; // PRINTX
-                    r1[40] = custCode; // BILCUST
-                    r1[42] = "POS"; // INVNAME
-                    r1[44] = 1; // PAYCASH
-                    r1[45] = 0; // NORCV
-                    r1[48] = 0; // EINVFLAG
-                    r1[50] = ts; // LASTUPD
-                    s1_rows.push(r1);
+                    // 使用 key-value 映射確保位置絕對正確
+                    let r1_map = {};
+                    r1_map["ERI"] = mERI;
+                    r1_map["CODE"] = orderId;
+                    r1_map["STAFF"] = staffCode;
+                    r1_map["CUST"] = custCode;
+                    r1_map["SDATE"] = date;
+                    r1_map["CURR"] = "NTD";
+                    r1_map["RATE"] = 1;
+                    r1_map["GWN"] = whCode;
+                    r1_map["TAX"] = 0;
+                    r1_map["AMT"] = grossTotal;
+                    r1_map["PLUSSUB"] = diff;
+                    r1_map["TOTAL"] = netTotal;
+                    r1_map["QTY"] = totalQty;
+                    r1_map["EDITOR"] = "POS";
+                    r1_map["REMARK"] = "POS_Import";
+                    r1_map["TAXCATE"] = 3;
+                    r1_map["INVCATE"] = 3;
+                    r1_map["INVDATE"] = date;
+                    r1_map["BILDATE"] = date;
+                    r1_map["RADVDATE"] = date;
+                    r1_map["COST"] = netTotal;
+                    r1_map["DPTNO"] = "0000";
+                    r1_map["TYPE"] = 0;
+                    r1_map["PRNIMMED"] = 0;
+                    r1_map["PRNONCE"] = 0;
+                    r1_map["ACCGEN"] = 0;
+                    r1_map["INVAMT"] = 0;
+                    r1_map["COMPNO"] = "0000";
+                    r1_map["PRINTX"] = 0;
+                    r1_map["BILCUST"] = custCode;
+                    r1_map["INVNAME"] = "POS";
+                    r1_map["PAYCASH"] = 1;
+                    r1_map["NORCV"] = 0;
+                    r1_map["EINVFLAG"] = 0;
+                    r1_map["LASTUPD"] = ts;
+
+                    let r1_arr = s1_header.map(h => r1_map[h] !== undefined ? r1_map[h] : "");
+                    s1_rows.push(r1_arr);
 
                     // --- S2 明細檔 Rows ---
                     c.items.forEach((it, idx) => {
@@ -1700,41 +1707,43 @@
                         const netPrice = it.price * (discountRate / 100); 
                         const rowNetAmt = Math.round(netPrice * it.quantity);
 
-                        let r2 = new Array(s2_header.length).fill("");
-                        r2[0] = dERI; // ERI
-                        r2[1] = mERI; // MASTERI
-                        r2[3] = staffCode; // STAFF
-                        r2[4] = custCode; // CUST
-                        r2[5] = whCode; // GWN
-                        r2[6] = it.code; // PROD (商品代碼)
-                        r2[7] = date; // SDATE
-                        r2[8] = 0; // TYPE
-                        r2[9] = "19890107"; // CODE (固定填入19890107，這似乎是Pilot的特殊需求，參考您正確的檔案)
-                        r2[10] = idx; // SERIAL
-                        r2[11] = it.price; // SPEC (原價)
-                        r2[12] = it.quantity; // QTY
-                        r2[13] = "個"; // UNIT
-                        r2[14] = netPrice; // PRICE (淨單價)
-                        r2[15] = rowNetAmt; // AMT (淨總額)
-                        r2[16] = it.quantity; // REALQTY
-                        r2[17] = 0; // SUBQTY
-                        r2[20] = it.quantity + "個"; // QTYSTR
-                        r2[21] = "NTD"; // CURR
-                        r2[22] = 1; // RATE
-                        r2[23] = it.price; // STDPRC (原價)
-                        r2[24] = discountRate; // DISCOUNT
-                        r2[27] = 0; // INVQTY
-                        r2[28] = 0; // SAMPLE
-                        r2[29] = 0; // INVRETURN
-                        r2[31] = date; // VLIDDATE
-                        r2[33] = 0; // INVPRC
-                        r2[34] = 0; // INVAMT
-                        r2[35] = 0; // INVAMT1
-                        r2[36] = 0; // GIFT
-                        r2[37] = 0; // MFLAG
-                        r2[38] = 0; // SUBAMT
-                        r2[40] = ts; // LASTUPD
-                        s2_rows.push(r2);
+                        let r2_map = {};
+                        r2_map["ERI"] = dERI;
+                        r2_map["MASTERI"] = mERI;
+                        r2_map["STAFF"] = staffCode;
+                        r2_map["CUST"] = custCode;
+                        r2_map["GWN"] = whCode;
+                        r2_map["PROD"] = it.code;
+                        r2_map["SDATE"] = date;
+                        r2_map["TYPE"] = 0;
+                        r2_map["CODE"] = "19890107"; // 固定值
+                        r2_map["SERIAL"] = idx;
+                        r2_map["SPEC"] = it.price; // 原價
+                        r2_map["QTY"] = it.quantity;
+                        r2_map["UNIT"] = "個";
+                        r2_map["PRICE"] = netPrice; // 淨單價
+                        r2_map["AMT"] = rowNetAmt; // 淨總額
+                        r2_map["REALQTY"] = it.quantity;
+                        r2_map["SUBQTY"] = 0;
+                        r2_map["QTYSTR"] = it.quantity + "個";
+                        r2_map["CURR"] = "NTD";
+                        r2_map["RATE"] = 1;
+                        r2_map["STDPRC"] = it.price; // 原價
+                        r2_map["DISCOUNT"] = discountRate;
+                        r2_map["INVQTY"] = 0;
+                        r2_map["SAMPLE"] = 0;
+                        r2_map["INVRETURN"] = 0;
+                        r2_map["VLIDDATE"] = date;
+                        r2_map["INVPRC"] = 0;
+                        r2_map["INVAMT"] = 0;
+                        r2_map["INVAMT1"] = 0;
+                        r2_map["GIFT"] = 0;
+                        r2_map["MFLAG"] = 0;
+                        r2_map["SUBAMT"] = 0;
+                        r2_map["LASTUPD"] = ts;
+
+                        let r2_arr = s2_header.map(h => r2_map[h] !== undefined ? r2_map[h] : "");
+                        s2_rows.push(r2_arr);
                     });
 
                     // --- V1 傳票 Rows ---
