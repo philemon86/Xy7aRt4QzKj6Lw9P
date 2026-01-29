@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V16腓利門雲POS</title>
+  <title>V17腓利門雲POS</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
   <style>
     /* --- 核心配色：大地色系優化 --- */
@@ -1820,12 +1820,7 @@
             r2_map["DISCOUNT"] = discountRate;
             r2_map["INVQTY"] = 0;
             r2_map["SAMPLE"] = 0;
-            r2_map["INVRETURN"] = 0;
-
-
-            // ✅ 這個欄 Pilot 很挑：很多版本要「空白」不是 0（你會計檔就是空）
             r2_map["INVRETURN"] = "";
-
             r2_map["VLIDDATE"] = date;
             r2_map["INVPRC"] = 0;
             r2_map["INVAMT"] = 0;
@@ -1921,4 +1916,5 @@ setTimeout(() => dl(v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
   </script>
 </body>
 </html>
+
 
