@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V18腓利門雲POS</title>
+  <title>19.0腓利門雲POS</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
   <style>
     /* --- 核心配色：大地色系優化 --- */
@@ -1688,211 +1688,214 @@
         } catch (error) { alert('CSV匯出錯誤'); }
       });
 
-      // ==========================================================
-      // ✅ Pilot 匯出：去掉全欄位包引號 + 修正 UNIT/QTYSTR/INVRETURN
-      // ==========================================================
-      exportPilotBtn.onclick = () => {
-        const now = new Date();
+// ==========================================================
+// ✅ Pilot 匯出：去掉全欄位包引號 + 修正 UNIT/QTYSTR/INVRETURN
+// ==========================================================
+exportPilotBtn.onclick = () => {
+  const now = new Date();
 
-        // ❌ orderId 不再使用（避免 S1 CODE 重複造成 lg.pk.invalid）
-        // const orderId = ...
+  const custCode = "0002";
+  const whCode = "0000";
+  const staffCode = "02";
 
-        const custCode = "0002";
-        const whCode = "0000";
-        const staffCode = "02";
+  // ✅ 你要的固定單號：你之後只改這一行就好
+  const FIX_CODE = "2026001";
 
-        const date = now.getFullYear() + '/' +
-          String(now.getMonth() + 1).padStart(2, '0') + '/' +
-          String(now.getDate()).padStart(2, '0');
+  const date = now.getFullYear() + '/' +
+    String(now.getMonth() + 1).padStart(2, '0') + '/' +
+    String(now.getDate()).padStart(2, '0');
 
-        const yy = String(now.getFullYear()).slice(-2);
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const hh = String(now.getHours()).padStart(2, '0');
-        const mi = String(now.getMinutes()).padStart(2, '0');
-        const ss = String(now.getSeconds()).padStart(2, '0');
-        const ts = yy + mm + dd + hh + mi + ss;
+  const yy = String(now.getFullYear()).slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mi = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const ts = yy + mm + dd + hh + mi + ss;
 
-        const rnd = () => "0010LU0" + Math.random().toString(36).substr(2, 6).toUpperCase();
+  const rnd = () => "0010LU0" + Math.random().toString(36).substr(2, 6).toUpperCase();
 
-        let s1_header = ["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"];
-        let s2_header = ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"];
-        let v1_header = ["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"];
+  let s1_header = ["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"];
+  let s2_header = ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"];
+  let v1_header = ["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"];
 
-        let s1_rows = [];
-        let s2_rows = [];
-        let v1_rows = [];
+  let s1_rows = [];
+  let s2_rows = [];
+  let v1_rows = [];
 
-        Object.values(clients).forEach(c => {
-          if (!c.isValid) return;
+  Object.values(clients).forEach(c => {
+    if (!c.isValid) return;
 
-          const mERI = c.eri || ("0H5" + rnd());
-          let grossTotal = 0;
-          let netTotal = 0;
-          let totalQty = 0;
+    const mERI = c.eri || ("0H5" + rnd());
+    let grossTotal = 0;
+    let netTotal = 0;
+    let totalQty = 0;
 
-          c.items.forEach(it => {
-            const discountRate = (it.discount !== undefined) ? it.discount : 100;
-            const netPrice = it.price * (discountRate / 100);
-            grossTotal += it.price * it.quantity;
-            netTotal += netPrice * it.quantity;
-            totalQty += it.quantity;
-          });
+    c.items.forEach(it => {
+      const discountRate = (it.discount !== undefined) ? it.discount : 100;
+      const netPrice = it.price * (discountRate / 100);
+      grossTotal += it.price * it.quantity;
+      netTotal += netPrice * it.quantity;
+      totalQty += it.quantity;
+    });
 
-          grossTotal = Math.round(grossTotal);
-          netTotal = Math.round(netTotal);
-          const diff = netTotal - grossTotal;
+    grossTotal = Math.round(grossTotal);
+    netTotal = Math.round(netTotal);
+    const diff = netTotal - grossTotal;
 
-          // S1
-          let r1_map = {};
-          r1_map["ERI"] = mERI;
-          r1_map["CODE"] = mERI;  // ✅ 改這行：用 mERI 當唯一鍵，避免 lg.pk.invalid
-          r1_map["STAFF"] = staffCode;
-          r1_map["CUST"] = custCode;
-          r1_map["SDATE"] = date;
-          r1_map["CURR"] = "NTD";
-          r1_map["RATE"] = 1;
-          r1_map["GWN"] = whCode;
-          r1_map["TAX"] = 0;
-          r1_map["AMT"] = grossTotal;
-          r1_map["PLUSSUB"] = diff;
-          r1_map["TOTAL"] = netTotal;
-          r1_map["QTY"] = totalQty;
-          r1_map["EDITOR"] = "POS";
-          r1_map["REMARK"] = "POS_Import";
-          r1_map["TAXCATE"] = 3;
-          r1_map["INVCATE"] = 3;
-          r1_map["INVDATE"] = date;
-          r1_map["BILDATE"] = date;
-          r1_map["RADVDATE"] = date;
-          r1_map["COST"] = netTotal;
-          r1_map["DPTNO"] = "0000";
-          r1_map["TYPE"] = 0;
-          r1_map["PRNIMMED"] = 0;
-          r1_map["PRNONCE"] = 0;
-          r1_map["ACCGEN"] = 0;
-          r1_map["INVAMT"] = 0;
-          r1_map["COMPNO"] = "0000";
-          r1_map["PRINTX"] = 0;
-          r1_map["BILCUST"] = custCode;
-          r1_map["INVNAME"] = "POS";
-          r1_map["PAYCASH"] = 1;
-          r1_map["NORCV"] = 0;
-          r1_map["EINVFLAG"] = 0;
-          r1_map["LASTUPD"] = ts;
+    // =========================
+    // S1
+    // =========================
+    let r1_map = {};
+    r1_map["ERI"] = mERI;
+    r1_map["CODE"] = FIX_CODE;     // ✅ 改：固定純數字單號（避免 lg.pk.invalid）
+    r1_map["STAFF"] = staffCode;
+    r1_map["CUST"] = custCode;
+    r1_map["SDATE"] = date;
+    r1_map["CURR"] = "NTD";
+    r1_map["RATE"] = 1;
+    r1_map["GWN"] = whCode;
+    r1_map["TAX"] = 0;
+    r1_map["AMT"] = grossTotal;
+    r1_map["PLUSSUB"] = diff;
+    r1_map["TOTAL"] = netTotal;
+    r1_map["QTY"] = totalQty;
+    r1_map["EDITOR"] = "POS";
+    r1_map["REMARK"] = "POS_Import";
+    r1_map["TAXCATE"] = 3;
+    r1_map["INVCATE"] = 3;
+    r1_map["INVDATE"] = date;
+    r1_map["BILDATE"] = date;
+    r1_map["RADVDATE"] = date;
+    r1_map["COST"] = netTotal;
+    r1_map["DPTNO"] = "0000";
+    r1_map["TYPE"] = 0;
+    r1_map["PRNIMMED"] = 0;
+    r1_map["PRNONCE"] = 0;
+    r1_map["ACCGEN"] = 0;
+    r1_map["INVAMT"] = 0;
+    r1_map["COMPNO"] = "0000";
+    r1_map["PRINTX"] = 0;
+    r1_map["BILCUST"] = custCode;
+    r1_map["INVNAME"] = "POS";
+    r1_map["PAYCASH"] = 1;
+    r1_map["NORCV"] = 0;
+    r1_map["EINVFLAG"] = 0;
+    r1_map["LASTUPD"] = ts;
 
-          s1_rows.push(s1_header.map(h => r1_map[h] !== undefined ? r1_map[h] : ""));
+    s1_rows.push(s1_header.map(h => r1_map[h] !== undefined ? r1_map[h] : ""));
 
-          // S2
-          c.items.forEach((it, idx2) => {
-            const dERI = it.detailERI || ("0H8" + rnd());
-            const discountRate = (it.discount !== undefined) ? it.discount : 100;
-            const netPrice = it.price * (discountRate / 100);
-            const rowNetAmt = Math.round(netPrice * it.quantity);
+    // =========================
+    // S2
+    // =========================
+    c.items.forEach((it, idx2) => {
+      const dERI = it.detailERI || ("0H8" + rnd());
+      const discountRate = (it.discount !== undefined) ? it.discount : 100;
+      const netPrice = it.price * (discountRate / 100);
+      const rowNetAmt = Math.round(netPrice * it.quantity);
 
-            const unit = it.unit || "個";
+      const unit = it.unit || "個";
 
-            let r2_map = {};
-            r2_map["ERI"] = dERI;
-            r2_map["MASTERI"] = mERI;
-            r2_map["STAFF"] = staffCode;
-            r2_map["CUST"] = custCode;
-            r2_map["GWN"] = whCode;
-            r2_map["PROD"] = it.code;
-            r2_map["SDATE"] = date;
-            r2_map["TYPE"] = 0;
-            r2_map["CODE"] = "19890107";
-            r2_map["SERIAL"] = idx2;
-            r2_map["SPEC"] = it.price;          // 原價（像你會計系統檔）
-            r2_map["QTY"] = it.quantity;
-            r2_map["UNIT"] = unit;              // ✅ 由 PRODUNIT 轉換後的 CNAME
-            r2_map["PRICE"] = netPrice;         // 淨單價
-            r2_map["AMT"] = rowNetAmt;          // 淨總額
-            r2_map["REALQTY"] = it.quantity;
-            r2_map["SUBQTY"] = 0;
-            r2_map["QTYSTR"] = `${it.quantity}${unit}`; // ✅ 2本 / 1個 ...
-            r2_map["CURR"] = "NTD";
-            r2_map["RATE"] = 1;
-            r2_map["STDPRC"] = it.price;        // 原價
-            r2_map["DISCOUNT"] = discountRate;
-            r2_map["INVQTY"] = 0;
-            r2_map["SAMPLE"] = 0;
-            r2_map["INVRETURN"] = "";
-            r2_map["VLIDDATE"] = date;
-            r2_map["INVPRC"] = 0;
-            r2_map["INVAMT"] = 0;
-            r2_map["INVAMT1"] = 0;
-            r2_map["GIFT"] = 0;
-            r2_map["MFLAG"] = 0;
-            r2_map["SUBAMT"] = 0;
-            r2_map["LASTUPD"] = ts;
+      let r2_map = {};
+      r2_map["ERI"] = dERI;
+      r2_map["MASTERI"] = mERI;
+      r2_map["STAFF"] = staffCode;
+      r2_map["CUST"] = custCode;
+      r2_map["GWN"] = whCode;
+      r2_map["PROD"] = it.code;
+      r2_map["SDATE"] = date;
+      r2_map["TYPE"] = 0;
+      r2_map["CODE"] = FIX_CODE;      // ✅ 改：S2 也要跟 S1 同一張單號
+      r2_map["SERIAL"] = idx2 + 1;    // ✅ 改：從 1 開始（很多系統要求）
+      r2_map["SPEC"] = it.price;      // 原價
+      r2_map["QTY"] = it.quantity;
+      r2_map["UNIT"] = unit;
+      r2_map["PRICE"] = netPrice;     // 淨單價
+      r2_map["AMT"] = rowNetAmt;      // 淨總額
+      r2_map["REALQTY"] = it.quantity;
+      r2_map["SUBQTY"] = 0;
+      r2_map["QTYSTR"] = `${it.quantity}${unit}`;
+      r2_map["CURR"] = "NTD";
+      r2_map["RATE"] = 1;
+      r2_map["STDPRC"] = it.price;    // 原價
+      r2_map["DISCOUNT"] = discountRate;
+      r2_map["INVQTY"] = 0;
+      r2_map["SAMPLE"] = 0;
+      r2_map["INVRETURN"] = "";
+      r2_map["VLIDDATE"] = date;
+      r2_map["INVPRC"] = 0;
+      r2_map["INVAMT"] = 0;
+      r2_map["INVAMT1"] = 0;
+      r2_map["GIFT"] = 0;
+      r2_map["MFLAG"] = 0;
+      r2_map["SUBAMT"] = 0;
+      r2_map["LASTUPD"] = ts;
 
-            s2_rows.push(s2_header.map(h => r2_map[h] !== undefined ? r2_map[h] : ""));
-          });
+      s2_rows.push(s2_header.map(h => r2_map[h] !== undefined ? r2_map[h] : ""));
+    });
 
-          // V1
-          let cultureAmt = 0, mainAmt = netTotal;
-          if ((c.paymentMethod || "").includes("文化幣")) {
-            const match = c.paymentMethod.match(/文化幣.*?\((\d+)\)/);
-            if (match && match[1]) { cultureAmt = parseInt(match[1]); mainAmt = netTotal - cultureAmt; }
-            else if (c.paymentMethod === "文化幣") { cultureAmt = netTotal; mainAmt = 0; }
-          }
+    // V1
+    let cultureAmt = 0, mainAmt = netTotal;
+    if ((c.paymentMethod || "").includes("文化幣")) {
+      const match = c.paymentMethod.match(/文化幣.*?\((\d+)\)/);
+      if (match && match[1]) { cultureAmt = parseInt(match[1]); mainAmt = netTotal - cultureAmt; }
+      else if (c.paymentMethod === "文化幣") { cultureAmt = netTotal; mainAmt = 0; }
+    }
 
-          let sn = 0;
-          if (cultureAmt > 0) {
-            let rv1 = new Array(v1_header.length).fill("");
-            rv1[0] = "01E" + rnd();
-            rv1[1] = mERI;
-            rv1[2] = sn++;
-            rv1[3] = "61";
-            rv1[4] = "1144.61";
-            rv1[5] = 0;
-            rv1[6] = -Math.round(cultureAmt);
-            rv1[9] = ts;
-            v1_rows.push(rv1);
-          }
-          if (mainAmt > 0) {
-            let pc = "5", ps = "1144.355";
-            if ((c.paymentMethod || "").includes("信用卡") || (c.paymentMethod || "").includes("LINE")) { pc = "16"; ps = "1144.358"; }
-            let rv2 = new Array(v1_header.length).fill("");
-            rv2[0] = "01E" + rnd();
-            rv2[1] = mERI;
-            rv2[2] = sn++;
-            rv2[3] = pc;
-            rv2[4] = ps;
-            rv2[5] = 0;
-            rv2[6] = -Math.round(mainAmt);
-            rv2[9] = ts;
-            v1_rows.push(rv2);
-          }
-        });
+    let sn = 0;
+    if (cultureAmt > 0) {
+      let rv1 = new Array(v1_header.length).fill("");
+      rv1[0] = "01E" + rnd();
+      rv1[1] = mERI;
+      rv1[2] = sn++;
+      rv1[3] = "61";
+      rv1[4] = "1144.61";
+      rv1[5] = 0;
+      rv1[6] = -Math.round(cultureAmt);
+      rv1[9] = ts;
+      v1_rows.push(rv1);
+    }
+    if (mainAmt > 0) {
+      let pc = "5", ps = "1144.355";
+      if ((c.paymentMethod || "").includes("信用卡") || (c.paymentMethod || "").includes("LINE")) { pc = "16"; ps = "1144.358"; }
+      let rv2 = new Array(v1_header.length).fill("");
+      rv2[0] = "01E" + rnd();
+      rv2[1] = mERI;
+      rv2[2] = sn++;
+      rv2[3] = pc;
+      rv2[4] = ps;
+      rv2[5] = 0;
+      rv2[6] = -Math.round(mainAmt);
+      rv2[9] = ts;
+      v1_rows.push(rv2);
+    }
+  });
 
-        // ✅ PILOT 下載工具：不輸出表頭、全欄位加引號、CRLF、無 BOM
-        const dl = (rows, filename) => {
-          const esc = (v) => {
-            if (v === null || v === undefined) return "";
-            let s = String(v);
-            s = s.replace(/"/g, '""');
-            return s;
-          };
+  // ✅ PILOT 下載工具：不輸出表頭、全欄位加引號、CRLF、無 BOM
+  const dl = (rows, filename) => {
+    const esc = (v) => {
+      if (v === null || v === undefined) return "";
+      let s = String(v);
+      s = s.replace(/"/g, '""');
+      return s;
+    };
 
-          const csvContent = rows
-            .map(r => r.map(v => `"${esc(v)}"`).join(','))
-            .join('\r\n');
+    const csvContent = rows
+      .map(r => r.map(v => `"${esc(v)}"`).join(','))
+      .join('\r\n');
 
-          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = filename;
-          a.click();
-          URL.revokeObjectURL(a.href);
-        };
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
 
-        dl(s1_rows, "STKSALE1.csv");
-        setTimeout(() => dl(s2_rows, "STKSALE2.csv"), 500);
-        setTimeout(() => dl(v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
-      };
-
+  dl(s1_rows, "STKSALE1.csv");
+  setTimeout(() => dl(s2_rows, "STKSALE2.csv"), 500);
+  setTimeout(() => dl(v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
+};
 
       // ===== 啟動 =====
       loadDiscountRates();
@@ -1909,6 +1912,3 @@
   </script>
 </body>
 </html>
-
-
-
