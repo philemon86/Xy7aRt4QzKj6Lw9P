@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>V11腓利門雲POS</title>
+    <title>V12腓利門雲POS</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         /* --- 核心配色：大地色系優化 --- */
@@ -1596,10 +1596,9 @@
                 } catch (error) { alert('CSV匯出錯誤'); }
             });
 
-// --- PILOT 會計匯出 (修正版 v14 - 修正金額平衡邏輯) ---
+// --- PILOT 會計匯出 (修正版 v15 - 嚴格對照正確檔案欄位) ---
             document.getElementById('export-pilot-btn').onclick = () => {
                 const now = new Date();
-                // 1. 動態單號: YYYYMMDDHHmm (確保每次匯入都是新單，避免重複被忽略)
                 const orderId = String(now.getFullYear()) + 
                                 String(now.getMonth() + 1).padStart(2, '0') + 
                                 String(now.getDate()).padStart(2, '0') + 
@@ -1634,66 +1633,68 @@
                     
                     const mERI = c.eri || ("0H5" + rnd());
                     
-                    // --- 計算邏輯修正 ---
-                    // 必須先算出所有明細的「淨值總額」，確保與主檔一致
-                    let totalNetAmt = 0;
+                    // 先計算主檔需要的加總數據
+                    // 注意：會計系統要求 AMT 為「原價總額」，TOTAL 為「淨額」
+                    let grossTotal = 0; // 原價總額
+                    let netTotal = 0;   // 淨額 (實際收款)
                     let totalQty = 0;
                     
-                    // 先遍歷一次計算總額，避免浮點數誤差導致帳不平
                     c.items.forEach(it => {
                         const discountRate = it.discount !== undefined ? it.discount : 100;
                         const netPrice = it.price * (discountRate / 100);
-                        const rowNetAmt = Math.round(netPrice * it.quantity);
-                        totalNetAmt += rowNetAmt;
+                        
+                        grossTotal += it.price * it.quantity;
+                        netTotal += netPrice * it.quantity;
                         totalQty += it.quantity;
                     });
-
-                    // [S1 主檔] TOTAL 欄位填入計算後的「淨值總額」
-                    // AMT 填入原價總額(估算)，PLUSSUB 填入差額。最重要的是 TOTAL 必須等於 s2 的 AMT 總和。
-                    const grossEst = c.items.reduce((a,b)=>a+(b.price*b.quantity),0);
                     
+                    // 四捨五入避免浮點數誤差
+                    grossTotal = Math.round(grossTotal);
+                    netTotal = Math.round(netTotal);
+                    const diff = netTotal - grossTotal; // 折扣差額 (通常為負值)
+
+                    // [S1 主檔]
                     s1.push([
                         mERI, orderId, staffCode, custCode, date, "NTD", 1, "", whCode, "", 
-                        0, Math.round(grossEst), Math.round(totalNetAmt - grossEst), totalNetAmt, totalQty, 
+                        0, grossTotal, diff, netTotal, totalQty, // 修正：AMT=原價總額, TOTAL=淨額
                         "POS", "", "POS_Import", "", 3, 3, 
-                        date, "", date, date, totalNetAmt, 
+                        date, "", date, date, netTotal, 
                         "0000", "", 0, "", "", 0, 0, "", 0, "", 0, "0000", "", 0, 
                         custCode, "", "POS", "", 1, 0, "", "", 0, "", 
                         ts, "", "", "", ""
                     ]);
 
-                    // [S2 明細檔] 關鍵修正區
+                    // [S2 明細檔]
                     c.items.forEach((it, idx) => {
                         const dERI = it.detailERI || ("0H8"+rnd());
                         const discountRate = it.discount !== undefined ? it.discount : 100;
                         
-                        // 計算: 單價(淨) 與 總額(淨)
-                        const netPrice = it.price * (discountRate / 100);
-                        const rowNetAmt = Math.round(netPrice * it.quantity);
+                        const netPrice = it.price * (discountRate / 100); // 淨單價
+                        const rowNetAmt = Math.round(netPrice * it.quantity); // 該行淨總額
 
                         s2.push([
                             dERI, mERI, "", staffCode, custCode, whCode,
                             it.code, date, 0, orderId, idx, 
-                            it.price, // [重點修正] SPEC 欄位填入「原價」 (參考您的正確檔案)
-                            it.quantity, "", // UNIT 留空，避免亂碼
-                            netPrice, // [重點修正] PRICE 填入「打折後單價」
-                            rowNetAmt, // [重點修正] AMT 填入「打折後總額」
+                            it.price, // [SPEC] 必須填入原價！這是關鍵！
+                            it.quantity, "個", // [UNIT] 補上單位，避免亂碼
+                            netPrice, // [PRICE] 填入折扣後單價
+                            rowNetAmt, // [AMT] 填入折扣後總額
                             it.quantity, 0, "", "", 
-                            it.quantity, // QTYSTR
-                            "NTD", 1, it.price, discountRate, // STDPRC 填原價, DISCOUNT 填折數
+                            it.quantity + "個", // [QTYSTR] 數量+單位
+                            "NTD", 1, it.price, discountRate, 
                             "", "", 0, 0, 0, "", date, "", 0, 0, 0, 0, 0, 0, "", 
                             ts, "", ""
                         ]);
                     });
 
                     // [V1 傳票]
-                    let cultureAmt = 0, mainAmt = totalNetAmt; // 使用 totalNetAmt 確保金額一致
+                    let cultureAmt = 0, mainAmt = netTotal; 
                     if (c.paymentMethod.includes("文化幣")) {
                         const match = c.paymentMethod.match(/文化幣.*?\((\d+)\)/);
                         if (match && match[1]) {
-                            cultureAmt = parseInt(match[1]); mainAmt = totalNetAmt - cultureAmt;
+                            cultureAmt = parseInt(match[1]); mainAmt = netTotal - cultureAmt;
                         } else if (c.paymentMethod === "文化幣") {
-                             cultureAmt = totalNetAmt; mainAmt = 0;
+                             cultureAmt = netTotal; mainAmt = 0;
                         }
                     }
 
