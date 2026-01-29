@@ -1,1820 +1,1906 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>V13腓利門雲POS</title>
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
-    <style>
-        /* --- 核心配色：大地色系優化 --- */
-        :root {
-            --bg-color: #F4E4C1;       /* 沙漠砂 (背景) */
-            --primary-btn: #A0522D;    /* 陶土褐 (主要按鈕) */
-            --primary-btn-hover: #8B4513;
-            --border-color: #D2B48C;   /* 淺褐 (邊框) */
-            --input-bg: #FFF8DC;       /* 玉米絲 (輸入框) */
-            --text-color: #333;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V14腓利門雲POS</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
 
-        body {
-            font-family: "Microsoft JhengHei", Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
-            background-color: var(--bg-color);
-            padding-bottom: 50px;
-            color: var(--text-color);
-        }
+  <style>
+    /* --- 核心配色：大地色系優化 --- */
+    :root {
+      --bg-color: #F4E4C1;       /* 沙漠砂 (背景) */
+      --primary-btn: #A0522D;    /* 陶土褐 (主要按鈕) */
+      --primary-btn-hover: #8B4513;
+      --border-color: #D2B48C;   /* 淺褐 (邊框) */
+      --input-bg: #FFF8DC;       /* 玉米絲 (輸入框) */
+      --text-color: #333;
+    }
 
-        .flex-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            width: 100%;
-            max-width: 1200px;
-            margin-top: 20px;
-        }
+    body {
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      background-color: var(--bg-color);
+      padding-bottom: 50px;
+      color: var(--text-color);
+    }
 
-        .container-half {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            width: 48%;
-            margin-bottom: 20px;
-            min-height: 300px;
-            box-sizing: border-box;
-            position: relative;
-            border-top: 4px solid var(--primary-btn);
-        }
+    .flex-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 1200px;
+      margin-top: 20px;
+    }
 
-        .container-full {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            width: 100%;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-            border-top: 4px solid var(--primary-btn);
-        }
+    .container-half {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 48%;
+      margin-bottom: 20px;
+      min-height: 300px;
+      box-sizing: border-box;
+      position: relative;
+      border-top: 4px solid var(--primary-btn);
+    }
 
-        .header, .form-group, .table-container, .payment-info, .notes-container, .accounting-container {
-            border: 1px solid var(--border-color);
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
+    .container-full {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 100%;
+      margin-bottom: 20px;
+      box-sizing: border-box;
+      border-top: 4px solid var(--primary-btn);
+    }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    .header, .form-group, .table-container, .payment-info, .notes-container, .accounting-container {
+      border: 1px solid var(--border-color);
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
 
-        .header button, .form-group button, .btn-group button, .acct-btn {
-            background-color: var(--primary-btn);
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-left: 5px;
-            font-weight: bold;
-            transition: background 0.2s;
-        }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-        .header button:hover, .form-group button:hover {
-            background-color: var(--primary-btn-hover);
-        }
-        
-        #clear-all-btn { background-color: #a94442; }
-        #clear-all-btn:hover { background-color: #8a3331; }
+    .header button, .form-group button, .btn-group button, .acct-btn {
+      background-color: var(--primary-btn);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 5px;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
 
-        .form-group input, .notes-container textarea {
-            width: calc(100% - 20px);
-            padding: 12px;
-            font-size: 1.1em;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background-color: var(--input-bg);
-        }
+    .header button:hover, .form-group button:hover {
+      background-color: var(--primary-btn-hover);
+    }
 
-        .notes-container textarea {
-            resize: none;
-            height: 100px;
-        }
+    #clear-all-btn { background-color: #a94442; }
+    #clear-all-btn:hover { background-color: #8a3331; }
 
-        .total {
-            font-size: 1.8em;
-            font-weight: bold;
-            color: #FFF;
-            background-color: var(--primary-btn);
-            padding: 15px;
-            border-radius: 8px 8px 0 0;
-            text-align: right;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-        }
+    .form-group input, .notes-container textarea {
+      width: calc(100% - 20px);
+      padding: 12px;
+      font-size: 1.1em;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background-color: var(--input-bg);
+    }
 
-        .payment-info {
-            background-color: #FFFFFF;
-            border-radius: 0 0 8px 8px;
-            border-top: 2px solid var(--primary-btn);
-            padding: 15px;
-            display: flex;
-            flex-direction: column; 
-            gap: 15px;
-        }
+    .notes-container textarea {
+      resize: none;
+      height: 100px;
+    }
 
-        .payment-details {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-        }
+    .total {
+      font-size: 1.8em;
+      font-weight: bold;
+      color: #FFF;
+      background-color: var(--primary-btn);
+      padding: 15px;
+      border-radius: 8px 8px 0 0;
+      text-align: right;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    }
 
-        .payment-info > span, .payment-details > span {
-            color: var(--primary-btn);
-            font-weight: bold;
-            font-size: 1.2em;
-        }
+    .payment-info {
+      background-color: #FFFFFF;
+      border-radius: 0 0 8px 8px;
+      border-top: 2px solid var(--primary-btn);
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
 
-        .payment-info input#paid-amount {
-            max-width: 120px;
-            padding: 5px;
-            font-size: 1.4em;
-            text-align: right;
-            border: 2px solid var(--border-color);
-        }
+    .payment-details {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
 
-        .checkout-buttons-area {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            width: 100%;
-            margin-top: 10px;
-        }
+    .payment-info > span, .payment-details > span {
+      color: var(--primary-btn);
+      font-weight: bold;
+      font-size: 1.2em;
+    }
 
-        .checkout-btn {
-            flex: 1; 
-            background-color: var(--primary-btn);
-            border: none;
-            border-radius: 5px;
-            padding: 15px 10px;
-            text-align: left;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            padding-left: 15px;
-        }
+    .payment-info input#paid-amount {
+      max-width: 120px;
+      padding: 5px;
+      font-size: 1.4em;
+      text-align: right;
+      border: 2px solid var(--border-color);
+    }
 
-        .checkout-btn:hover {
-            background-color: var(--primary-btn-hover);
-            transform: translateY(-2px);
-        }
+    .checkout-buttons-area {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      margin-top: 10px;
+    }
 
-        .checkout-btn:active { transform: translateY(0); }
+    .checkout-btn {
+      flex: 1;
+      background-color: var(--primary-btn);
+      border: none;
+      border-radius: 5px;
+      padding: 15px 10px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      padding-left: 15px;
+    }
 
-        .checkout-btn .btn-key {
-            font-size: 2.2em !important;
-            font-weight: 800 !important;
-            color: #FFF8DC !important;
-            margin-bottom: 5px;
-            display: block;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-            line-height: 1;
-        }
+    .checkout-btn:hover {
+      background-color: var(--primary-btn-hover);
+      transform: translateY(-2px);
+    }
 
-        .checkout-btn .btn-label {
-            font-size: 0.9em !important;
-            color: #F5F5DC !important;
-            display: block;
-            font-weight: normal;
-        }
+    .checkout-btn:active { transform: translateY(0); }
 
-        .btn-alert {
-            animation: heartBeat 1s infinite;
-            background-color: #ff8c00 !important;
-            transform: scale(1.05);
-            z-index: 10;
-        }
+    .checkout-btn .btn-key {
+      font-size: 2.2em !important;
+      font-weight: 800 !important;
+      color: #FFF8DC !important;
+      margin-bottom: 5px;
+      display: block;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+      line-height: 1;
+    }
 
-        @keyframes heartBeat {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
+    .checkout-btn .btn-label {
+      font-size: 0.9em !important;
+      color: #F5F5DC !important;
+      display: block;
+      font-weight: normal;
+    }
 
-        .table-container { overflow-x: auto; }
+    .btn-alert {
+      animation: heartBeat 1s infinite;
+      background-color: #ff8c00 !important;
+      transform: scale(1.05);
+      z-index: 10;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
+    @keyframes heartBeat {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
 
-        th, td {
-            padding: 8px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-            vertical-align: middle;
-        }
+    .table-container { overflow-x: auto; }
 
-        th {
-            font-size: 0.9em;
-            color: var(--primary-btn);
-            background-color: #f9f4e8;
-        }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
 
-        td { font-size: 0.9em; }
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: middle;
+    }
 
-        .bottom-total {
-            border-radius: 8px;
-            margin-top: 10px;
-        }
+    th {
+      font-size: 0.9em;
+      color: var(--primary-btn);
+      background-color: #f9f4e8;
+    }
 
-        td input[type="number"] {
-            width: 60px;
-            padding: 5px;
-            font-size: 1em;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-        }
-        
-        .stats-info {
-            font-size: 0.9em;
-            color: #555;
-            margin-top: 5px;
-            padding-top: 5px;
-            border-top: 1px dashed var(--border-color);
-            line-height: 1.6;
-        }
-        
-        .stat-item {
-            display: inline-block;
-            margin-right: 15px;
-        }
-        
-        .stat-item b { color: var(--primary-btn); }
+    td { font-size: 0.9em; }
 
-        @media (max-width: 768px) {
-            .flex-container {
-                flex-direction: column;
-                align-items: center;
-                padding: 0 10px;
-            }
-            .container-half, .container-full {
-                width: 100%;
-                margin-bottom: 20px;
-            }
-            .checkout-buttons-area { flex-wrap: wrap; }
-            .checkout-btn { min-width: 45%; }
-        }
+    .bottom-total {
+      border-radius: 8px;
+      margin-top: 10px;
+    }
 
-        .animate-click { animation: pulse-green 0.5s ease-out; }
+    td input[type="number"] {
+      width: 60px;
+      padding: 5px;
+      font-size: 1em;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+    }
 
-        @keyframes pulse-green {
-            0% { transform: scale(1); background-color: var(--primary-btn); }
-            50% { transform: scale(1.05); background-color: #28a745; }
-            100% { transform: scale(1); background-color: var(--primary-btn); }
-        }
+    .stats-info {
+      font-size: 0.9em;
+      color: #555;
+      margin-top: 5px;
+      padding-top: 5px;
+      border-top: 1px dashed var(--border-color);
+      line-height: 1.6;
+    }
 
-        .discount-wrapper {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .sync-option {
-            display: none;
-            margin-top: 4px;
-            font-size: 0.75em;
-            color: var(--primary-btn);
-            background-color: #fff8dc;
-            padding: 2px 4px;
-            border-radius: 3px;
-            border: 1px solid var(--border-color);
-            position: absolute;
-            top: 100%;
-            left: 0;
-            z-index: 10;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-        }
+    .stat-item {
+      display: inline-block;
+      margin-right: 15px;
+    }
 
-        .discount-wrapper:focus-within .sync-option {
-            display: flex;
-            align-items: center;
-        }
+    .stat-item b { color: var(--primary-btn); }
 
-        .manual-locked {
-            border: 2px solid #a94442 !important; 
-            background-color: #fff0f0 !important;
-        }
-        
-        .class-rule-active {
-            border: 2px solid #28a745 !important;
-            background-color: #f0fff0 !important;
-        }
+    @media (max-width: 768px) {
+      .flex-container {
+        flex-direction: column;
+        align-items: center;
+        padding: 0 10px;
+      }
+      .container-half, .container-full {
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      .checkout-buttons-area { flex-wrap: wrap; }
+      .checkout-btn { min-width: 45%; }
+    }
 
-        /* --- 記帳模式樣式 --- */
-        .accounting-split-wrapper {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-        .accounting-col {
-            flex: 1;
-            min-width: 300px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 10px;
-            background-color: #FFF8DC;
-        }
-        .accounting-col h4 {
-            margin-top: 0;
-            color: var(--primary-btn);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 5px;
-            text-align: center;
-        }
-        .accounting-col.initial-col {
-            background-color: #f0f8ff;
-            border-color: #b0c4de;
-        }
+    .animate-click { animation: pulse-green 0.5s ease-out; }
 
-        .money-input-group {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            padding: 4px 8px;
-            background-color: rgba(255,255,255,0.6);
-            border-radius: 3px;
-        }
+    @keyframes pulse-green {
+      0% { transform: scale(1); background-color: var(--primary-btn); }
+      50% { transform: scale(1.05); background-color: #28a745; }
+      100% { transform: scale(1); background-color: var(--primary-btn); }
+    }
 
-        .money-input-group label {
-            font-size: 0.95em;
-            font-weight: bold;
-            color: #555;
-            width: 80px;
-        }
+    .discount-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
 
-        .money-input-group input {
-            width: 100px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            padding: 5px;
-            text-align: right;
-            border-radius: 3px;
-        }
+    .sync-option {
+      display: none;
+      margin-top: 4px;
+      font-size: 0.75em;
+      color: var(--primary-btn);
+      background-color: #fff8dc;
+      padding: 2px 4px;
+      border-radius: 3px;
+      border: 1px solid var(--border-color);
+      position: absolute;
+      top: 100%;
+      left: 0;
+      z-index: 10;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    }
 
-        .acct-summary {
-            background-color: #f9f9f9;
-            padding: 15px;
-            border-radius: 5px;
-            border: 2px solid var(--primary-btn);
-            margin-top: 15px;
-        }
+    .discount-wrapper:focus-within .sync-option {
+      display: flex;
+      align-items: center;
+    }
 
-        .acct-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 1.1em;
-        }
+    .manual-locked {
+      border: 2px solid #a94442 !important;
+      background-color: #fff0f0 !important;
+    }
 
-        .acct-row.highlight {
-            border-top: 1px solid #ccc;
-            padding-top: 8px;
-            font-weight: bold;
-            color: #a94442;
-        }
+    .class-rule-active {
+      border: 2px solid #28a745 !important;
+      background-color: #f0fff0 !important;
+    }
 
-        .btn-change-pay {
-            background-color: #fff;
-            border: 1px solid var(--primary-btn);
-            color: var(--primary-btn);
-            padding: 2px 6px;
-            font-size: 0.8em;
-            cursor: pointer;
-            border-radius: 3px;
-        }
-        .btn-change-pay:hover {
-            background-color: var(--primary-btn);
-            color: white;
-        }
+    /* --- 記帳模式樣式 --- */
+    .accounting-split-wrapper {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .accounting-col {
+      flex: 1;
+      min-width: 300px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 10px;
+      background-color: #FFF8DC;
+    }
+    .accounting-col h4 {
+      margin-top: 0;
+      color: var(--primary-btn);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 5px;
+      text-align: center;
+    }
+    .accounting-col.initial-col {
+      background-color: #f0f8ff;
+      border-color: #b0c4de;
+    }
 
-        .void-order {
-            text-decoration: line-through;
-            color: #999 !important;
-            background-color: #f0f0f0;
-        }
-        .void-order span, .void-order a, .void-order button { opacity: 0.6; }
-        
-        .btn-action-group button {
-            margin-left: 2px;
-            padding: 2px 5px;
-            font-size: 0.8em;
-        }
-        
-        .btn-void { background-color: #666; color: white; border: none; border-radius: 3px; cursor: pointer; }
-        .btn-del { background-color: #a94442; color: white; border: none; border-radius: 3px; cursor: pointer; }
+    .money-input-group {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding: 4px 8px;
+      background-color: rgba(255,255,255,0.6);
+      border-radius: 3px;
+    }
 
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
+    .money-input-group label {
+      font-size: 0.95em;
+      font-weight: bold;
+      color: #555;
+      width: 80px;
+    }
 
-        .modal-content {
-            background-color: white;
-            padding: 25px;
-            border-radius: 8px;
-            width: 300px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            text-align: center;
-            border: 2px solid var(--primary-btn);
-        }
+    .money-input-group input {
+      width: 100px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      padding: 5px;
+      text-align: right;
+      border-radius: 3px;
+    }
 
-        .modal-title {
-            margin-top: 0;
-            color: var(--primary-btn);
-            margin-bottom: 20px;
-        }
+    .acct-summary {
+      background-color: #f9f9f9;
+      padding: 15px;
+      border-radius: 5px;
+      border: 2px solid var(--primary-btn);
+      margin-top: 15px;
+    }
 
-        .modal-btn-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
+    .acct-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 1.1em;
+    }
 
-        .modal-btn {
-            padding: 15px;
-            border: none;
-            border-radius: 5px;
-            font-size: 1.1em;
-            cursor: pointer;
-            color: white;
-            transition: transform 0.1s;
-        }
-        
-        .modal-btn:active { transform: scale(0.95); }
+    .acct-row.highlight {
+      border-top: 1px solid #ccc;
+      padding-top: 8px;
+      font-weight: bold;
+      color: #a94442;
+    }
 
-        .btn-m-cash { background-color: #28a745; }
-        .btn-m-card { background-color: #007bff; }
-        .btn-m-line { background-color: #20c997; }
-        .btn-m-culture { background-color: #fd7e14; }
-        .btn-m-cancel { background-color: #6c757d; width: 100%; margin-top: 10px; padding: 10px; }
+    .btn-change-pay {
+      background-color: #fff;
+      border: 1px solid var(--primary-btn);
+      color: var(--primary-btn);
+      padding: 2px 6px;
+      font-size: 0.8em;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    .btn-change-pay:hover {
+      background-color: var(--primary-btn);
+      color: white;
+    }
 
-    </style>
+    .void-order {
+      text-decoration: line-through;
+      color: #999 !important;
+      background-color: #f0f0f0;
+    }
+    .void-order span, .void-order a, .void-order button { opacity: 0.6; }
+
+    .btn-action-group button {
+      margin-left: 2px;
+      padding: 2px 5px;
+      font-size: 0.8em;
+    }
+
+    .btn-void { background-color: #666; color: white; border: none; border-radius: 3px; cursor: pointer; }
+    .btn-del { background-color: #a94442; color: white; border: none; border-radius: 3px; cursor: pointer; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background-color: white;
+      padding: 25px;
+      border-radius: 8px;
+      width: 300px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      text-align: center;
+      border: 2px solid var(--primary-btn);
+    }
+
+    .modal-title {
+      margin-top: 0;
+      color: var(--primary-btn);
+      margin-bottom: 20px;
+    }
+
+    .modal-btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .modal-btn {
+      padding: 15px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1.1em;
+      cursor: pointer;
+      color: white;
+      transition: transform 0.1s;
+    }
+
+    .modal-btn:active { transform: scale(0.95); }
+
+    .btn-m-cash { background-color: #28a745; }
+    .btn-m-card { background-color: #007bff; }
+    .btn-m-line { background-color: #20c997; }
+    .btn-m-culture { background-color: #fd7e14; }
+    .btn-m-cancel { background-color: #6c757d; width: 100%; margin-top: 10px; padding: 10px; }
+  </style>
 </head>
+
 <body>
-    <input type="file" id="import-file" accept=".json" style="display: none;">
+  <input type="file" id="import-file" accept=".json" style="display:none;" />
 
-    <div class="flex-container">
-        <div class="container-half">
-            <div class="header">
-                <div>
-                    <span id="title" style="font-size:1.5em; font-weight:bold; color: var(--primary-btn);">腓利門雲POS</span>
-                </div>
-            </div>
-            <div class="header" style="justify-content: flex-end;">
-                <span id="current-date" style="margin-right: auto; font-weight:bold;"></span>
-                <div class="btn-group">
-                    <button id="backup-btn" style="background-color: #4682B4;">備份</button>
-                    <button id="restore-btn" style="background-color: #20B2AA;">還原</button>
-                    <button id="export-csv-btn">匯出 CSV</button>
-                    <button id="export-pilot-btn" style="background-color: #2E7D32;">匯出 Pilot 會計檔</button>
-                    <button id="clear-all-btn">清空</button>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="product-code">商品掃描 (輸入代碼/條碼)：</label>
-                <form id="scan-form" onsubmit="return false;" style="display: flex; gap: 5px;">
-                    <input type="text" id="product-code" placeholder="掃描後按 Enter 自動加入" autofocus autocomplete="off" style="flex:1;">
-                    <button type="submit" style="white-space: nowrap;">加入</button>
-                </form>
-                <div id="product-info" style="color: var(--primary-btn); margin-top:5px; font-weight:bold; height: 1.2em;"></div>
-            </div>
-
-            <div class="form-group search-container">
-                <label for="keyword-search">關鍵字搜尋：</label>
-                <input type="text" id="keyword-search" placeholder="名稱 / 代碼 / 條碼">
-                <div id="search-results" class="search-results" style="margin-top:10px;"></div>
-            </div>
-            <div id="db-status" style="font-size:0.8em; color:gray; text-align:right;"></div>
+  <div class="flex-container">
+    <div class="container-half">
+      <div class="header">
+        <div>
+          <span id="title" style="font-size:1.5em; font-weight:bold; color:var(--primary-btn);">腓利門雲POS</span>
         </div>
+      </div>
 
-        <div class="container-half">
-            <div class="table-container">
-                <div class="table-title" style="font-weight:bold; color:var(--primary-btn); margin-bottom:5px;">本次結帳明細</div>
-                <table id="cart-table">
-                    <thead>
-                        <tr>
-                            <th>名稱</th>
-                            <th>單價</th>
-                            <th>數量</th>
-                            <th style="min-width: 100px;">折扣 %</th>
-                            <th>小計</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
-            </div>
-            <div class="total">應付金額：<span id="total-amount">0</span> 元</div>
-            
-            <div class="payment-info">
-                <div class="payment-details">
-                    <span>實付金額：<input type="number" id="paid-amount" value="1000"></span>
-                    <span>找錢：<span id="change-amount">0</span> 元</span>
-                </div>
-                
-                <div class="checkout-buttons-area">
-                    <button id="btn-f7" class="checkout-btn">
-                        <span class="btn-key">F7</span>
-                        <span class="btn-label">信用卡</span>
-                    </button>
-                    <button id="btn-f8" class="checkout-btn">
-                        <span class="btn-key">F8</span>
-                        <span class="btn-label">LINE PAY</span>
-                    </button>
-                    <button id="btn-f9" class="checkout-btn">
-                        <span class="btn-key">F9</span>
-                        <span class="btn-label">文化幣</span>
-                    </button>
-                    <button id="btn-f10" class="checkout-btn">
-                        <span class="btn-key">F10</span>
-                        <span class="btn-label">現金</span>
-                    </button>
-                </div>
-            </div>
+      <div class="header" style="justify-content:flex-end;">
+        <span id="current-date" style="margin-right:auto; font-weight:bold;"></span>
+        <div class="btn-group">
+          <button id="backup-btn" style="background-color:#4682B4;">備份</button>
+          <button id="restore-btn" style="background-color:#20B2AA;">還原</button>
+          <button id="export-csv-btn">匯出 CSV</button>
+          <button id="export-pilot-btn" style="background-color:#2E7D32;">匯出 Pilot 會計檔</button>
+          <button id="clear-all-btn">清空</button>
         </div>
+      </div>
+
+      <div class="form-group">
+        <label for="product-code">商品掃描 (輸入代碼/條碼)：</label>
+        <form id="scan-form" onsubmit="return false;" style="display:flex; gap:5px;">
+          <input type="text" id="product-code" placeholder="掃描後按 Enter 自動加入" autofocus autocomplete="off" style="flex:1;" />
+          <button type="submit" style="white-space:nowrap;">加入</button>
+        </form>
+        <div id="product-info" style="color:var(--primary-btn); margin-top:5px; font-weight:bold; height:1.2em;"></div>
+      </div>
+
+      <div class="form-group search-container">
+        <label for="keyword-search">關鍵字搜尋：</label>
+        <input type="text" id="keyword-search" placeholder="名稱 / 代碼 / 條碼" />
+        <div id="search-results" class="search-results" style="margin-top:10px;"></div>
+      </div>
+
+      <div id="db-status" style="font-size:0.8em; color:gray; text-align:right;"></div>
     </div>
 
-    <div class="flex-container">
-        <div class="container-half">
-            <div class="table-title">
-                <b>歷史訂單 (作廢/刪除/修改付款)</b> <br>
-                訂單數: <span id="total-orders">0</span> | 平均消費: <span id="average-amount">0</span> 元
-                <div id="payment-stats" class="stats-info">
-                </div>
-            </div>
-            <div class="table-container" style="max-height: 400px; overflow-y: auto;">
-                <table id="summary-table">
-                    <thead>
-                        <tr>
-                            <th>單號</th>
-                            <th>金額</th>
-                            <th>付款</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
-            </div>
-            <div class="notes-container">
-                <label for="notes">備註：</label>
-                <textarea id="notes"></textarea>
-            </div>
+    <div class="container-half">
+      <div class="table-container">
+        <div class="table-title" style="font-weight:bold; color:var(--primary-btn); margin-bottom:5px;">本次結帳明細</div>
+        <table id="cart-table">
+          <thead>
+            <tr>
+              <th>名稱</th>
+              <th>單價</th>
+              <th>數量</th>
+              <th style="min-width:100px;">折扣 %</th>
+              <th>小計</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="total">應付金額：<span id="total-amount">0</span> 元</div>
+
+      <div class="payment-info">
+        <div class="payment-details">
+          <span>實付金額：<input type="number" id="paid-amount" value="1000" /></span>
+          <span>找錢：<span id="change-amount">0</span> 元</span>
         </div>
 
-        <div class="container-half">
-            <div class="table-title">
-                <b>今日銷售總覽</b>
-            </div>
-            <div class="table-container" style="max-height: 350px; overflow-y: auto;">
-                <table id="overall-summary-table">
-                    <thead>
-                        <tr>
-                            <th>代碼</th>
-                            <th>品名</th>
-                            <th>總量</th>
-                            <th>總額</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
-            </div>
-            <div class="total bottom-total" style="font-size:1.5em;">營收總計：<span id="overall-total-amount">0</span> 元</div>
+        <div class="checkout-buttons-area">
+          <button id="btn-f7" class="checkout-btn">
+            <span class="btn-key">F7</span>
+            <span class="btn-label">信用卡</span>
+          </button>
+          <button id="btn-f8" class="checkout-btn">
+            <span class="btn-key">F8</span>
+            <span class="btn-label">LINE PAY</span>
+          </button>
+          <button id="btn-f9" class="checkout-btn">
+            <span class="btn-key">F9</span>
+            <span class="btn-label">文化幣</span>
+          </button>
+          <button id="btn-f10" class="checkout-btn">
+            <span class="btn-key">F10</span>
+            <span class="btn-label">現金</span>
+          </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex-container">
+    <div class="container-half">
+      <div class="table-title">
+        <b>歷史訂單 (作廢/刪除/修改付款)</b> <br />
+        訂單數: <span id="total-orders">0</span> | 平均消費: <span id="average-amount">0</span> 元
+        <div id="payment-stats" class="stats-info"></div>
+      </div>
+
+      <div class="table-container" style="max-height:400px; overflow-y:auto;">
+        <table id="summary-table">
+          <thead>
+            <tr>
+              <th>單號</th>
+              <th>金額</th>
+              <th>付款</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="notes-container">
+        <label for="notes">備註：</label>
+        <textarea id="notes"></textarea>
+      </div>
     </div>
 
-    <div class="flex-container">
-        <div class="container-full">
-            <div class="header">
-                <b>記帳模式 (現金盤點與對帳)</b>
-                <button onclick="clearAccountingInputs()">清空盤點數據</button>
-            </div>
-            
-            <div class="accounting-container">
-                <div class="accounting-split-wrapper">
-                    <div class="accounting-col">
-                        <h4>1. 現有現金盤點</h4>
-                        <div class="money-input-group"><label>1000 元</label><input type="number" class="acct-count current" data-val="1000" min="0"></div>
-                        <div class="money-input-group"><label>500 元</label><input type="number" class="acct-count current" data-val="500" min="0"></div>
-                        <div class="money-input-group"><label>100 元</label><input type="number" class="acct-count current" data-val="100" min="0"></div>
-                        <div class="money-input-group"><label>50 元</label><input type="number" class="acct-count current" data-val="50" min="0"></div>
-                        <div class="money-input-group"><label>10 元</label><input type="number" class="acct-count current" data-val="10" min="0"></div>
-                        <div class="money-input-group"><label>5 元</label><input type="number" class="acct-count current" data-val="5" min="0"></div>
-                        <div class="money-input-group"><label>1 元</label><input type="number" class="acct-count current" data-val="1" min="0"></div>
-                    </div>
-
-                    <div class="accounting-col initial-col">
-                        <h4>2. 初始金額設定 (11,000)</h4>
-                        <div class="money-input-group"><label>1000 元</label><input type="number" class="acct-count initial" data-val="1000" min="0" value="1"></div>
-                        <div class="money-input-group"><label>500 元</label><input type="number" class="acct-count initial" data-val="500" min="0" value="10"></div>
-                        <div class="money-input-group"><label>100 元</label><input type="number" class="acct-count initial" data-val="100" min="0" value="30"></div>
-                        <div class="money-input-group"><label>50 元</label><input type="number" class="acct-count initial" data-val="50" min="0" value="20"></div>
-                        <div class="money-input-group"><label>10 元</label><input type="number" class="acct-count initial" data-val="10" min="0" value="64"></div>
-                        <div class="money-input-group"><label>5 元</label><input type="number" class="acct-count initial" data-val="5" min="0" value="62"></div>
-                        <div class="money-input-group"><label>1 元</label><input type="number" class="acct-count initial" data-val="1" min="0" value="50"></div>
-                    </div>
-                </div>
-
-                <div style="margin-top: 15px; padding: 10px; background-color: #ffebee; border-radius: 4px; border: 1px solid #ffcccb;">
-                    <label style="font-weight:bold;">(-) 額外支出 (憑證)：</label>
-                    <input type="number" id="expenses-cash" value="0" min="0" style="width: 100px; padding: 5px;">
-                </div>
-                
-                <div class="acct-summary">
-                    <div class="acct-row">
-                        <span>盤點現金總額：</span>
-                        <span id="calc-drawer-total">0</span>
-                    </div>
-                    <div class="acct-row" style="color: #666;">
-                        <span>(-) 初始金額總計：</span>
-                        <span id="calc-initial">0</span>
-                    </div>
-                     <div class="acct-row" style="color: #666;">
-                        <span>(+) 支出費用憑證：</span>
-                        <span id="calc-expenses">0</span>
-                    </div>
-                    <hr>
-                    <div class="acct-row highlight">
-                        <span>= 實際營業額 (現金)：</span>
-                        <span id="calc-net-cash">0</span>
-                    </div>
-                    <div class="acct-row" style="color: #555; font-size: 0.9em;">
-                        <span>(系統記錄現金營收：<span id="sys-cash-total">0</span>)</span>
-                    </div>
-                    <div class="acct-row" id="cash-diff-row" style="font-weight: bold; margin-top: 5px;">
-                        <span>差異：</span>
-                        <span id="cash-diff">0</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="container-half">
+      <div class="table-title"><b>今日銷售總覽</b></div>
+      <div class="table-container" style="max-height:350px; overflow-y:auto;">
+        <table id="overall-summary-table">
+          <thead>
+            <tr>
+              <th>代碼</th>
+              <th>品名</th>
+              <th>總量</th>
+              <th>總額</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="total bottom-total" style="font-size:1.5em;">營收總計：<span id="overall-total-amount">0</span> 元</div>
     </div>
+  </div>
 
-    <div id="payment-modal" class="modal-overlay">
-        <div class="modal-content">
-            <h3 class="modal-title">選擇新的付款方式</h3>
-            <div class="modal-btn-grid">
-                <button class="modal-btn btn-m-cash" onclick="selectPaymentMethod('現金')">現金</button>
-                <button class="modal-btn btn-m-card" onclick="selectPaymentMethod('信用卡')">信用卡</button>
-                <button class="modal-btn btn-m-line" onclick="selectPaymentMethod('LINE PAY')">LINE PAY</button>
-                <button class="modal-btn btn-m-culture" onclick="selectPaymentMethod('文化幣')">文化幣</button>
-            </div>
-            <button class="modal-btn btn-m-cancel" onclick="closePaymentModal()">取消</button>
+  <div class="flex-container">
+    <div class="container-full">
+      <div class="header">
+        <b>記帳模式 (現金盤點與對帳)</b>
+        <button onclick="clearAccountingInputs()">清空盤點數據</button>
+      </div>
+
+      <div class="accounting-container">
+        <div class="accounting-split-wrapper">
+          <div class="accounting-col">
+            <h4>1. 現有現金盤點</h4>
+            <div class="money-input-group"><label>1000 元</label><input type="number" class="acct-count current" data-val="1000" min="0" /></div>
+            <div class="money-input-group"><label>500 元</label><input type="number" class="acct-count current" data-val="500" min="0" /></div>
+            <div class="money-input-group"><label>100 元</label><input type="number" class="acct-count current" data-val="100" min="0" /></div>
+            <div class="money-input-group"><label>50 元</label><input type="number" class="acct-count current" data-val="50" min="0" /></div>
+            <div class="money-input-group"><label>10 元</label><input type="number" class="acct-count current" data-val="10" min="0" /></div>
+            <div class="money-input-group"><label>5 元</label><input type="number" class="acct-count current" data-val="5" min="0" /></div>
+            <div class="money-input-group"><label>1 元</label><input type="number" class="acct-count current" data-val="1" min="0" /></div>
+          </div>
+
+          <div class="accounting-col initial-col">
+            <h4>2. 初始金額設定 (11,000)</h4>
+            <div class="money-input-group"><label>1000 元</label><input type="number" class="acct-count initial" data-val="1000" min="0" value="1" /></div>
+            <div class="money-input-group"><label>500 元</label><input type="number" class="acct-count initial" data-val="500" min="0" value="10" /></div>
+            <div class="money-input-group"><label>100 元</label><input type="number" class="acct-count initial" data-val="100" min="0" value="30" /></div>
+            <div class="money-input-group"><label>50 元</label><input type="number" class="acct-count initial" data-val="50" min="0" value="20" /></div>
+            <div class="money-input-group"><label>10 元</label><input type="number" class="acct-count initial" data-val="10" min="0" value="64" /></div>
+            <div class="money-input-group"><label>5 元</label><input type="number" class="acct-count initial" data-val="5" min="0" value="62" /></div>
+            <div class="money-input-group"><label>1 元</label><input type="number" class="acct-count initial" data-val="1" min="0" value="50" /></div>
+          </div>
         </div>
+
+        <div style="margin-top:15px; padding:10px; background-color:#ffebee; border-radius:4px; border:1px solid #ffcccb;">
+          <label style="font-weight:bold;">(-) 額外支出 (憑證)：</label>
+          <input type="number" id="expenses-cash" value="0" min="0" style="width:100px; padding:5px;" />
+        </div>
+
+        <div class="acct-summary">
+          <div class="acct-row">
+            <span>盤點現金總額：</span>
+            <span id="calc-drawer-total">0</span>
+          </div>
+          <div class="acct-row" style="color:#666;">
+            <span>(-) 初始金額總計：</span>
+            <span id="calc-initial">0</span>
+          </div>
+          <div class="acct-row" style="color:#666;">
+            <span>(+) 支出費用憑證：</span>
+            <span id="calc-expenses">0</span>
+          </div>
+          <hr />
+          <div class="acct-row highlight">
+            <span>= 實際營業額 (現金)：</span>
+            <span id="calc-net-cash">0</span>
+          </div>
+          <div class="acct-row" style="color:#555; font-size:0.9em;">
+            <span>(系統記錄現金營收：<span id="sys-cash-total">0</span>)</span>
+          </div>
+          <div class="acct-row" id="cash-diff-row" style="font-weight:bold; margin-top:5px;">
+            <span>差異：</span>
+            <span id="cash-diff">0</span>
+          </div>
+        </div>
+      </div>
     </div>
-
-    <script>
-        // --- 內建會計系統商品對照表 (自動產生) ---
-        const ACCOUNTING_MAPPING = {"B308A": "B308A", "S047D": "S047D", "4712120550506": "12055", "9781932184037": "9781932184037", "9789570472530": "CUNPCS077AZTI", "9789867893406": "C201", "9789867893390": "C200", "9789867893383": "C202", "4712120550308": "E013G", "9789862773348": "G292", "4712120550414": "12046", "9786267385552": "L456", "9789865228804": "L268", "9789575569426": "L284", "9789865229986": "L322", "9786267385736": "L463", "9786267554163": "L505", "9786267554156": "L506", "9786267554170": "L508", "9786267385200": "L445", "9786267385002": "L442", "9789864004942": "A237", "9789865226183": "L188", "9789864003846": "A173", "9786267239336": "L361", "9789864004386": "A205", "9786267239510": "L371", "9786267239459": "L374", "9786267239466": "L375", "9786267239855": "L396", "9786267239862": "L397", "9789864003051": "A135", "9789864004058": "A189", "9786267554125": "L507", "9786267385965": "L473", "9786267385279": "L451", "9786267385064": "L444", "9786267385224": "L448", "9786267239817": "L393", "9786267239589": "L377", "9789865229672": "L312", "9789864004737": "A226", "9789864004744": "A227", "9789864004904": "A234", "9789864004911": "A235", "9789575876548": "TT0007", "9789575876555": "TT0007", "9789575877323": "TT0008", "9789575877811": "TT0022", "9789575877699": "TT0023", "9789575875763": "TT0024", "9789575876203": "TT0026", "9789575875596": "TT0027", "9789575874988": "TT0029", "9789575875398": "TT0030", "9789575875183": "TT0031", "9789575875756": "TT0033", "9789575874285": "TT0036", "9789575877705": "TT0037", "9789575876210": "TT0038", "9789575875565": "TT0039", "9789575876227": "TT0040", "9789575876562": "TT0041", "9789575873998": "TT0042", "9789575874292": "TT0043", "9789575873837": "TT0044", "9789575875022": "TT0045", "9789575875404": "TT0046", "9789575874001": "TT0047", "9789575874308": "TT0048", "9789575875411": "TT0049", "9789575874315": "TT0050", "9789575874018": "TT0051", "9789575873530": "TT0052", "9789575874551": "TT0053", "9789575874568": "TT0055", "9789575877835": "TT0056", "9789861986566": "C1077", "9789861986429": "C1067", "9789861983053": "C846", "9789579337588": "C271", "9789861985392": "C1004", "9789861983992": "C914", "9789861984609": "C955", "9789861985385": "C1005", "9789861984364": "C941", "9789861984685": "C958", "9789861985286": "C999", "9789861984098": "C922", "9789861985170": "C992", "9789861985163": "C993", "9789861988294": "C1162", "9789861988898": "C1193", "9789861983794": "C900", "9789861989017": "C1198", "9789861984036": "C917", "9789861986276": "C1060", "9789861985798": "C1031", "9789861986115": "C1051", "9789861986511": "C1074", "9789861986702": "C1081", "9789861987518": "C1123", "9789861988300": "C1163", "9789861986870": "C1090", "9789861988584": "C1181", "9789861989673": "C1236", "9789861989918": "C1243", "9789861984920": "C977", "9789861984630": "C956", "9789861985057": "C984", "9789861984227": "C934", "9789861984319": "C939", "9789861984388": "C943", "9789861984555": "C952", "9789861984593": "C954", "9789861986719": "C1082", "9789861987587": "C1126", "9789861989260": "C1210", "9789861985040": "C983", "9789861983572": "C888", "9789861983930": "C911", "9789861986689": "C1080", "9789861985552": "C1014", "9789861986030": "C1045", "9789861983220": "C858", "9789861984722": "C961", "9789861985651": "C1021", "9789861984913": "C976", "9789861989024": "C1199", "9789861983756": "C897", "9789861984906": "C975", "9789861986528": "C1073", "9789861987556": "C1125", "9789861987624": "C1129", "9789861987723": "C1134", "9789861984715": "C960", "9789861985538": "C1013", "9789861986016": "C1043", "9789861988973": "C1197", "9789861989048": "C1200", "9789861989642": "C1233", "9789861983725": "C895", "9789861984029": "C916", "9789861985521": "C1012", "9789861986023": "C1044", "9789861987488": "C1121", "9789861988225": "C1158", "9789861989390": "C1218", "9789861989505": "C1225", "9789861983695": "C894", "9789861983879": "C905", "9789861983923": "C910", "9789861984258": "C935", "9789861984487": "C949", "9789861985323": "C1000", "9789861985644": "C1020", "9789861986283": "C1061", "9789861986412": "C1066", "9789861986634": "C1079", "9789861987228": "C1109", "9789861987730": "C1135", "9789861988638": "C1183", "9789861988935": "C1195", "9789861989444": "C1222", "9789861989666": "C1235", "9789861984043": "C918", "9789861983374": "C871", "9789861983381": "C872", "9789861984265": "C936", "9789861983190": "C856", "9789861984210": "C933", "9789861984401": "C945", "9789861985866": "C1035", "9789861987235": "C1110", "9789861983800": "C901", "9789861985187": "C994", "9789861985484": "C1009", "9789861986290": "C1062", "9789861987013": "C1098", "9789861983602": "C890", "9789861983619": "C891", "9789861984760": "C964", "9789861984777": "C965", "9789861985620": "C1019", "9789861986474": "C1070", "9789861987051": "C1102", "9789861987068": "C1103", "9789861987075": "C1104", "9789861983633": "C892", "9789861984081": "C921", "9789861984463": "C947", "9789861984623": "C957", "9789861985200": "C995", "9789861986450": "C1069", "9789861986504": "C1072", "9789861987174": "C1108", "9789861988171": "C1154", "9789861983176": "C854", "9789861983442": "C876", "9789861983459": "C877", "9789861983589": "C889", "9789861983824": "C903", "9789861983947": "C912", "9789861983985": "C913", "9789861984616": "C959", "9789861984661": "C953", "9789861985156": "C991", "9789861985279": "C998", "9789861985576": "C1016", "9789861985835": "C1033", "9789861986061": "C1047", "9789861986252": "C1058", "9789861986344": "C1065", "9789861986481": "C1071", "9789861986955": "C1095", "9789861987259": "C1111", "9789861987594": "C1127", "9789861987631": "C1130", "9789861987648": "C1131", "9789861988218": "C1157", "9789861988287": "C1161", "9789861988942": "C1196", "9789861989208": "C1207", "9789861989222": "C1208", "9789861989239": "C1209", "9789861989277": "C1211", "9789861989499": "C1224", "9789861984425": "C946", "9789861984586": "C950", "9789861985613": "C1018", "9789861985859": "C1034", "9789861986139": "C1053", "9789861987112": "C1106", "9789861987549": "C1124", "9789861983350": "C869", "9789861983367": "C870", "9789861983770": "C899", "9789861983763": "C898", "9789861983916": "C909", "9789861984074": "C920", "9789861984104": "C923", "9789861984166": "C928", "9789861984180": "C930", "9789861984395": "C944", "9789861984821": "C969", "9789861984845": "C971", "9789861985514": "C1011", "9789861985873": "C1036", "9789861986078": "C1048", "9789861986085": "C1049", "9789861986221": "C1056", "9789861986856": "C1089", "9789861986962": "C1096", "9789861987655": "C1132", "9789861988164": "C1153", "9789861988591": "C1182", "9789861988645": "C1184", "9789861989185": "C1205", "9789861989437": "C1221", "9789861989475": "C1223", "9789861989659": "C1234", "9789861983275": "C863", "9789861983282": "C864", "9789861983299": "C865", "9789861983411": "C873", "9789861983435": "C875", "9789861983732": "C896", "9789861983909": "C908", "9789861984302": "C938", "9789861984333": "C940", "9789861984562": "C951", "9789861984814": "C968", "9789861985019": "C980", "9789861985033": "C982", "9789861985224": "C997", "9789861985507": "C1010", "9789861985804": "C1032", "9789861986047": "C1046", "9789861986122": "C1052", "9789861986306": "C1063", "9789861986313": "C1064", "9789861986979": "C1097", "9789861987099": "C1105", "9789861987167": "C1107", "9789861987310": "C1113", "9789861987334": "C1115", "9789861987341": "C1116", "9789861987358": "C1117", "9789861988232": "C1159", "9789861989192": "C1206", "9789861989512": "C1226", "9789861989536": "C1228", "9789861989543": "C1229", "9789861989567": "C1231", "9789861989635": "C1232"};
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM 元素獲取 ---
-            const currentDateElement = document.getElementById('current-date');
-            const keywordSearchInput = document.getElementById('keyword-search');
-            const searchResultsElement = document.getElementById('search-results');
-            const productCodeInput = document.getElementById('product-code');
-            const scanForm = document.getElementById('scan-form');
-            const paidAmountInput = document.getElementById('paid-amount');
-            const productInfoElement = document.getElementById('product-info');
-            const dbStatusElement = document.getElementById('db-status');
-            const cartTableBody = document.querySelector('#cart-table tbody');
-            const totalAmountElement = document.getElementById('total-amount');
-            const changeAmountElement = document.getElementById('change-amount');
-            const summaryTableBody = document.querySelector('#summary-table tbody');
-            const overallSummaryTableBody = document.querySelector('#overall-summary-table tbody');
-            const overallTotalAmountElement = document.getElementById('overall-total-amount');
-            
-            // 按鈕們
-            const btnF7 = document.getElementById('btn-f7');
-            const btnF8 = document.getElementById('btn-f8');
-            const btnF9 = document.getElementById('btn-f9');
-            const btnF10 = document.getElementById('btn-f10');
-            const checkoutBtns = [btnF7, btnF8, btnF9, btnF10];
-            
-            const exportCsvBtn = document.getElementById('export-csv-btn');
-            const exportPilotBtn = document.getElementById('export-pilot-btn');
-            const clearAllBtn = document.getElementById('clear-all-btn');
-            const backupBtn = document.getElementById('backup-btn');
-            const restoreBtn = document.getElementById('restore-btn');
-            const importFileInput = document.getElementById('import-file');
-
-            const totalOrdersElement = document.getElementById('total-orders');
-            const averageAmountElement = document.getElementById('average-amount');
-            const paymentStatsElement = document.getElementById('payment-stats');
-            const notesElement = document.getElementById('notes');
-
-            // 記帳模式元素
-            const expensesCashInput = document.getElementById('expenses-cash');
-            const calcDrawerTotalEl = document.getElementById('calc-drawer-total');
-            const calcInitialEl = document.getElementById('calc-initial');
-            const calcExpensesEl = document.getElementById('calc-expenses');
-            const calcNetCashEl = document.getElementById('calc-net-cash');
-            const sysCashTotalEl = document.getElementById('sys-cash-total');
-            const cashDiffRow = document.getElementById('cash-diff-row');
-            const cashDiffEl = document.getElementById('cash-diff');
-
-            // --- 狀態變數 ---
-            let cart = JSON.parse(localStorage.getItem('cart')) || [];
-            let products = {}; 
-            let discountRates = {}; 
-            let clients = JSON.parse(localStorage.getItem('clients')) || {};
-            let overallSummary = JSON.parse(localStorage.getItem('overallSummary')) || {};
-            let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
-            let hasShownEmptyCartAlert = false;
-            let sessionRules = JSON.parse(localStorage.getItem('sessionRules')) || {};
-            let priceOverrides = JSON.parse(localStorage.getItem('priceOverrides')) || {};
-            let idleTimer = null;
-            const IDLE_TIMEOUT_MS = 30000; 
-
-            // Modal 相關變數
-            let editingClientId = null;
-            const paymentModal = document.getElementById('payment-modal');
-
-            // --- 商品資料庫 Hybrid 模式 ---
-            const productDB = {
-                "9789861234567": { code: "9789861234567", name: "範例書籍A", price: 350, qty: 100, class: "01" },
-            };
-
-            // --- 音效控制器 ---
-            const POSAudio = {
-                ctx: new (window.AudioContext || window.webkitAudioContext)(),
-                playTone: function(freq, type, duration, startTime = 0) {
-                    if (this.ctx.state === 'suspended') this.ctx.resume();
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = type;
-                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + startTime);
-                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime + startTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + startTime + duration);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start(this.ctx.currentTime + startTime);
-                    osc.stop(this.ctx.currentTime + startTime + duration);
-                },
-                beep: function() { this.playTone(880, 'sine', 0.1); },
-                error: function() { this.playTone(150, 'sawtooth', 0.3); },
-                success: function() {
-                    this.playTone(523.25, 'triangle', 0.1, 0);
-                    this.playTone(659.25, 'triangle', 0.1, 0.05);
-                    this.playTone(783.99, 'triangle', 0.2, 0.1);
-                }
-            };
-
-            // --- Pilot 規格工具 ---
-            function generateERI(type) {
-                const prefix = { 'master': '0H5', 'detail': '0H8', 'pay': '01E' }[type];
-                const fingerprint = "0010LU0"; 
-                const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-                let suffix = "";
-                for(let i=0; i<6; i++) suffix += chars.charAt(Math.floor(Math.random() * chars.length));
-                return (prefix + fingerprint + suffix).substring(0, 16);
-            }
-
-            // --- 日期與初始化 ---
-            const currentDate = new Date().toISOString().split('T')[0].replace(/-/g, '/');
-            currentDateElement.textContent = `日期：${currentDate}`;
-            notesElement.value = localStorage.getItem('notes') || '';
-            notesElement.addEventListener('input', () => {
-                localStorage.setItem('notes', notesElement.value);
-            });
-
-            // 記帳輸入框初始化
-            expensesCashInput.value = localStorage.getItem('acctExpenses') || '0';
-            
-            document.querySelectorAll('.acct-count').forEach(input => {
-                const key = `acct_${input.classList.contains('current')?'cur':'init'}_${input.dataset.val}`;
-                const saved = localStorage.getItem(key);
-                if(saved !== null) { input.value = saved; }
-                input.addEventListener('input', () => {
-                    updateAccountingCalc();
-                    localStorage.setItem(key, input.value);
-                });
-            });
-            expensesCashInput.addEventListener('input', () => {
-                updateAccountingCalc();
-                localStorage.setItem('acctExpenses', expensesCashInput.value);
-            });
-
-            const generateClientId = () => {
-                const date = new Date();
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                return `${year}${month}${day}-${String(clientCounter).padStart(3, '0')}`;
-            };
-
-            const loadDiscountRates = () => {
-                discountRates = {
-                    "POS": 100, "02-2": 100, "09-2": 90, "09-5": 100, "09-4": 100, "09-1": 100, 
-                    "09-3": 90, "06-1": 100, "07-1": 90, "07-2": 90, "07-3": 90, "07-4": 90, 
-                    "07-5": 90, "07-6": 90, "07-7": 90, "06-2": 100, "02-1": 80, "08-2": 90, 
-                    "08-5": 90, "08-3": 90, "08-4": 90, "08-1": 90, "12": 100, "03-2": 100, 
-                    "02-3": 80, "03-4": 100, "04-2": 100, "11": 100, "03-1": 100, "04-1": 100, 
-                    "01": 90, "05-2": 90, "05-1": 100, "03-3": 100
-                };
-            };
-
-            // --- 修改後的商品讀取邏輯 (整合自動對照) ---
-            const loadProducts = async () => {
-                try {
-                    const response = await fetch('products.csv');
-                    if (!response.ok) throw new Error('無法讀取CSV');
-                    
-                    const data = await response.text();
-                    const lines = data.split('\n');
-                    let headers = [];
-                    let isHeader = true;
-
-                    lines.forEach(line => {
-                        const columns = line.split(',');
-                        if (isHeader) {
-                            headers = columns.map(header => header.trim());
-                            isHeader = false;
-                            return;
-                        }
-                        const product = {};
-                        headers.forEach((header, index) => {
-                            product[header] = columns[index]?.trim();
-                        });
-
-                        if (product['CODE'] && product['CNAME']) {
-                            // 自動對照：若對照表中有此 Barcode，則使用會計系統代碼覆蓋
-                            let finalCode = product['CODE'];
-                            if (product['BARCODE'] && ACCOUNTING_MAPPING[product['BARCODE']]) {
-                                finalCode = ACCOUNTING_MAPPING[product['BARCODE']];
-                            } else if (ACCOUNTING_MAPPING[product['CODE']]) { // 備用：若 CODE 欄位本身是條碼
-                                finalCode = ACCOUNTING_MAPPING[product['CODE']];
-                            }
-
-                            const defaultDiscount = discountRates[product['CLAS']] || 100;
-                            products[finalCode] = { // 使用轉換後的代碼作為 Key
-                                code: finalCode,
-                                name: product['CNAME'],
-                                barcode: product['BARCODE'],
-                                qty: parseInt(product['CQTY']) || 0,
-                                price: parseFloat(product['PRICE']) || 0,
-                                class: product['CLAS'], 
-                                defaultDiscount: defaultDiscount
-                            };
-                            
-                            // 為了讓掃描條碼也能找到轉碼後的商品，我們保留條碼索引
-                            if (product['BARCODE'] && product['BARCODE'] !== finalCode) {
-                                products[product['BARCODE']] = products[finalCode]; // 讓條碼也指向同一個商品物件
-                            }
-                        }
-                    });
-                    dbStatusElement.textContent = "已載入外部 CSV 商品資料 (含會計對照)";
-                    dbStatusElement.style.color = "green";
-                } catch (error) {
-                    console.warn('CSV讀取失敗，切換至內建測試資料庫', error);
-                    Object.values(productDB).forEach(p => {
-                          const defaultDiscount = discountRates[p.class] || 100;
-                          products[p.code] = {
-                             ...p,
-                             defaultDiscount: defaultDiscount
-                          };
-                    });
-                    dbStatusElement.textContent = "CSV讀取失敗，使用內建/測試資料";
-                    dbStatusElement.style.color = "orange";
-                }
-            };
-
-            const calculateItemDiscount = (item) => {
-                if (item.isManual) return item.discount;
-                if (item.class && sessionRules[item.class] !== undefined) return sessionRules[item.class];
-                return item.defaultDiscount || 100;
-            };
-
-            const addProductToCart = (code) => {
-                resetIdleTimer();
-                const product = products[code];
-                // 這裡拿到的 product 已經是經過轉碼的物件，其 .code 屬性就是會計代碼
-                if (!product) { alert('找不到商品'); return; }
-                
-                const realCode = product.code; // 確保使用會計代碼
-                const existingItem = cart.find(item => item.code === realCode);
-                
-                if (existingItem) {
-                    existingItem.quantity += 1;
-                    if (!existingItem.isManual) {
-                        existingItem.discount = calculateItemDiscount(existingItem);
-                    }
-                } else {
-                    const newItem = { 
-                        ...product, 
-                        quantity: 1,
-                        isManual: false,
-                        discount: 0 
-                    };
-                    if (priceOverrides[realCode] !== undefined) {
-                        newItem.price = priceOverrides[realCode];
-                    }
-                    newItem.discount = calculateItemDiscount(newItem);
-                    cart.push(newItem);
-                }
-                
-                POSAudio.beep();
-                updateCartDisplay();
-                calculateTotal();
-                saveCart();
-                productCodeInput.value = ''; 
-                productCodeInput.focus(); 
-            };
-
-            const resetIdleTimer = () => {
-                if (idleTimer) clearTimeout(idleTimer);
-                checkoutBtns.forEach(btn => btn.classList.remove('btn-alert'));
-                if (cart.length > 0) {
-                    idleTimer = setTimeout(() => {
-                        checkoutBtns.forEach(btn => btn.classList.add('btn-alert'));
-                    }, IDLE_TIMEOUT_MS);
-                }
-            };
-
-            const updateCartDisplay = () => {
-                cartTableBody.innerHTML = '';
-                cart.forEach(item => {
-                    const row = document.createElement('tr');
-                    let inputClass = 'discount-input';
-                    let statusTitle = "預設折扣";
-                    if (item.isManual) {
-                        inputClass += ' manual-locked';
-                        statusTitle = "單品已鎖定";
-                    } else if (sessionRules[item.class]) {
-                        inputClass += ' class-rule-active';
-                        statusTitle = `套用分類規則 (${item.class})`;
-                    }
-
-                    const priceStyle = priceOverrides[item.code] !== undefined ? 'border: 2px solid #8A6739; background-color:#fff8dc;' : '';
-
-                    row.innerHTML = `
-                        <td>${item.name} <br><small style="color:#888;">${item.code}</small></td>
-                        <td><input type="number" name="price-${item.code}" value="${item.price}" step="0.1" min="0" style="width: 60px; ${priceStyle}" class="price-input" data-code="${item.code}"></td>
-                        <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="-1000" class="quantity-input" data-code="${item.code}"></td>
-                        <td>
-                            <div class="discount-wrapper" title="${statusTitle}">
-                                <input type="number" value="${item.discount}" step="0.1" min="0" max="100" class="${inputClass}" data-code="${item.code}">
-                                <label class="sync-option">
-                                    <input type="checkbox" class="sync-check" data-class="${item.class}" data-code="${item.code}">
-                                    同步修改 [${item.class || '無'}]
-                                </label>
-                            </div>
-                        </td>
-                        <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
-                    `;
-                    cartTableBody.appendChild(row);
-                });
-
-                attachCartEventListeners();
-                resetIdleTimer();
-            };
-
-            const attachCartEventListeners = () => {
-                const debounce = (func, delay) => {
-                    let timeout;
-                    return function(...args) {
-                        clearTimeout(timeout);
-                        timeout = setTimeout(() => func.apply(this, args), delay);
-                    };
-                };
-
-                document.querySelectorAll('.quantity-input').forEach(input => {
-                    input.addEventListener('input', debounce((e) => {
-                        resetIdleTimer();
-                        const code = e.target.dataset.code;
-                        const newQuantity = parseInt(e.target.value);
-                        if (!isNaN(newQuantity)) {
-                            const item = cart.find(item => item.code === code);
-                            if (item) {
-                                item.quantity = newQuantity;
-                                calculateTotal();
-                                updateCartDisplay();
-                                saveCart();
-                            }
-                        }
-                    }, 500));
-                });
-
-                document.querySelectorAll('.price-input').forEach(input => {
-                    input.addEventListener('input', debounce((e) => {
-                        resetIdleTimer();
-                        const code = e.target.dataset.code;
-                        const newPrice = parseFloat(e.target.value);
-                        if (!isNaN(newPrice) && newPrice >= 0) {
-                            const item = cart.find(item => item.code === code);
-                            if (item) {
-                                item.price = newPrice;
-                                priceOverrides[code] = newPrice;
-                                localStorage.setItem('priceOverrides', JSON.stringify(priceOverrides));
-                                calculateTotal();
-                                updateCartDisplay();
-                                saveCart();
-                            }
-                        }
-                    }, 500));
-                });
-
-                document.querySelectorAll('.discount-input').forEach(input => {
-                    input.addEventListener('input', (e) => {
-                        resetIdleTimer();
-                        const code = e.target.dataset.code;
-                        const newDiscount = parseFloat(e.target.value);
-                        if (!isNaN(newDiscount) && newDiscount >= 0) {
-                            const item = cart.find(item => item.code === code);
-                            if (item) {
-                                item.discount = newDiscount;
-                                item.isManual = true; 
-                                e.target.classList.add('manual-locked');
-                                e.target.classList.remove('class-rule-active');
-                                calculateTotal();
-                            }
-                        }
-                    });
-                    input.addEventListener('change', () => {
-                        saveCart();
-                        updateCartDisplay();
-                    });
-                });
-
-                document.querySelectorAll('.sync-check').forEach(checkbox => {
-                    checkbox.addEventListener('change', (e) => {
-                        if (e.target.checked) {
-                            const targetClass = e.target.dataset.class;
-                            const targetCode = e.target.dataset.code;
-                            const triggerItem = cart.find(i => i.code === targetCode);
-                            
-                            if (triggerItem && targetClass) {
-                                const newRuleValue = triggerItem.discount;
-                                sessionRules[targetClass] = newRuleValue;
-                                localStorage.setItem('sessionRules', JSON.stringify(sessionRules));
-
-                                cart.forEach(item => {
-                                    if (item.class === targetClass) {
-                                        item.isManual = false; 
-                                        item.discount = newRuleValue;
-                                    }
-                                });
-                                
-                                alert(`已設定分類 [${targetClass}] 全部為 ${newRuleValue} 折`);
-                                calculateTotal();
-                                updateCartDisplay();
-                                saveCart();
-                            }
-                        }
-                    });
-                });
-            };
-
-            const calculateTotal = () => {
-                let total = 0;
-                cart = cart.filter(item => item.quantity !== 0);
-                cart.forEach(item => {
-                    const discountedPrice = item.price * item.quantity * (item.discount / 100);
-                    total += discountedPrice;
-                });
-                totalAmountElement.textContent = Math.round(total);
-                calculateChange();
-            };
-
-            const calculateChange = () => {
-                const totalAmount = parseFloat(totalAmountElement.textContent);
-                const paidAmount = parseFloat(paidAmountInput.value);
-                const change = paidAmount - totalAmount;
-                changeAmountElement.textContent = isNaN(change) ? "0" : Math.round(change);
-            };
-
-            paidAmountInput.addEventListener('input', calculateChange);
-            const saveCart = () => { localStorage.setItem('cart', JSON.stringify(cart)); };
-            const saveSummary = () => {
-                localStorage.setItem('clients', JSON.stringify(clients));
-                localStorage.setItem('overallSummary', JSON.stringify(overallSummary));
-                localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
-            };
-
-            const handleCulturalCoinCheckout = () => {
-                if (cart.length === 0) {
-                    if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
-                    return;
-                }
-                hasShownEmptyCartAlert = false;
-                const totalAmount = parseFloat(totalAmountElement.textContent);
-                let coinAmountStr = prompt(`訂單總額為 ${totalAmount} 元。\n請輸入文化幣支付金額：`, totalAmount);
-                if (coinAmountStr === null) return;
-                let coinAmount = parseInt(coinAmountStr);
-                if (isNaN(coinAmount) || coinAmount < 0) { alert("請輸入有效的金額！"); POSAudio.error(); return; }
-                if (coinAmount > totalAmount) { alert("文化幣金額不能大於訂單總額！"); POSAudio.error(); coinAmount = totalAmount; }
-
-                const cashAmount = totalAmount - coinAmount;
-                let methodStr = "";
-                if (cashAmount > 0 && coinAmount > 0) methodStr = `文化幣(${coinAmount}) + 現金(${cashAmount})`;
-                else if (coinAmount > 0 && cashAmount === 0) methodStr = `文化幣全額(${coinAmount})`;
-                else methodStr = `現金(${totalAmount})`;
-
-                triggerButtonAnimation(btnF9);
-                performCheckout(methodStr, true); 
-            };
-
-            const triggerButtonAnimation = (btnElement) => {
-                if(!btnElement) return;
-                btnElement.classList.add('animate-click');
-                setTimeout(() => { btnElement.classList.remove('animate-click'); }, 500);
-            };
-
-            const performCheckout = (paymentMethod, isComposite = false) => {
-                if (cart.length === 0) {
-                    if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
-                    return;
-                }
-                hasShownEmptyCartAlert = false;
-
-                if (!isComposite) {
-                     if(paymentMethod === '信用卡') triggerButtonAnimation(btnF7);
-                     if(paymentMethod === 'LINE PAY') triggerButtonAnimation(btnF8);
-                     if(paymentMethod === '現金') triggerButtonAnimation(btnF10);
-                }
-                
-                POSAudio.success();
-                const totalAmount = parseFloat(totalAmountElement.textContent);
-                const clientId = generateClientId();
-                const mERI = generateERI('master');
-                
-                clients[clientId] = {
-                    id: clientId,
-                    eri: mERI,
-                    amount: totalAmount,
-                    paymentMethod: paymentMethod, 
-                    items: cart.map(i => ({...i, detailERI: generateERI('detail')})),
-                    isValid: true,
-                    ts: new Date().getTime().toString().slice(-12)
-                };
-
-                cart.forEach(item => {
-                    if (!overallSummary[item.code]) {
-                        overallSummary[item.code] = { code: item.code, name: item.name, totalQuantity: 0, totalAmount: 0 };
-                    }
-                    overallSummary[item.code].totalQuantity += item.quantity;
-                    overallSummary[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);
-                });
-
-                priceOverrides = {}; 
-                localStorage.setItem('priceOverrides', JSON.stringify(priceOverrides));
-
-                cart = [];
-                updateCartDisplay();
-                calculateTotal();
-                updateSummaryTable();
-                saveSummary();
-                clientCounter++;
-                localStorage.setItem('clientCounter', JSON.stringify(clientCounter)); 
-                localStorage.removeItem('cart');
-                productCodeInput.focus(); 
-                paidAmountInput.value = 1000;
-            };
-
-            btnF7.addEventListener('click', () => performCheckout('信用卡'));
-            btnF8.addEventListener('click', () => performCheckout('LINE PAY'));
-            btnF9.addEventListener('click', () => handleCulturalCoinCheckout()); 
-            btnF10.addEventListener('click', () => performCheckout('現金'));
-
-            document.addEventListener('keydown', (e) => {
-                if (cart.length > 0) {
-                    switch(e.key) {
-                        case 'F10': e.preventDefault(); performCheckout('現金'); break;
-                        case 'F9': e.preventDefault(); handleCulturalCoinCheckout(); break;
-                        case 'F8': e.preventDefault(); performCheckout('LINE PAY'); break;
-                        case 'F7': e.preventDefault(); performCheckout('信用卡'); break;
-                    }
-                }
-            });
-
-            const parseProductInput = (input) => {
-                const pattern = /^(\d+)\*([\w-]+)$/;
-                const match = input.match(pattern);
-                if (match) return { quantity: parseInt(match[1], 10), code: match[2] };
-                return null;
-            };
-
-            // 修正條碼輸入問題：改用 form submit 事件
-            scanForm.addEventListener('submit', (e) => {
-                e.preventDefault(); // 防止頁面刷新
-                const codeOrBarcode = productCodeInput.value.trim();
-                if (!codeOrBarcode) return; // 空值不處理
-
-                const parsedInput = parseProductInput(codeOrBarcode);
-                let product = null;
-
-                if (parsedInput) {
-                    product = products[parsedInput.code] || Object.values(products).find(p => p.barcode === parsedInput.code);
-                    if (product) product.quantity = parsedInput.quantity;
-                } else {
-                    product = products[codeOrBarcode] || Object.values(products).find(p => p.barcode === codeOrBarcode);
-                }
-
-                if (product) {
-                    addProductToCart(product.code);
-                    productCodeInput.value = ''; 
-                    productInfoElement.textContent = `已加入: ${product.name}`;
-                } else {
-                    alert('找不到商品'); 
-                    POSAudio.error();
-                    productCodeInput.select(); // 選取文字方便重打
-                }
-            });
-
-            productCodeInput.addEventListener('input', (e) => {
-                const codeOrBarcode = e.target.value.trim();
-                const product = products[codeOrBarcode] || Object.values(products).find(p => p.barcode === codeOrBarcode);
-                if (product) productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元`;
-                else productInfoElement.textContent = '';
-            });
-
-            keywordSearchInput.addEventListener('input', (e) => {
-                const keywords = e.target.value.trim().toLowerCase().split(' ');
-                const matchedProducts = Object.values(products).filter(product => 
-                    keywords.every(keyword => 
-                        product.name.toLowerCase().includes(keyword) ||
-                        product.code.toLowerCase().includes(keyword) ||
-                        (product.barcode && product.barcode.includes(keyword))
-                    )
-                );
-
-                searchResultsElement.innerHTML = '';
-                const uniqueProducts = Array.from(new Set(matchedProducts));
-                const displayProducts = uniqueProducts.slice(0, 3); 
-
-                displayProducts.forEach(product => {
-                    const resultItem = document.createElement('div');
-                    resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元`;
-                    const selectButton = document.createElement('button');
-                    selectButton.textContent = '加入';
-                    selectButton.style.marginLeft = "10px";
-                    selectButton.addEventListener('click', () => {
-                        addProductToCart(product.code);
-                        productInfoElement.textContent = `${product.name}`;
-                        searchResultsElement.innerHTML = '';
-                        keywordSearchInput.value = ''; 
-                    });
-                    resultItem.appendChild(selectButton);
-                    searchResultsElement.appendChild(resultItem);
-                });
-            });
-
-            const calculatePaymentStats = () => {
-                let stats = { cash: 0, credit: 0, linepay: 0, culture: 0 };
-                Object.values(clients).forEach(client => {
-                    if(!client.isValid) return; 
-
-                    const method = client.paymentMethod || '現金';
-                    if (method === '信用卡') stats.credit += client.amount;
-                    else if (method === 'LINE PAY') stats.linepay += client.amount;
-                    else if (method === '現金') stats.cash += client.amount;
-                    else if (method.includes('文化幣')) {
-                        const coinMatch = method.match(/文化幣.*?\((\d+)\)/);
-                        if (coinMatch && coinMatch[1]) stats.culture += parseInt(coinMatch[1]);
-                        const cashMatch = method.match(/現金\((\d+)\)/);
-                        if (cashMatch && cashMatch[1]) stats.cash += parseInt(cashMatch[1]);
-                    }
-                });
-                return stats;
-            };
-
-            const updateSummaryTable = () => {
-                summaryTableBody.innerHTML = '';
-                overallSummaryTableBody.innerHTML = '';
-
-                let tempOverall = {};
-                let tempSysCash = 0;
-                
-                Object.values(clients).sort((a,b) => b.id.localeCompare(a.id)).forEach(client => {
-                    const row = document.createElement('tr');
-                    const method = client.paymentMethod || '現金';
-                    
-                    if(!client.isValid) {
-                        row.classList.add('void-order');
-                    } else {
-                        if (method.includes("現金")) {
-                            if(method.includes("文化幣")) {
-                                const cashMatch = method.match(/現金\((\d+)\)/);
-                                if (cashMatch && cashMatch[1]) tempSysCash += parseInt(cashMatch[1]);
-                            } else {
-                                tempSysCash += client.amount;
-                            }
-                        }
-                        client.items.forEach(item => {
-                            if (!tempOverall[item.code]) tempOverall[item.code] = { code: item.code, name: item.name, totalQuantity: 0, totalAmount: 0 };
-                            tempOverall[item.code].totalQuantity += item.quantity;
-                            tempOverall[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);
-                        });
-                    }
-
-                    row.innerHTML = `
-                        <td><a href="#" class="client-link" data-client-id="${client.id}">${client.id}</a> ${!client.isValid ? '(已作廢)' : ''}</td>
-                        <td>${Math.round(client.amount)}</td>
-                        <td>
-                            <button class="btn-change-pay" data-client-id="${client.id}">${method}</button>
-                        </td>
-                        <td class="btn-action-group">
-                            ${client.isValid ? `<button class="btn-void" data-client-id="${client.id}">作廢</button>` : `<button class="btn-void" data-client-id="${client.id}">復原</button>`}
-                            <button class="btn-del" data-client-id="${client.id}">刪除</button>
-                        </td>
-                    `;
-                    summaryTableBody.appendChild(row);
-                });
-
-                overallSummary = tempOverall; 
-
-                const sortedSummary = Object.values(overallSummary).sort((a, b) => a.code.localeCompare(b.code));
-                sortedSummary.forEach(item => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${item.code}</td>
-                        <td>${item.name}</td>
-                        <td>${item.totalQuantity}</td>
-                        <td>${Math.round(item.totalAmount)}</td>
-                    `;
-                    overallSummaryTableBody.appendChild(row);
-                });
-
-                const overallTotalAmount = sortedSummary.reduce((sum, item) => sum + item.totalAmount, 0);
-                overallTotalAmountElement.textContent = Math.round(overallTotalAmount);
-
-                const validOrders = Object.values(clients).filter(c => c.isValid).length;
-                const averageOrderAmount = validOrders > 0 ? Math.round(overallTotalAmount / validOrders) : 0;
-                totalOrdersElement.textContent = validOrders;
-                averageAmountElement.textContent = averageOrderAmount;
-                
-                const stats = calculatePaymentStats();
-                paymentStatsElement.innerHTML = `
-                    <div class="stat-item">現金: <b>${stats.cash}</b></div>
-                    <div class="stat-item">刷卡: <b>${stats.credit}</b></div>
-                    <div class="stat-item">LINE: <b>${stats.linepay}</b></div>
-                    <div class="stat-item">文化: <b>${stats.culture}</b></div>
-                `;
-
-                sysCashTotalEl.textContent = stats.cash;
-                updateAccountingCalc(); 
-
-                attachHistoryEvents();
-            };
-
-            const attachHistoryEvents = () => {
-                document.querySelectorAll('.btn-change-pay').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const clientId = e.target.dataset.clientId;
-                        const client = clients[clientId];
-                        if(!client.isValid) return alert("已作廢訂單無法修改");
-                        openPaymentModal(clientId);
-                    });
-                });
-
-                document.querySelectorAll('.btn-void').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const clientId = e.target.dataset.clientId;
-                        clients[clientId].isValid = !clients[clientId].isValid;
-                        saveSummary();
-                        updateSummaryTable();
-                    });
-                });
-
-                document.querySelectorAll('.btn-del').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const clientId = e.target.dataset.clientId;
-                        if (confirm('【警告】這將完全刪除此筆資料，無法復原。確定要刪除嗎？')) {
-                            delete clients[clientId];
-                            saveSummary();
-                            updateSummaryTable();
-                        }
-                    });
-                });
-
-                document.querySelectorAll('.client-link').forEach(link => {
-                    link.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const clientId = e.target.dataset.clientId;
-                        showClientDetails(clientId);
-                    });
-                });
-            };
-
-            window.openPaymentModal = (clientId) => {
-                editingClientId = clientId;
-                paymentModal.style.display = 'flex';
-            };
-
-            window.closePaymentModal = () => {
-                editingClientId = null;
-                paymentModal.style.display = 'none';
-            };
-
-            window.selectPaymentMethod = (methodType) => {
-                if (!editingClientId) return;
-                const client = clients[editingClientId];
-                let finalMethod = methodType;
-
-                if (methodType === '文化幣') {
-                    const coinAmt = prompt(`目前總金額 ${client.amount}，請輸入文化幣金額 (剩餘轉為現金)：`, client.amount);
-                    if (coinAmt && !isNaN(coinAmt)) {
-                        const c = parseInt(coinAmt);
-                        if (c < 0 || c > client.amount) { alert("金額輸入錯誤"); return; }
-                        const cash = client.amount - c;
-                        finalMethod = `文化幣(${c}) + 現金(${cash})`;
-                    } else { return; }
-                }
-
-                clients[editingClientId].paymentMethod = finalMethod;
-                saveSummary();
-                updateSummaryTable();
-                closePaymentModal();
-            };
-
-            const showClientDetails = (clientId) => {
-                const client = clients[clientId];
-                if (client) {
-                    const method = client.paymentMethod || '現金';
-                    const items = client.items.map(item => `${item.code} ｜ ${item.name} x ${item.quantity} (${Math.round(item.price*item.quantity)})`).join('\n');
-                    alert(`客戶：${clientId} ${!client.isValid?'(已作廢)':''}\n付款方式：${method}\n\n購買商品：\n${items}`);
-                }
-            };
-
-            window.clearAccountingInputs = () => {
-                document.querySelectorAll('.acct-count.current').forEach(input => {
-                    input.value = '';
-                    localStorage.removeItem(`acct_cur_${input.dataset.val}`);
-                });
-                updateAccountingCalc();
-            };
-
-            const updateAccountingCalc = () => {
-                let drawerTotal = 0;
-                let initialTotal = 0;
-
-                document.querySelectorAll('.acct-count.current').forEach(input => {
-                    const val = parseInt(input.dataset.val);
-                    const count = parseInt(input.value) || 0;
-                    drawerTotal += val * count;
-                });
-
-                document.querySelectorAll('.acct-count.initial').forEach(input => {
-                    const val = parseInt(input.dataset.val);
-                    const count = parseInt(input.value) || 0;
-                    initialTotal += val * count;
-                });
-
-                const expenses = parseInt(expensesCashInput.value) || 0;
-                const netCash = drawerTotal - initialTotal + expenses; 
-                
-                calcDrawerTotalEl.textContent = drawerTotal;
-                calcInitialEl.textContent = initialTotal;
-                calcExpensesEl.textContent = expenses;
-                calcNetCashEl.textContent = netCash;
-
-                const sysCash = parseInt(sysCashTotalEl.textContent) || 0;
-                const diff = netCash - sysCash;
-                
-                cashDiffEl.textContent = diff;
-                if(diff === 0) {
-                    cashDiffEl.style.color = 'green';
-                    cashDiffRow.style.backgroundColor = '#e8f5e9';
-                } else {
-                    cashDiffEl.style.color = 'red';
-                    cashDiffRow.style.backgroundColor = '#ffebee';
-                }
-            };
-
-            backupBtn.addEventListener('click', () => {
-                const backupData = {
-                    cart, clients, overallSummary, clientCounter, sessionRules, priceOverrides,
-                    notes: notesElement.value,
-                    timestamp: new Date().toISOString()
-                };
-                const dataStr = JSON.stringify(backupData, null, 2);
-                const blob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `pos_backup_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-            });
-
-            restoreBtn.addEventListener('click', () => {
-                if (confirm('注意：還原將覆蓋目前訂單資料。')) importFileInput.click();
-            });
-
-            importFileInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    try {
-                        const data = JSON.parse(event.target.result);
-                        if (data.clients) {
-                            localStorage.setItem('cart', JSON.stringify(data.cart || []));
-                            localStorage.setItem('clients', JSON.stringify(data.clients || {}));
-                            localStorage.setItem('overallSummary', JSON.stringify(data.overallSummary || {})); 
-                            localStorage.setItem('clientCounter', JSON.stringify(data.clientCounter || 1));
-                            localStorage.setItem('sessionRules', JSON.stringify(data.sessionRules || {}));
-                            localStorage.setItem('priceOverrides', JSON.stringify(data.priceOverrides || {}));
-                            localStorage.setItem('notes', data.notes || '');
-                            alert('還原成功！');
-                            location.reload();
-                        }
-                    } catch (err) { alert('備份檔案格式錯誤'); }
-                };
-                reader.readAsText(file);
-                importFileInput.value = '';
-            });
-
-            exportCsvBtn.addEventListener('click', () => {
-                try {
-                    updateSummaryTable();
-                    const notes = localStorage.getItem('notes') || '無備註';
-                    const stats = calculatePaymentStats();
-                    const overallTotalAmount = Object.values(overallSummary).reduce((sum, item) => sum + item.totalAmount, 0);
-
-                    const summaryRows = [
-                        ['客戶名稱', '消費金額', '付款方式', '狀態'], 
-                        ...Object.values(clients).map(client => [
-                            client.id, Math.round(client.amount), client.paymentMethod || '現金', client.isValid ? '有效' : '已作廢'
-                        ]),
-                        [], ['商品代碼', '名稱', '總數量', '總金額'],
-                        ...Object.values(overallSummary).map(item => [item.code, item.name, item.totalQuantity, Math.round(item.totalAmount)]),
-                        [], ['總金額', Math.round(overallTotalAmount)],
-                        ['現金總收', stats.cash], ['信用卡總收', stats.credit], ['LINE PAY總收', stats.linepay], ['文化幣總收', stats.culture],
-                        [], ['備註', notes], [],
-                        ['盤點記錄'], ['盤點現金總額', calcDrawerTotalEl.textContent], ['初始備用金', calcInitialEl.textContent],
-                        ['支出憑證', calcExpensesEl.textContent], ['實際現金營收', calcNetCashEl.textContent], ['差異金額', cashDiffEl.textContent]
-                    ];
-
-                    const detailsRows = [
-                        ['詳細內容：'], ['客戶名稱', '付款方式', '商品名稱', '數量', '單價', '折扣', '小計', '狀態'],
-                        ...Object.values(clients).flatMap(client =>
-                            client.items.map(item => [
-                                client.id, client.paymentMethod || '現金', item.name, item.quantity, Math.round(item.price),
-                                `${item.discount}%`, Math.round(item.price * item.quantity * (item.discount / 100)), client.isValid ? '有效' : '已作廢'
-                            ])
-                        )
-                    ];
-
-                    const csvContent = [...summaryRows, ...detailsRows].map(e => e.join(",")).join("\n");
-                    const blob = new Blob([`\ufeff${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement("a");
-                    link.href = URL.createObjectURL(blob);
-                    link.download = `sales_report_POS_${new Date().toISOString().split('T')[0]}.csv`;
-                    link.click();
-                } catch (error) { alert('CSV匯出錯誤'); }
-            });
-
-            // --- PILOT 會計匯出 (修正版 v16 - 絕對欄位對應) ---
-            document.getElementById('export-pilot-btn').onclick = () => {
-                const now = new Date();
-                const orderId = String(now.getFullYear()) + 
-                                String(now.getMonth() + 1).padStart(2, '0') + 
-                                String(now.getDate()).padStart(2, '0') + 
-                                String(now.getHours()).padStart(2, '0') + 
-                                String(now.getMinutes()).padStart(2, '0');
-
-                const custCode = "0002";           
-                const whCode = "0000";             
-                const staffCode = "02";            
-                
-                const date = now.getFullYear() + '/' + 
-                             String(now.getMonth() + 1).padStart(2, '0') + '/' + 
-                             String(now.getDate()).padStart(2, '0');
-                
-                const yy = String(now.getFullYear()).slice(-2);
-                const mm = String(now.getMonth() + 1).padStart(2, '0');
-                const dd = String(now.getDate()).padStart(2, '0');
-                const hh = String(now.getHours()).padStart(2, '0');
-                const mi = String(now.getMinutes()).padStart(2, '0');
-                const ss = String(now.getSeconds()).padStart(2, '0');
-                const ts = yy + mm + dd + hh + mi + ss;
-
-                const rnd = () => "0010LU0" + Math.random().toString(36).substr(2,6).toUpperCase();
-
-                // 定義表頭 - 不變
-                let s1_header = ["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"];
-                let s2_header = ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"];
-                let v1_header = ["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"];
-
-                let s1_rows = [];
-                let s2_rows = [];
-                let v1_rows = [];
-
-                Object.values(clients).forEach(c => {
-                    if(!c.isValid) return; 
-                    
-                    const mERI = c.eri || ("0H5" + rnd());
-                    let grossTotal = 0; // 原價總額
-                    let netTotal = 0;   // 淨額 (實際收款)
-                    let totalQty = 0;
-                    
-                    c.items.forEach(it => {
-                        const discountRate = it.discount !== undefined ? it.discount : 100;
-                        const netPrice = it.price * (discountRate / 100);
-                        grossTotal += it.price * it.quantity;
-                        netTotal += netPrice * it.quantity;
-                        totalQty += it.quantity;
-                    });
-                    
-                    grossTotal = Math.round(grossTotal);
-                    netTotal = Math.round(netTotal);
-                    const diff = netTotal - grossTotal; 
-
-                    // --- S1 主檔 Row ---
-                    // 使用 key-value 映射確保位置絕對正確
-                    let r1_map = {};
-                    r1_map["ERI"] = mERI;
-                    r1_map["CODE"] = orderId;
-                    r1_map["STAFF"] = staffCode;
-                    r1_map["CUST"] = custCode;
-                    r1_map["SDATE"] = date;
-                    r1_map["CURR"] = "NTD";
-                    r1_map["RATE"] = 1;
-                    r1_map["GWN"] = whCode;
-                    r1_map["TAX"] = 0;
-                    r1_map["AMT"] = grossTotal;
-                    r1_map["PLUSSUB"] = diff;
-                    r1_map["TOTAL"] = netTotal;
-                    r1_map["QTY"] = totalQty;
-                    r1_map["EDITOR"] = "POS";
-                    r1_map["REMARK"] = "POS_Import";
-                    r1_map["TAXCATE"] = 3;
-                    r1_map["INVCATE"] = 3;
-                    r1_map["INVDATE"] = date;
-                    r1_map["BILDATE"] = date;
-                    r1_map["RADVDATE"] = date;
-                    r1_map["COST"] = netTotal;
-                    r1_map["DPTNO"] = "0000";
-                    r1_map["TYPE"] = 0;
-                    r1_map["PRNIMMED"] = 0;
-                    r1_map["PRNONCE"] = 0;
-                    r1_map["ACCGEN"] = 0;
-                    r1_map["INVAMT"] = 0;
-                    r1_map["COMPNO"] = "0000";
-                    r1_map["PRINTX"] = 0;
-                    r1_map["BILCUST"] = custCode;
-                    r1_map["INVNAME"] = "POS";
-                    r1_map["PAYCASH"] = 1;
-                    r1_map["NORCV"] = 0;
-                    r1_map["EINVFLAG"] = 0;
-                    r1_map["LASTUPD"] = ts;
-
-                    let r1_arr = s1_header.map(h => r1_map[h] !== undefined ? r1_map[h] : "");
-                    s1_rows.push(r1_arr);
-
-                    // --- S2 明細檔 Rows ---
-                    c.items.forEach((it, idx) => {
-                        const dERI = it.detailERI || ("0H8"+rnd());
-                        const discountRate = it.discount !== undefined ? it.discount : 100;
-                        const netPrice = it.price * (discountRate / 100); 
-                        const rowNetAmt = Math.round(netPrice * it.quantity);
-
-                        let r2_map = {};
-                        r2_map["ERI"] = dERI;
-                        r2_map["MASTERI"] = mERI;
-                        r2_map["STAFF"] = staffCode;
-                        r2_map["CUST"] = custCode;
-                        r2_map["GWN"] = whCode;
-                        r2_map["PROD"] = it.code;
-                        r2_map["SDATE"] = date;
-                        r2_map["TYPE"] = 0;
-                        r2_map["CODE"] = "19890107"; // 固定值
-                        r2_map["SERIAL"] = idx;
-                        r2_map["SPEC"] = it.price; // 原價
-                        r2_map["QTY"] = it.quantity;
-                        r2_map["UNIT"] = "個";
-                        r2_map["PRICE"] = netPrice; // 淨單價
-                        r2_map["AMT"] = rowNetAmt; // 淨總額
-                        r2_map["REALQTY"] = it.quantity;
-                        r2_map["SUBQTY"] = 0;
-                        r2_map["QTYSTR"] = it.quantity + "個";
-                        r2_map["CURR"] = "NTD";
-                        r2_map["RATE"] = 1;
-                        r2_map["STDPRC"] = it.price; // 原價
-                        r2_map["DISCOUNT"] = discountRate;
-                        r2_map["INVQTY"] = 0;
-                        r2_map["SAMPLE"] = 0;
-                        r2_map["INVRETURN"] = 0;
-                        r2_map["VLIDDATE"] = date;
-                        r2_map["INVPRC"] = 0;
-                        r2_map["INVAMT"] = 0;
-                        r2_map["INVAMT1"] = 0;
-                        r2_map["GIFT"] = 0;
-                        r2_map["MFLAG"] = 0;
-                        r2_map["SUBAMT"] = 0;
-                        r2_map["LASTUPD"] = ts;
-
-                        let r2_arr = s2_header.map(h => r2_map[h] !== undefined ? r2_map[h] : "");
-                        s2_rows.push(r2_arr);
-                    });
-
-                    // --- V1 傳票 Rows ---
-                    let cultureAmt = 0, mainAmt = netTotal; 
-                    if (c.paymentMethod.includes("文化幣")) {
-                        const match = c.paymentMethod.match(/文化幣.*?\((\d+)\)/);
-                        if (match && match[1]) {
-                            cultureAmt = parseInt(match[1]); mainAmt = netTotal - cultureAmt;
-                        } else if (c.paymentMethod === "文化幣") {
-                             cultureAmt = netTotal; mainAmt = 0;
-                        }
-                    }
-
-                    let sn = 0;
-                    if (cultureAmt > 0) {
-                        let rv1 = new Array(v1_header.length).fill("");
-                        rv1[0] = "01E"+rnd();
-                        rv1[1] = mERI;
-                        rv1[2] = sn++;
-                        rv1[3] = "61";
-                        rv1[4] = "1144.61";
-                        rv1[5] = 0;
-                        rv1[6] = -Math.round(cultureAmt);
-                        rv1[9] = ts;
-                        v1_rows.push(rv1);
-                    }
-                    if (mainAmt > 0) {
-                        let pc = "5", ps = "1144.355"; 
-                        if (c.paymentMethod.includes("信用卡") || c.paymentMethod.includes("LINE")) { pc = "16"; ps = "1144.358"; }
-                        let rv2 = new Array(v1_header.length).fill("");
-                        rv2[0] = "01E"+rnd();
-                        rv2[1] = mERI;
-                        rv2[2] = sn++;
-                        rv2[3] = pc;
-                        rv2[4] = ps;
-                        rv2[5] = 0;
-                        rv2[6] = -Math.round(mainAmt);
-                        rv2[9] = ts;
-                        v1_rows.push(rv2);
-                    }
-                });
-
-                const dl = (header, rows, filename) => {
-                    const csvContent = [header, ...rows]
-                        .map(r => r.map(v => `"${v === null || v === undefined ? "" : v}"`).join(','))
-                        .join('\r\n');
-                    let blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
-                    let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
-                };
-
-                dl(s1_header, s1_rows, "STKSALE1.csv"); 
-                setTimeout(() => dl(s2_header, s2_rows, "STKSALE2.csv"), 500); 
-                setTimeout(() => dl(v1_header, v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
-            };
-            
-            // 修復清空按鈕
-            document.getElementById('clear-all-btn').onclick = () => {
-                if (confirm('確定要刪除全部訂單？(將清除所有資料並重整)')) {
-                    localStorage.clear();
-                    alert('資料已清空，系統將重新載入。');
-                    location.reload();
-                }
-            };
-
-            loadDiscountRates(); 
-            loadProducts().then(() => {
-                updateCartDisplay();
-                updateSummaryTable();
-            });
-            calculateChange(); 
+  </div>
+
+  <div id="payment-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="modal-title">選擇新的付款方式</h3>
+      <div class="modal-btn-grid">
+        <button class="modal-btn btn-m-cash" onclick="selectPaymentMethod('現金')">現金</button>
+        <button class="modal-btn btn-m-card" onclick="selectPaymentMethod('信用卡')">信用卡</button>
+        <button class="modal-btn btn-m-line" onclick="selectPaymentMethod('LINE PAY')">LINE PAY</button>
+        <button class="modal-btn btn-m-culture" onclick="selectPaymentMethod('文化幣')">文化幣</button>
+      </div>
+      <button class="modal-btn btn-m-cancel" onclick="closePaymentModal()">取消</button>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // --- DOM 元素獲取 ---
+      const currentDateElement = document.getElementById('current-date');
+      const keywordSearchInput = document.getElementById('keyword-search');
+      const searchResultsElement = document.getElementById('search-results');
+      const productCodeInput = document.getElementById('product-code');
+      const scanForm = document.getElementById('scan-form');
+      const paidAmountInput = document.getElementById('paid-amount');
+      const productInfoElement = document.getElementById('product-info');
+      const dbStatusElement = document.getElementById('db-status');
+      const cartTableBody = document.querySelector('#cart-table tbody');
+      const totalAmountElement = document.getElementById('total-amount');
+      const changeAmountElement = document.getElementById('change-amount');
+      const summaryTableBody = document.querySelector('#summary-table tbody');
+      const overallSummaryTableBody = document.querySelector('#overall-summary-table tbody');
+      const overallTotalAmountElement = document.getElementById('overall-total-amount');
+
+      // 按鈕們
+      const btnF7 = document.getElementById('btn-f7');
+      const btnF8 = document.getElementById('btn-f8');
+      const btnF9 = document.getElementById('btn-f9');
+      const btnF10 = document.getElementById('btn-f10');
+      const checkoutBtns = [btnF7, btnF8, btnF9, btnF10];
+
+      const exportCsvBtn = document.getElementById('export-csv-btn');
+      const exportPilotBtn = document.getElementById('export-pilot-btn');
+      const clearAllBtn = document.getElementById('clear-all-btn');
+      const backupBtn = document.getElementById('backup-btn');
+      const restoreBtn = document.getElementById('restore-btn');
+      const importFileInput = document.getElementById('import-file');
+
+      const totalOrdersElement = document.getElementById('total-orders');
+      const averageAmountElement = document.getElementById('average-amount');
+      const paymentStatsElement = document.getElementById('payment-stats');
+      const notesElement = document.getElementById('notes');
+
+      // 記帳模式元素
+      const expensesCashInput = document.getElementById('expenses-cash');
+      const calcDrawerTotalEl = document.getElementById('calc-drawer-total');
+      const calcInitialEl = document.getElementById('calc-initial');
+      const calcExpensesEl = document.getElementById('calc-expenses');
+      const calcNetCashEl = document.getElementById('calc-net-cash');
+      const sysCashTotalEl = document.getElementById('sys-cash-total');
+      const cashDiffRow = document.getElementById('cash-diff-row');
+      const cashDiffEl = document.getElementById('cash-diff');
+
+      // --- 狀態變數 ---
+      let cart = JSON.parse(localStorage.getItem('cart')) || [];
+      let products = {};
+      let discountRates = {};
+      let clients = JSON.parse(localStorage.getItem('clients')) || {};
+      let overallSummary = JSON.parse(localStorage.getItem('overallSummary')) || {};
+      let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
+      let hasShownEmptyCartAlert = false;
+      let sessionRules = JSON.parse(localStorage.getItem('sessionRules')) || {};
+      let priceOverrides = JSON.parse(localStorage.getItem('priceOverrides')) || {};
+      let idleTimer = null;
+      const IDLE_TIMEOUT_MS = 30000;
+
+      // Modal 相關變數
+      let editingClientId = null;
+      const paymentModal = document.getElementById('payment-modal');
+
+      // --- 內建測試資料庫（主檔讀不到才用） ---
+      const productDB = {
+        "9789861234567": { code: "9789861234567", name: "範例書籍A", price: 350, qty: 100, class: "01", unit: "本", barcode: "9789861234567" },
+      };
+
+      // --- 音效控制器 ---
+      const POSAudio = {
+        ctx: new (window.AudioContext || window.webkitAudioContext)(),
+        playTone: function(freq, type, duration, startTime = 0) {
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime + startTime);
+          gain.gain.setValueAtTime(0.1, this.ctx.currentTime + startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + startTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(this.ctx.currentTime + startTime);
+          osc.stop(this.ctx.currentTime + startTime + duration);
+        },
+        beep: function() { this.playTone(880, 'sine', 0.1); },
+        error: function() { this.playTone(150, 'sawtooth', 0.3); },
+        success: function() {
+          this.playTone(523.25, 'triangle', 0.1, 0);
+          this.playTone(659.25, 'triangle', 0.1, 0.05);
+          this.playTone(783.99, 'triangle', 0.2, 0.1);
+        }
+      };
+
+      // --- Pilot 規格工具 ---
+      function generateERI(type) {
+        const prefix = { 'master': '0H5', 'detail': '0H8', 'pay': '01E' }[type];
+        const fingerprint = "0010LU0";
+        const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        let suffix = "";
+        for(let i=0; i<6; i++) suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+        return (prefix + fingerprint + suffix).substring(0, 16);
+      }
+
+      // --- 日期與初始化 ---
+      const currentDate = new Date().toISOString().split('T')[0].replace(/-/g, '/');
+      currentDateElement.textContent = `日期：${currentDate}`;
+      notesElement.value = localStorage.getItem('notes') || '';
+      notesElement.addEventListener('input', () => {
+        localStorage.setItem('notes', notesElement.value);
+      });
+
+      // 記帳輸入框初始化
+      expensesCashInput.value = localStorage.getItem('acctExpenses') || '0';
+
+      document.querySelectorAll('.acct-count').forEach(input => {
+        const key = `acct_${input.classList.contains('current')?'cur':'init'}_${input.dataset.val}`;
+        const saved = localStorage.getItem(key);
+        if(saved !== null) { input.value = saved; }
+        input.addEventListener('input', () => {
+          updateAccountingCalc();
+          localStorage.setItem(key, input.value);
         });
-    </script>
+      });
+      expensesCashInput.addEventListener('input', () => {
+        updateAccountingCalc();
+        localStorage.setItem('acctExpenses', expensesCashInput.value);
+      });
+
+      const generateClientId = () => {
+        const date = new Date();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}${month}${day}-${String(clientCounter).padStart(3, '0')}`;
+      };
+
+      const loadDiscountRates = () => {
+        discountRates = {
+          "POS": 100, "02-2": 100, "09-2": 90, "09-5": 100, "09-4": 100, "09-1": 100,
+          "09-3": 90, "06-1": 100, "07-1": 90, "07-2": 90, "07-3": 90, "07-4": 90,
+          "07-5": 90, "07-6": 90, "07-7": 90, "06-2": 100, "02-1": 80, "08-2": 90,
+          "08-5": 90, "08-3": 90, "08-4": 90, "08-1": 90, "12": 100, "03-2": 100,
+          "02-3": 80, "03-4": 100, "04-2": 100, "11": 100, "03-1": 100, "04-1": 100,
+          "01": 90, "05-2": 90, "05-1": 100, "03-3": 100
+        };
+      };
+
+      // ========= 新增：CSV 解析器（支援引號、欄位內逗號） =========
+      function parseCSV(text) {
+        const rows = [];
+        let row = [];
+        let cur = '';
+        let inQuotes = false;
+
+        text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i];
+          const next = text[i + 1];
+
+          if (ch === '"') {
+            if (inQuotes && next === '"') {
+              cur += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (ch === ',' && !inQuotes) {
+            row.push(cur);
+            cur = '';
+          } else if (ch === '\n' && !inQuotes) {
+            row.push(cur);
+            rows.push(row);
+            row = [];
+            cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        if (cur.length > 0 || row.length > 0) {
+          row.push(cur);
+          rows.push(row);
+        }
+        return rows;
+      }
+
+      function rowsToObjects(rows) {
+        if (!rows || rows.length === 0) return [];
+        const header = rows[0].map(h => (h ?? '').trim());
+        const out = [];
+        for (let r = 1; r < rows.length; r++) {
+          const cols = rows[r];
+          if (!cols || cols.length === 0) continue;
+          const isEmpty = cols.every(c => (c ?? '').trim() === '');
+          if (isEmpty) continue;
+          const obj = {};
+          header.forEach((h, idx) => obj[h] = (cols[idx] ?? '').trim());
+          out.push(obj);
+        }
+        return out;
+      }
+      // ============================================================
+
+      // --- 讀會計系統四大主檔（PRODUCT/PRODUNIT/PRODKIND/PRODCLAS）---
+      const loadProducts = async () => {
+        try {
+          const [productTxt, unitTxt, kindTxt, clasTxt] = await Promise.all([
+            fetch('PRODUCT.csv').then(r => { if(!r.ok) throw new Error('讀不到 PRODUCT.csv'); return r.text(); }),
+            fetch('PRODUNIT.csv').then(r => { if(!r.ok) throw new Error('讀不到 PRODUNIT.csv'); return r.text(); }),
+            fetch('PRODKIND.csv').then(r => { if(!r.ok) throw new Error('讀不到 PRODKIND.csv'); return r.text(); }),
+            fetch('PRODCLAS.csv').then(r => { if(!r.ok) throw new Error('讀不到 PRODCLAS.csv'); return r.text(); }),
+          ]);
+
+          const productRows = rowsToObjects(parseCSV(productTxt));
+          const unitRows    = rowsToObjects(parseCSV(unitTxt));
+          const kindRows    = rowsToObjects(parseCSV(kindTxt));
+          const clasRows    = rowsToObjects(parseCSV(clasTxt));
+
+          const unitMap = {};
+          unitRows.forEach(u => {
+            if (u.CODE) unitMap[u.CODE] = u.CNAME || u.ENAME || u.EDNAME || u.CODE;
+          });
+
+          const kindMap = {};
+          kindRows.forEach(k => {
+            if (k.CODE) kindMap[k.CODE] = k.NAME || k.DESCRIP || k.CODE;
+          });
+
+          const clasMap = {};
+          clasRows.forEach(c => {
+            if (c.CODE) clasMap[c.CODE] = c.NAME || c.DESCRIP || c.CODE;
+          });
+
+          products = {};
+
+          productRows.forEach(p => {
+            const code = (p.CODE || '').trim();
+            if (!code) return;
+
+            // ✅ 你指定：PRICE1 是主要定價
+            const price = parseFloat(p.PRICE1 || '0') || 0;
+
+            const clas = (p.CLAS || '').trim();
+            const defaultDiscount = discountRates[clas] || 100;
+
+            const barcode = (p.BARCODE || '').trim();
+            const unitName = unitMap[p.UNIT] || '本';
+
+            const item = {
+              code: code, // ✅ 會計商品代碼 = Pilot 的 PROD
+              name: (p.CNAME || p.PRODDESC || '').trim(),
+              barcode: barcode,
+              price: price,
+              class: clas,
+              className: clasMap[clas] || '',
+              kind: (p.KIND || '').trim(),
+              kindName: kindMap[p.KIND] || '',
+              unit: unitName || '本',
+              defaultDiscount: defaultDiscount,
+              qty: parseInt(p.CQTY || p.QTY || '0') || 0,
+            };
+
+            products[code] = item;
+            if (barcode && barcode !== code) {
+              products[barcode] = item; // ✅ 條碼也能直接命中
+            }
+          });
+
+          dbStatusElement.textContent = `已載入會計主檔 PRODUCT/UNIT/KIND/CLAS（索引數：${Object.keys(products).length}）`;
+          dbStatusElement.style.color = "green";
+        } catch (error) {
+          console.warn('主檔讀取失敗，切換至內建測試資料庫', error);
+          Object.values(productDB).forEach(p => {
+            const defaultDiscount = discountRates[p.class] || 100;
+            products[p.code] = { ...p, defaultDiscount: defaultDiscount };
+          });
+          dbStatusElement.textContent = "主檔讀取失敗，使用內建/測試資料";
+          dbStatusElement.style.color = "orange";
+        }
+      };
+
+      const calculateItemDiscount = (item) => {
+        if (item.isManual) return item.discount;
+        if (item.class && sessionRules[item.class] !== undefined) return sessionRules[item.class];
+        return item.defaultDiscount || 100;
+      };
+
+      const addProductToCart = (codeOrBarcode) => {
+        resetIdleTimer();
+
+        const product = products[codeOrBarcode];
+        if (!product) { alert('找不到商品'); return; }
+
+        const realCode = product.code; // ✅ 永遠使用會計 CODE
+        const existingItem = cart.find(item => item.code === realCode);
+
+        if (existingItem) {
+          existingItem.quantity += 1;
+          if (!existingItem.isManual) {
+            existingItem.discount = calculateItemDiscount(existingItem);
+          }
+        } else {
+          const newItem = {
+            ...product,
+            quantity: 1,
+            isManual: false,
+            discount: 0
+          };
+          if (priceOverrides[realCode] !== undefined) {
+            newItem.price = priceOverrides[realCode];
+          }
+          newItem.discount = calculateItemDiscount(newItem);
+          cart.push(newItem);
+        }
+
+        POSAudio.beep();
+        updateCartDisplay();
+        calculateTotal();
+        saveCart();
+        productCodeInput.value = '';
+        productCodeInput.focus();
+      };
+
+      const resetIdleTimer = () => {
+        if (idleTimer) clearTimeout(idleTimer);
+        checkoutBtns.forEach(btn => btn.classList.remove('btn-alert'));
+        if (cart.length > 0) {
+          idleTimer = setTimeout(() => {
+            checkoutBtns.forEach(btn => btn.classList.add('btn-alert'));
+          }, IDLE_TIMEOUT_MS);
+        }
+      };
+
+      const updateCartDisplay = () => {
+        cartTableBody.innerHTML = '';
+        cart.forEach(item => {
+          const row = document.createElement('tr');
+          let inputClass = 'discount-input';
+          let statusTitle = "預設折扣";
+          if (item.isManual) {
+            inputClass += ' manual-locked';
+            statusTitle = "單品已鎖定";
+          } else if (item.class && sessionRules[item.class] !== undefined) {
+            inputClass += ' class-rule-active';
+            statusTitle = `套用分類規則 (${item.class})`;
+          }
+
+          const priceStyle = priceOverrides[item.code] !== undefined ? 'border: 2px solid #8A6739; background-color:#fff8dc;' : '';
+
+          row.innerHTML = `
+            <td>${item.name} <br><small style="color:#888;">${item.code}</small></td>
+            <td><input type="number" name="price-${item.code}" value="${item.price}" step="0.1" min="0" style="width: 60px; ${priceStyle}" class="price-input" data-code="${item.code}"></td>
+            <td><input type="number" name="quantity-${item.code}" value="${item.quantity}" min="-1000" class="quantity-input" data-code="${item.code}"></td>
+            <td>
+              <div class="discount-wrapper" title="${statusTitle}">
+                <input type="number" value="${item.discount}" step="0.1" min="0" max="100" class="${inputClass}" data-code="${item.code}">
+                <label class="sync-option">
+                  <input type="checkbox" class="sync-check" data-class="${item.class || ''}" data-code="${item.code}">
+                  同步修改 [${item.class || '無'}]
+                </label>
+              </div>
+            </td>
+            <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
+          `;
+          cartTableBody.appendChild(row);
+        });
+
+        attachCartEventListeners();
+        resetIdleTimer();
+      };
+
+      const attachCartEventListeners = () => {
+        const debounce = (func, delay) => {
+          let timeout;
+          return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+          };
+        };
+
+        document.querySelectorAll('.quantity-input').forEach(input => {
+          input.addEventListener('input', debounce((e) => {
+            resetIdleTimer();
+            const code = e.target.dataset.code;
+            const newQuantity = parseInt(e.target.value);
+            if (!isNaN(newQuantity)) {
+              const item = cart.find(item => item.code === code);
+              if (item) {
+                item.quantity = newQuantity;
+                calculateTotal();
+                updateCartDisplay();
+                saveCart();
+              }
+            }
+          }, 500));
+        });
+
+        document.querySelectorAll('.price-input').forEach(input => {
+          input.addEventListener('input', debounce((e) => {
+            resetIdleTimer();
+            const code = e.target.dataset.code;
+            const newPrice = parseFloat(e.target.value);
+            if (!isNaN(newPrice) && newPrice >= 0) {
+              const item = cart.find(item => item.code === code);
+              if (item) {
+                item.price = newPrice;
+                priceOverrides[code] = newPrice;
+                localStorage.setItem('priceOverrides', JSON.stringify(priceOverrides));
+                calculateTotal();
+                updateCartDisplay();
+                saveCart();
+              }
+            }
+          }, 500));
+        });
+
+        document.querySelectorAll('.discount-input').forEach(input => {
+          input.addEventListener('input', (e) => {
+            resetIdleTimer();
+            const code = e.target.dataset.code;
+            const newDiscount = parseFloat(e.target.value);
+            if (!isNaN(newDiscount) && newDiscount >= 0) {
+              const item = cart.find(item => item.code === code);
+              if (item) {
+                item.discount = newDiscount;
+                item.isManual = true;
+                e.target.classList.add('manual-locked');
+                e.target.classList.remove('class-rule-active');
+                calculateTotal();
+              }
+            }
+          });
+          input.addEventListener('change', () => {
+            saveCart();
+            updateCartDisplay();
+          });
+        });
+
+        document.querySelectorAll('.sync-check').forEach(checkbox => {
+          checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+              const targetClass = e.target.dataset.class;
+              const targetCode = e.target.dataset.code;
+              const triggerItem = cart.find(i => i.code === targetCode);
+
+              if (triggerItem && targetClass) {
+                const newRuleValue = triggerItem.discount;
+                sessionRules[targetClass] = newRuleValue;
+                localStorage.setItem('sessionRules', JSON.stringify(sessionRules));
+
+                cart.forEach(item => {
+                  if (item.class === targetClass) {
+                    item.isManual = false;
+                    item.discount = newRuleValue;
+                  }
+                });
+
+                alert(`已設定分類 [${targetClass}] 全部為 ${newRuleValue} 折`);
+                calculateTotal();
+                updateCartDisplay();
+                saveCart();
+              }
+            }
+          });
+        });
+      };
+
+      const calculateTotal = () => {
+        let total = 0;
+        cart = cart.filter(item => item.quantity !== 0);
+        cart.forEach(item => {
+          const discountedPrice = item.price * item.quantity * (item.discount / 100);
+          total += discountedPrice;
+        });
+        totalAmountElement.textContent = Math.round(total);
+        calculateChange();
+      };
+
+      const calculateChange = () => {
+        const totalAmount = parseFloat(totalAmountElement.textContent);
+        const paidAmount = parseFloat(paidAmountInput.value);
+        const change = paidAmount - totalAmount;
+        changeAmountElement.textContent = isNaN(change) ? "0" : Math.round(change);
+      };
+
+      paidAmountInput.addEventListener('input', calculateChange);
+      const saveCart = () => { localStorage.setItem('cart', JSON.stringify(cart)); };
+      const saveSummary = () => {
+        localStorage.setItem('clients', JSON.stringify(clients));
+        localStorage.setItem('overallSummary', JSON.stringify(overallSummary));
+        localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
+      };
+
+      const handleCulturalCoinCheckout = () => {
+        if (cart.length === 0) {
+          if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
+          return;
+        }
+        hasShownEmptyCartAlert = false;
+
+        const totalAmount = parseFloat(totalAmountElement.textContent);
+        let coinAmountStr = prompt(`訂單總額為 ${totalAmount} 元。\n請輸入文化幣支付金額：`, totalAmount);
+        if (coinAmountStr === null) return;
+        let coinAmount = parseInt(coinAmountStr);
+        if (isNaN(coinAmount) || coinAmount < 0) { alert("請輸入有效的金額！"); POSAudio.error(); return; }
+        if (coinAmount > totalAmount) { alert("文化幣金額不能大於訂單總額！"); POSAudio.error(); coinAmount = totalAmount; }
+
+        const cashAmount = totalAmount - coinAmount;
+        let methodStr = "";
+        if (cashAmount > 0 && coinAmount > 0) methodStr = `文化幣(${coinAmount}) + 現金(${cashAmount})`;
+        else if (coinAmount > 0 && cashAmount === 0) methodStr = `文化幣全額(${coinAmount})`;
+        else methodStr = `現金(${totalAmount})`;
+
+        triggerButtonAnimation(btnF9);
+        performCheckout(methodStr, true);
+      };
+
+      const triggerButtonAnimation = (btnElement) => {
+        if(!btnElement) return;
+        btnElement.classList.add('animate-click');
+        setTimeout(() => { btnElement.classList.remove('animate-click'); }, 500);
+      };
+
+      const performCheckout = (paymentMethod, isComposite = false) => {
+        if (cart.length === 0) {
+          if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
+          return;
+        }
+        hasShownEmptyCartAlert = false;
+
+        if (!isComposite) {
+          if(paymentMethod === '信用卡') triggerButtonAnimation(btnF7);
+          if(paymentMethod === 'LINE PAY') triggerButtonAnimation(btnF8);
+          if(paymentMethod === '現金') triggerButtonAnimation(btnF10);
+        }
+
+        POSAudio.success();
+        const totalAmount = parseFloat(totalAmountElement.textContent);
+        const clientId = generateClientId();
+        const mERI = generateERI('master');
+
+        clients[clientId] = {
+          id: clientId,
+          eri: mERI,
+          amount: totalAmount,
+          paymentMethod: paymentMethod,
+          items: cart.map(i => ({...i, detailERI: generateERI('detail')})),
+          isValid: true,
+          ts: new Date().getTime().toString().slice(-12)
+        };
+
+        cart.forEach(item => {
+          if (!overallSummary[item.code]) {
+            overallSummary[item.code] = { code: item.code, name: item.name, totalQuantity: 0, totalAmount: 0 };
+          }
+          overallSummary[item.code].totalQuantity += item.quantity;
+          overallSummary[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);
+        });
+
+        priceOverrides = {};
+        localStorage.setItem('priceOverrides', JSON.stringify(priceOverrides));
+
+        cart = [];
+        updateCartDisplay();
+        calculateTotal();
+        updateSummaryTable();
+        saveSummary();
+        clientCounter++;
+        localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
+        localStorage.removeItem('cart');
+        productCodeInput.focus();
+        paidAmountInput.value = 1000;
+      };
+
+      btnF7.addEventListener('click', () => performCheckout('信用卡'));
+      btnF8.addEventListener('click', () => performCheckout('LINE PAY'));
+      btnF9.addEventListener('click', () => handleCulturalCoinCheckout());
+      btnF10.addEventListener('click', () => performCheckout('現金'));
+
+      document.addEventListener('keydown', (e) => {
+        if (cart.length > 0) {
+          switch(e.key) {
+            case 'F10': e.preventDefault(); performCheckout('現金'); break;
+            case 'F9':  e.preventDefault(); handleCulturalCoinCheckout(); break;
+            case 'F8':  e.preventDefault(); performCheckout('LINE PAY'); break;
+            case 'F7':  e.preventDefault(); performCheckout('信用卡'); break;
+          }
+        }
+      });
+
+      const parseProductInput = (input) => {
+        const pattern = /^(\d+)\*([\w-]+)$/;
+        const match = input.match(pattern);
+        if (match) return { quantity: parseInt(match[1], 10), code: match[2] };
+        return null;
+      };
+
+      // 條碼/代碼輸入：form submit 事件
+      scanForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const codeOrBarcode = productCodeInput.value.trim();
+        if (!codeOrBarcode) return;
+
+        const parsedInput = parseProductInput(codeOrBarcode);
+
+        let product = null;
+        if (parsedInput) {
+          product = products[parsedInput.code];
+          if (product) product.quantity = parsedInput.quantity; // 注意：此行保留原邏輯（不影響加入流程）
+        } else {
+          product = products[codeOrBarcode];
+        }
+
+        if (product) {
+          addProductToCart(product.code); // ✅ 用會計 CODE 入車
+          productCodeInput.value = '';
+          productInfoElement.textContent = `已加入: ${product.name}`;
+        } else {
+          alert('找不到商品');
+          POSAudio.error();
+          productCodeInput.select();
+        }
+      });
+
+      productCodeInput.addEventListener('input', (e) => {
+        const codeOrBarcode = e.target.value.trim();
+        const product = products[codeOrBarcode];
+        if (product) productInfoElement.textContent = `${product.name} ${Math.round(product.price)}元`;
+        else productInfoElement.textContent = '';
+      });
+
+      keywordSearchInput.addEventListener('input', (e) => {
+        const keywords = e.target.value.trim().toLowerCase().split(' ').filter(Boolean);
+
+        const matchedProducts = Object.values(products).filter(product => {
+          // products 會同時含 CODE 與 BARCODE 索引，去重後顯示
+          if (!product || !product.name) return false;
+          return keywords.every(keyword =>
+            product.name.toLowerCase().includes(keyword) ||
+            product.code.toLowerCase().includes(keyword) ||
+            (product.barcode && product.barcode.includes(keyword))
+          );
+        });
+
+        searchResultsElement.innerHTML = '';
+        const uniqueProducts = Array.from(new Set(matchedProducts));
+        const displayProducts = uniqueProducts.slice(0, 3);
+
+        displayProducts.forEach(product => {
+          const resultItem = document.createElement('div');
+          resultItem.textContent = `${product.code} ｜ ${product.name} ｜ ${Math.round(product.price)}元`;
+          const selectButton = document.createElement('button');
+          selectButton.textContent = '加入';
+          selectButton.style.marginLeft = "10px";
+          selectButton.addEventListener('click', () => {
+            addProductToCart(product.code);
+            productInfoElement.textContent = `${product.name}`;
+            searchResultsElement.innerHTML = '';
+            keywordSearchInput.value = '';
+          });
+          resultItem.appendChild(selectButton);
+          searchResultsElement.appendChild(resultItem);
+        });
+      });
+
+      const calculatePaymentStats = () => {
+        let stats = { cash: 0, credit: 0, linepay: 0, culture: 0 };
+        Object.values(clients).forEach(client => {
+          if(!client.isValid) return;
+
+          const method = client.paymentMethod || '現金';
+          if (method === '信用卡') stats.credit += client.amount;
+          else if (method === 'LINE PAY') stats.linepay += client.amount;
+          else if (method === '現金') stats.cash += client.amount;
+          else if (method.includes('文化幣')) {
+            const coinMatch = method.match(/文化幣.*?\((\d+)\)/);
+            if (coinMatch && coinMatch[1]) stats.culture += parseInt(coinMatch[1]);
+            const cashMatch = method.match(/現金\((\d+)\)/);
+            if (cashMatch && cashMatch[1]) stats.cash += parseInt(cashMatch[1]);
+          }
+        });
+        return stats;
+      };
+
+      const updateSummaryTable = () => {
+        summaryTableBody.innerHTML = '';
+        overallSummaryTableBody.innerHTML = '';
+
+        let tempOverall = {};
+        let tempSysCash = 0;
+
+        Object.values(clients).sort((a,b) => b.id.localeCompare(a.id)).forEach(client => {
+          const row = document.createElement('tr');
+          const method = client.paymentMethod || '現金';
+
+          if(!client.isValid) {
+            row.classList.add('void-order');
+          } else {
+            if (method.includes("現金")) {
+              if(method.includes("文化幣")) {
+                const cashMatch = method.match(/現金\((\d+)\)/);
+                if (cashMatch && cashMatch[1]) tempSysCash += parseInt(cashMatch[1]);
+              } else {
+                tempSysCash += client.amount;
+              }
+            }
+            client.items.forEach(item => {
+              if (!tempOverall[item.code]) tempOverall[item.code] = { code: item.code, name: item.name, totalQuantity: 0, totalAmount: 0 };
+              tempOverall[item.code].totalQuantity += item.quantity;
+              tempOverall[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);
+            });
+          }
+
+          row.innerHTML = `
+            <td><a href="#" class="client-link" data-client-id="${client.id}">${client.id}</a> ${!client.isValid ? '(已作廢)' : ''}</td>
+            <td>${Math.round(client.amount)}</td>
+            <td><button class="btn-change-pay" data-client-id="${client.id}">${method}</button></td>
+            <td class="btn-action-group">
+              ${client.isValid ? `<button class="btn-void" data-client-id="${client.id}">作廢</button>` : `<button class="btn-void" data-client-id="${client.id}">復原</button>`}
+              <button class="btn-del" data-client-id="${client.id}">刪除</button>
+            </td>
+          `;
+          summaryTableBody.appendChild(row);
+        });
+
+        overallSummary = tempOverall;
+
+        const sortedSummary = Object.values(overallSummary).sort((a, b) => a.code.localeCompare(b.code));
+        sortedSummary.forEach(item => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${item.code}</td>
+            <td>${item.name}</td>
+            <td>${item.totalQuantity}</td>
+            <td>${Math.round(item.totalAmount)}</td>
+          `;
+          overallSummaryTableBody.appendChild(row);
+        });
+
+        const overallTotalAmount = sortedSummary.reduce((sum, item) => sum + item.totalAmount, 0);
+        overallTotalAmountElement.textContent = Math.round(overallTotalAmount);
+
+        const validOrders = Object.values(clients).filter(c => c.isValid).length;
+        const averageOrderAmount = validOrders > 0 ? Math.round(overallTotalAmount / validOrders) : 0;
+        totalOrdersElement.textContent = validOrders;
+        averageAmountElement.textContent = averageOrderAmount;
+
+        const stats = calculatePaymentStats();
+        paymentStatsElement.innerHTML = `
+          <div class="stat-item">現金: <b>${stats.cash}</b></div>
+          <div class="stat-item">刷卡: <b>${stats.credit}</b></div>
+          <div class="stat-item">LINE: <b>${stats.linepay}</b></div>
+          <div class="stat-item">文化: <b>${stats.culture}</b></div>
+        `;
+
+        sysCashTotalEl.textContent = stats.cash;
+        updateAccountingCalc();
+
+        attachHistoryEvents();
+      };
+
+      const attachHistoryEvents = () => {
+        document.querySelectorAll('.btn-change-pay').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const clientId = e.target.dataset.clientId;
+            const client = clients[clientId];
+            if(!client.isValid) return alert("已作廢訂單無法修改");
+            openPaymentModal(clientId);
+          });
+        });
+
+        document.querySelectorAll('.btn-void').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const clientId = e.target.dataset.clientId;
+            clients[clientId].isValid = !clients[clientId].isValid;
+            saveSummary();
+            updateSummaryTable();
+          });
+        });
+
+        document.querySelectorAll('.btn-del').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const clientId = e.target.dataset.clientId;
+            if (confirm('【警告】這將完全刪除此筆資料，無法復原。確定要刪除嗎？')) {
+              delete clients[clientId];
+              saveSummary();
+              updateSummaryTable();
+            }
+          });
+        });
+
+        document.querySelectorAll('.client-link').forEach(link => {
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const clientId = e.target.dataset.clientId;
+            showClientDetails(clientId);
+          });
+        });
+      };
+
+      window.openPaymentModal = (clientId) => {
+        editingClientId = clientId;
+        paymentModal.style.display = 'flex';
+      };
+
+      window.closePaymentModal = () => {
+        editingClientId = null;
+        paymentModal.style.display = 'none';
+      };
+
+      window.selectPaymentMethod = (methodType) => {
+        if (!editingClientId) return;
+        const client = clients[editingClientId];
+        let finalMethod = methodType;
+
+        if (methodType === '文化幣') {
+          const coinAmt = prompt(`目前總金額 ${client.amount}，請輸入文化幣金額 (剩餘轉為現金)：`, client.amount);
+          if (coinAmt && !isNaN(coinAmt)) {
+            const c = parseInt(coinAmt);
+            if (c < 0 || c > client.amount) { alert("金額輸入錯誤"); return; }
+            const cash = client.amount - c;
+            finalMethod = `文化幣(${c}) + 現金(${cash})`;
+          } else { return; }
+        }
+
+        clients[editingClientId].paymentMethod = finalMethod;
+        saveSummary();
+        updateSummaryTable();
+        closePaymentModal();
+      };
+
+      const showClientDetails = (clientId) => {
+        const client = clients[clientId];
+        if (client) {
+          const method = client.paymentMethod || '現金';
+          const items = client.items.map(item => `${item.code} ｜ ${item.name} x ${item.quantity} (${Math.round(item.price*item.quantity)})`).join('\n');
+          alert(`客戶：${clientId} ${!client.isValid?'(已作廢)':''}\n付款方式：${method}\n\n購買商品：\n${items}`);
+        }
+      };
+
+      window.clearAccountingInputs = () => {
+        document.querySelectorAll('.acct-count.current').forEach(input => {
+          input.value = '';
+          localStorage.removeItem(`acct_cur_${input.dataset.val}`);
+        });
+        updateAccountingCalc();
+      };
+
+      const updateAccountingCalc = () => {
+        let drawerTotal = 0;
+        let initialTotal = 0;
+
+        document.querySelectorAll('.acct-count.current').forEach(input => {
+          const val = parseInt(input.dataset.val);
+          const count = parseInt(input.value) || 0;
+          drawerTotal += val * count;
+        });
+
+        document.querySelectorAll('.acct-count.initial').forEach(input => {
+          const val = parseInt(input.dataset.val);
+          const count = parseInt(input.value) || 0;
+          initialTotal += val * count;
+        });
+
+        const expenses = parseInt(expensesCashInput.value) || 0;
+        const netCash = drawerTotal - initialTotal + expenses;
+
+        calcDrawerTotalEl.textContent = drawerTotal;
+        calcInitialEl.textContent = initialTotal;
+        calcExpensesEl.textContent = expenses;
+        calcNetCashEl.textContent = netCash;
+
+        const sysCash = parseInt(sysCashTotalEl.textContent) || 0;
+        const diff = netCash - sysCash;
+
+        cashDiffEl.textContent = diff;
+        if(diff === 0) {
+          cashDiffEl.style.color = 'green';
+          cashDiffRow.style.backgroundColor = '#e8f5e9';
+        } else {
+          cashDiffEl.style.color = 'red';
+          cashDiffRow.style.backgroundColor = '#ffebee';
+        }
+      };
+
+      backupBtn.addEventListener('click', () => {
+        const backupData = {
+          cart, clients, overallSummary, clientCounter, sessionRules, priceOverrides,
+          notes: notesElement.value,
+          timestamp: new Date().toISOString()
+        };
+        const dataStr = JSON.stringify(backupData, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pos_backup_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      restoreBtn.addEventListener('click', () => {
+        if (confirm('注意：還原將覆蓋目前訂單資料。')) importFileInput.click();
+      });
+
+      importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const data = JSON.parse(event.target.result);
+            if (data.clients) {
+              localStorage.setItem('cart', JSON.stringify(data.cart || []));
+              localStorage.setItem('clients', JSON.stringify(data.clients || {}));
+              localStorage.setItem('overallSummary', JSON.stringify(data.overallSummary || {}));
+              localStorage.setItem('clientCounter', JSON.stringify(data.clientCounter || 1));
+              localStorage.setItem('sessionRules', JSON.stringify(data.sessionRules || {}));
+              localStorage.setItem('priceOverrides', JSON.stringify(data.priceOverrides || {}));
+              localStorage.setItem('notes', data.notes || '');
+              alert('還原成功！');
+              location.reload();
+            }
+          } catch (err) { alert('備份檔案格式錯誤'); }
+        };
+        reader.readAsText(file);
+        importFileInput.value = '';
+      });
+
+      exportCsvBtn.addEventListener('click', () => {
+        try {
+          updateSummaryTable();
+          const notes = localStorage.getItem('notes') || '無備註';
+          const stats = calculatePaymentStats();
+          const overallTotalAmount = Object.values(overallSummary).reduce((sum, item) => sum + item.totalAmount, 0);
+
+          const summaryRows = [
+            ['客戶名稱', '消費金額', '付款方式', '狀態'],
+            ...Object.values(clients).map(client => [
+              client.id, Math.round(client.amount), client.paymentMethod || '現金', client.isValid ? '有效' : '已作廢'
+            ]),
+            [], ['商品代碼', '名稱', '總數量', '總金額'],
+            ...Object.values(overallSummary).map(item => [item.code, item.name, item.totalQuantity, Math.round(item.totalAmount)]),
+            [], ['總金額', Math.round(overallTotalAmount)],
+            ['現金總收', stats.cash], ['信用卡總收', stats.credit], ['LINE PAY總收', stats.linepay], ['文化幣總收', stats.culture],
+            [], ['備註', notes], [],
+            ['盤點記錄'], ['盤點現金總額', calcDrawerTotalEl.textContent], ['初始備用金', calcInitialEl.textContent],
+            ['支出憑證', calcExpensesEl.textContent], ['實際現金營收', calcNetCashEl.textContent], ['差異金額', cashDiffEl.textContent]
+          ];
+
+          const detailsRows = [
+            ['詳細內容：'], ['客戶名稱', '付款方式', '商品名稱', '數量', '單價', '折扣', '小計', '狀態'],
+            ...Object.values(clients).flatMap(client =>
+              client.items.map(item => [
+                client.id, client.paymentMethod || '現金', item.name, item.quantity, Math.round(item.price),
+                `${item.discount}%`, Math.round(item.price * item.quantity * (item.discount / 100)), client.isValid ? '有效' : '已作廢'
+              ])
+            )
+          ];
+
+          const csvContent = [...summaryRows, ...detailsRows].map(e => e.join(",")).join("\n");
+          const blob = new Blob([`\ufeff${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = `sales_report_POS_${new Date().toISOString().split('T')[0]}.csv`;
+          link.click();
+        } catch (error) { alert('CSV匯出錯誤'); }
+      });
+
+      // --- PILOT 會計匯出 (修正版：不輸出表頭 + UNIT/QTYSTR 對齊) ---
+      exportPilotBtn.onclick = () => {
+        const now = new Date();
+        const orderId = String(now.getFullYear()) +
+          String(now.getMonth() + 1).padStart(2, '0') +
+          String(now.getDate()).padStart(2, '0') +
+          String(now.getHours()).padStart(2, '0') +
+          String(now.getMinutes()).padStart(2, '0');
+
+        const custCode = "0002";
+        const whCode = "0000";
+        const staffCode = "02";
+
+        const date = now.getFullYear() + '/' +
+          String(now.getMonth() + 1).padStart(2, '0') + '/' +
+          String(now.getDate()).padStart(2, '0');
+
+        const yy = String(now.getFullYear()).slice(-2);
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mi = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        const ts = yy + mm + dd + hh + mi + ss;
+
+        const rnd = () => "0010LU0" + Math.random().toString(36).substr(2,6).toUpperCase();
+
+        // 表頭（保留定義，但「不輸出」）
+        let s1_header = ["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"];
+        let s2_header = ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"];
+        let v1_header = ["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"];
+
+        let s1_rows = [];
+        let s2_rows = [];
+        let v1_rows = [];
+
+        Object.values(clients).forEach(c => {
+          if(!c.isValid) return;
+
+          const mERI = c.eri || ("0H5" + rnd());
+          let grossTotal = 0; // 原價總額
+          let netTotal = 0;   // 淨額（折後）
+          let totalQty = 0;
+
+          c.items.forEach(it => {
+            const stdPrc = Number(it.price) || 0;
+            const discountRate = Number(it.discount ?? 100);
+            const netUnit = stdPrc * (discountRate / 100);
+
+            grossTotal += stdPrc * it.quantity;
+            netTotal += netUnit * it.quantity;
+            totalQty += it.quantity;
+          });
+
+          grossTotal = Math.round(grossTotal);
+          netTotal = Math.round(netTotal);
+          const diff = netTotal - grossTotal; // PLUSSUB
+
+          // --- S1 主檔 ---
+          let r1_map = {};
+          r1_map["ERI"] = mERI;
+          r1_map["CODE"] = orderId;
+          r1_map["STAFF"] = staffCode;
+          r1_map["CUST"] = custCode;
+          r1_map["SDATE"] = date;
+          r1_map["CURR"] = "NTD";
+          r1_map["RATE"] = 1;
+          r1_map["GWN"] = whCode;
+          r1_map["TAX"] = 0;
+          r1_map["AMT"] = grossTotal;
+          r1_map["PLUSSUB"] = diff;
+          r1_map["TOTAL"] = netTotal;
+          r1_map["QTY"] = totalQty;
+          r1_map["EDITOR"] = "POS";
+          r1_map["REMARK"] = "POS_Import";
+          r1_map["TAXCATE"] = 3;
+          r1_map["INVCATE"] = 3;
+          r1_map["INVDATE"] = date;
+          r1_map["BILDATE"] = date;
+          r1_map["RADVDATE"] = date;
+          r1_map["COST"] = netTotal;
+          r1_map["DPTNO"] = "0000";
+          r1_map["TYPE"] = 0;
+          r1_map["PRNIMMED"] = 0;
+          r1_map["PRNONCE"] = 0;
+          r1_map["ACCGEN"] = 0;
+          r1_map["INVAMT"] = 0;
+          r1_map["COMPNO"] = "0000";
+          r1_map["PRINTX"] = 0;
+          r1_map["BILCUST"] = custCode;
+          r1_map["INVNAME"] = "POS";
+          r1_map["PAYCASH"] = 1;
+          r1_map["NORCV"] = 0;
+          r1_map["EINVFLAG"] = 0;
+          r1_map["LASTUPD"] = ts;
+
+          let r1_arr = s1_header.map(h => r1_map[h] !== undefined ? r1_map[h] : "");
+          s1_rows.push(r1_arr);
+
+          // --- S2 明細 ---
+          c.items.forEach((it, idx) => {
+            const dERI = it.detailERI || ("0H8" + rnd());
+
+            const stdPrc = Number(it.price) || 0;                 // 原價
+            const discountRate = Number(it.discount ?? 100);      // 折扣%
+            const netUnit = stdPrc * (discountRate / 100);        // 折後單價
+            const netAmt = Math.round(netUnit * Number(it.quantity || 0));
+
+            const unit = it.unit || "本"; // ✅ 來源自會計主檔 PRODUNIT
+
+            let r2_map = {};
+            r2_map["ERI"] = dERI;
+            r2_map["MASTERI"] = mERI;
+            r2_map["STAFF"] = staffCode;
+            r2_map["CUST"] = custCode;
+            r2_map["GWN"] = whCode;
+            r2_map["PROD"] = it.code;              // ✅ 會計商品代碼
+            r2_map["SDATE"] = date;
+            r2_map["TYPE"] = 0;
+            r2_map["CODE"] = "19890107";
+            r2_map["SERIAL"] = idx;
+
+            r2_map["SPEC"] = stdPrc;               // ✅ 對齊會計：原價放 SPEC
+            r2_map["QTY"] = it.quantity;
+            r2_map["UNIT"] = unit;                 // ✅ 對齊會計：本/個/套
+            r2_map["PRICE"] = netUnit;             // ✅ 折後單價
+            r2_map["AMT"] = netAmt;                // ✅ 折後小計
+
+            r2_map["REALQTY"] = it.quantity;
+            r2_map["SUBQTY"] = 0;
+            r2_map["PRODDESC"] = "";               // 可留空（會計匯出也常空）
+            r2_map["QTYSTR"] = it.quantity + unit;  // ✅ 對齊會計：2本/1本
+
+            r2_map["CURR"] = "NTD";
+            r2_map["RATE"] = 1;
+            r2_map["STDPRC"] = stdPrc;             // ✅ 原價
+            r2_map["DISCOUNT"] = discountRate;
+
+            // 其餘必要數值欄位（保守給 0）
+            r2_map["INVQTY"] = 0;
+            r2_map["SAMPLE"] = 0;
+            r2_map["INVRETURN"] = 0;               // ✅ 這欄會被檢核：一定要數字/空值規範（這裡給 0）
+            r2_map["VLIDDATE"] = date;
+            r2_map["INVPRC"] = 0;
+            r2_map["INVAMT"] = 0;
+            r2_map["INVAMT1"] = 0;
+            r2_map["GIFT"] = 0;
+            r2_map["MFLAG"] = 0;
+            r2_map["SUBAMT"] = 0;
+            r2_map["LASTUPD"] = ts;
+
+            let r2_arr = s2_header.map(h => r2_map[h] !== undefined ? r2_map[h] : "");
+            s2_rows.push(r2_arr);
+          });
+
+          // --- V1 傳票 ---
+          let cultureAmt = 0, mainAmt = netTotal;
+          if ((c.paymentMethod || '').includes("文化幣")) {
+            const match = c.paymentMethod.match(/文化幣.*?\((\d+)\)/);
+            if (match && match[1]) {
+              cultureAmt = parseInt(match[1]);
+              mainAmt = netTotal - cultureAmt;
+            } else if (c.paymentMethod === "文化幣") {
+              cultureAmt = netTotal;
+              mainAmt = 0;
+            }
+          }
+
+          let sn = 0;
+          if (cultureAmt > 0) {
+            let rv1 = new Array(v1_header.length).fill("");
+            rv1[0] = "01E" + rnd();
+            rv1[1] = mERI;
+            rv1[2] = sn++;
+            rv1[3] = "61";
+            rv1[4] = "1144.61";
+            rv1[5] = 0;
+            rv1[6] = -Math.round(cultureAmt);
+            rv1[9] = ts;
+            v1_rows.push(rv1);
+          }
+          if (mainAmt > 0) {
+            let pc = "5", ps = "1144.355";
+            if ((c.paymentMethod || '').includes("信用卡") || (c.paymentMethod || '').includes("LINE")) { pc = "16"; ps = "1144.358"; }
+            let rv2 = new Array(v1_header.length).fill("");
+            rv2[0] = "01E" + rnd();
+            rv2[1] = mERI;
+            rv2[2] = sn++;
+            rv2[3] = pc;
+            rv2[4] = ps;
+            rv2[5] = 0;
+            rv2[6] = -Math.round(mainAmt);
+            rv2[9] = ts;
+            v1_rows.push(rv2);
+          }
+        });
+
+        // ✅ 匯出：不輸出表頭（避免 rec:0 讀到 "INVRETURN" 這種字串）
+        const dlNoHeader = (rows, filename) => {
+          const csvContent = rows
+            .map(r => r.map(v => `"${v === null || v === undefined ? "" : v}"`).join(','))
+            .join('\r\n');
+          const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = filename;
+          a.click();
+        };
+
+        dlNoHeader(s1_rows, "STKSALE1.csv");
+        setTimeout(() => dlNoHeader(s2_rows, "STKSALE2.csv"), 500);
+        setTimeout(() => dlNoHeader(v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
+      };
+
+      // 修復清空按鈕
+      clearAllBtn.onclick = () => {
+        if (confirm('確定要刪除全部訂單？(將清除所有資料並重整)')) {
+          localStorage.clear();
+          alert('資料已清空，系統將重新載入。');
+          location.reload();
+        }
+      };
+
+      // 初始化
+      loadDiscountRates();
+      loadProducts().then(() => {
+        updateCartDisplay();
+        updateSummaryTable();
+      });
+      calculateChange();
+    });
+  </script>
 </body>
 </html>
