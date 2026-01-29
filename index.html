@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V15腓利門雲POS</title>
+  <title>V16腓利門雲POS</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
   <style>
     /* --- 核心配色：大地色系優化 --- */
@@ -1820,6 +1820,8 @@
             r2_map["DISCOUNT"] = discountRate;
             r2_map["INVQTY"] = 0;
             r2_map["SAMPLE"] = 0;
+            r2_map["INVRETURN"] = 0;
+
 
             // ✅ 這個欄 Pilot 很挑：很多版本要「空白」不是 0（你會計檔就是空）
             r2_map["INVRETURN"] = "";
@@ -1873,19 +1875,35 @@
           }
         });
 
-        const dl = (header, rows, filename) => {
-          // ✅ 不包雙引號，貼近你會計系統輸出的「純分隔」格式
-          const csvContent = [header, ...rows].map(r => r.map(v => (v === null || v === undefined) ? "" : String(v)).join(',')).join('\r\n');
-          const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = filename;
-          a.click();
-        };
+// ✅ PILOT 下載工具：不輸出表頭、全欄位加引號、CRLF、無 BOM
+const dl = (rows, filename) => {
+  const esc = (v) => {
+    if (v === null || v === undefined) return "";
+    // 避免科學記號 / 非字串：統一轉字串
+    let s = String(v);
+    // CSV 內若有雙引號，需用 "" 轉義
+    s = s.replace(/"/g, '""');
+    return s;
+  };
 
-        dl(s1_header, s1_rows, "STKSALE1.csv");
-        setTimeout(() => dl(s2_header, s2_rows, "STKSALE2.csv"), 500);
-        setTimeout(() => dl(v1_header, v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
+  // 只輸出資料列（不含 header）
+  const csvContent = rows
+    .map(r => r.map(v => `"${esc(v)}"`).join(','))
+    .join('\r\n'); // CRLF
+
+  // ✅ 不要 BOM（不要 \ufeff）
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+
+dl(s1_rows, "STKSALE1.csv");
+setTimeout(() => dl(s2_rows, "STKSALE2.csv"), 500);
+setTimeout(() => dl(v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
       };
 
       // ===== 啟動 =====
@@ -1903,3 +1921,4 @@
   </script>
 </body>
 </html>
+
