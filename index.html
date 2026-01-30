@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>19.0腓利門雲POS</title>
+  <title>20.0腓利門雲POS</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
   <style>
     /* --- 核心配色：大地色系優化 --- */
@@ -1069,7 +1069,7 @@
           if (item.isManual) {
             inputClass += ' manual-locked';
             statusTitle = "單品已鎖定";
-          } else if (sessionRules[item.class]) {
+          } else if (item.class && sessionRules[item.class] !== undefined) {
             inputClass += ' class-rule-active';
             statusTitle = `套用分類規則 (${item.class})`;
           }
@@ -1217,30 +1217,34 @@
         setTimeout(() => btnElement.classList.remove('animate-click'), 500);
       };
 
-      const handleCulturalCoinCheckout = () => {
-        if (cart.length === 0) {
-          if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
-          return;
-        }
-        hasShownEmptyCartAlert = false;
-        const totalAmount = parseFloat(totalAmountElement.textContent);
+const handleCulturalCoinCheckout = () => {
+  if (cart.length === 0) {
+    if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
+    return;
+  }
+  hasShownEmptyCartAlert = false;
 
-        let coinAmountStr = prompt(`訂單總額為 ${totalAmount} 元。\n請輸入文化幣支付金額：`, totalAmount);
-        if (coinAmountStr === null) return;
+  // ✅ 總額一律用 Number，避免 textContent 有空白或 NaN
+  const totalAmount = Number(totalAmountElement.textContent) || 0;
 
-        let coinAmount = parseInt(coinAmountStr);
-        if (isNaN(coinAmount) || coinAmount < 0) { alert("請輸入有效的金額！"); POSAudio.error(); return; }
-        if (coinAmount > totalAmount) { alert("文化幣金額不能大於訂單總額！"); POSAudio.error(); coinAmount = totalAmount; }
+  let coinAmountStr = prompt(`訂單總額為 ${totalAmount} 元。\n請輸入文化幣支付金額：`, totalAmount);
+  if (coinAmountStr === null) return;
 
-        const cashAmount = totalAmount - coinAmount;
-        let methodStr = "";
-        if (cashAmount > 0 && coinAmount > 0) methodStr = `文化幣(${coinAmount}) + 現金(${cashAmount})`;
-        else if (coinAmount > 0 && cashAmount === 0) methodStr = `文化幣全額(${coinAmount})`;
-        else methodStr = `現金(${totalAmount})`;
+  let coinAmount = parseInt(coinAmountStr, 10);
+  if (isNaN(coinAmount) || coinAmount < 0) { alert("請輸入有效的金額！"); POSAudio.error(); return; }
+  if (coinAmount > totalAmount) { alert("文化幣金額不能大於訂單總額！"); POSAudio.error(); coinAmount = totalAmount; }
 
-        triggerButtonAnimation(btnF9);
-        performCheckout(methodStr, true);
-      };
+  const cashAmount = totalAmount - coinAmount;
+
+  let methodStr = "";
+  if (cashAmount > 0 && coinAmount > 0) methodStr = `文化幣(${coinAmount}) + 現金(${cashAmount})`;
+  else if (coinAmount > 0 && cashAmount === 0) methodStr = `文化幣全額(${coinAmount})`;
+  else methodStr = `現金(${totalAmount})`;
+
+  triggerButtonAnimation(btnF9);
+  performCheckout(methodStr, true);
+};
+
 
       const performCheckout = (paymentMethod, isComposite = false) => {
         if (cart.length === 0) {
@@ -1649,44 +1653,88 @@
         }
       };
 
-      // ===== 你原本匯出 CSV（保留）=====
-      exportCsvBtn.addEventListener('click', () => {
-        try {
-          updateSummaryTable();
-          const notes = localStorage.getItem('notes') || '無備註';
-          const stats = calculatePaymentStats();
-          const overallTotalAmount = Object.values(overallSummary).reduce((sum, item) => sum + item.totalAmount, 0);
+// ===== 你原本匯出 CSV（保留）=====
+exportCsvBtn.addEventListener('click', () => {
+  try {
+    updateSummaryTable();
+    const notes = localStorage.getItem('notes') || '無備註';
+    const stats = calculatePaymentStats();
+    const overallTotalAmount = Object.values(overallSummary).reduce((sum, item) => sum + item.totalAmount, 0);
 
-          const summaryRows = [
-            ['客戶名稱', '消費金額', '付款方式', '狀態'],
-            ...Object.values(clients).map(client => [client.id, Math.round(client.amount), client.paymentMethod || '現金', client.isValid ? '有效' : '已作廢']),
-            [], ['商品代碼', '名稱', '總數量', '總金額'],
-            ...Object.values(overallSummary).map(item => [item.code, item.name, item.totalQuantity, Math.round(item.totalAmount)]),
-            [], ['總金額', Math.round(overallTotalAmount)],
-            ['現金總收', stats.cash], ['信用卡總收', stats.credit], ['LINE PAY總收', stats.linepay], ['文化幣總收', stats.culture],
-            [], ['備註', notes], [],
-            ['盤點記錄'], ['盤點現金總額', calcDrawerTotalEl.textContent], ['初始備用金', calcInitialEl.textContent],
-            ['支出憑證', calcExpensesEl.textContent], ['實際現金營收', calcNetCashEl.textContent], ['差異金額', cashDiffEl.textContent]
-          ];
+    const summaryRows = [
+      ['客戶名稱', '消費金額', '付款方式', '狀態'],
+      ...Object.values(clients).map(client => [
+        client.id,
+        Math.round(client.amount),
+        client.paymentMethod || '現金',
+        client.isValid ? '有效' : '已作廢'
+      ]),
+      [],
+      ['商品代碼', '名稱', '總數量', '總金額'],
+      ...Object.values(overallSummary).map(item => [
+        item.code,
+        item.name,
+        item.totalQuantity,
+        Math.round(item.totalAmount)
+      ]),
+      [],
+      ['總金額', Math.round(overallTotalAmount)],
+      ['現金總收', stats.cash],
+      ['信用卡總收', stats.credit],
+      ['LINE PAY總收', stats.linepay],
+      ['文化幣總收', stats.culture],
+      [],
+      ['備註', notes],
+      [],
+      ['盤點記錄'],
+      ['盤點現金總額', calcDrawerTotalEl.textContent],
+      ['初始備用金', calcInitialEl.textContent],
+      ['支出憑證', calcExpensesEl.textContent],
+      ['實際現金營收', calcNetCashEl.textContent],
+      ['差異金額', cashDiffEl.textContent]
+    ];
 
-          const detailsRows = [
-            ['詳細內容：'], ['客戶名稱', '付款方式', '商品名稱', '數量', '單價', '折扣', '小計', '狀態'],
-            ...Object.values(clients).flatMap(client =>
-              client.items.map(item => [
-                client.id, client.paymentMethod || '現金', item.name, item.quantity, Math.round(item.price),
-                `${item.discount}%`, Math.round(item.price * item.quantity * (item.discount / 100)), client.isValid ? '有效' : '已作廢'
-              ])
-            )
-          ];
+    const detailsRows = [
+      ['詳細內容：'],
+      ['客戶名稱', '付款方式', '商品名稱', '數量', '單價', '折扣', '小計', '狀態'],
+      ...Object.values(clients).flatMap(client =>
+        (client.items || []).map(item => [
+          client.id,
+          client.paymentMethod || '現金',
+          item.name,
+          item.quantity,
+          Math.round(item.price),
+          `${item.discount}%`,
+          Math.round(item.price * item.quantity * (item.discount / 100)),
+          client.isValid ? '有效' : '已作廢'
+        ])
+      )
+    ];
 
-          const csvContent = [...summaryRows, ...detailsRows].map(e => e.join(",")).join("\n");
-          const blob = new Blob([`\ufeff${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          link.download = `sales_report_POS_${new Date().toISOString().split('T')[0]}.csv`;
-          link.click();
-        } catch (error) { alert('CSV匯出錯誤'); }
-      });
+    // ✅ 正確 CSV escaping（只在必要時加引號）
+    const mustQuote = (s) => /[",\r\n]/.test(String(s));
+    const esc = (v) => {
+      if (v === null || v === undefined) return "";
+      const s = String(v).replace(/"/g, '""');
+      return mustQuote(s) ? `"${s}"` : s;
+    };
+
+    const csvContent = [...summaryRows, ...detailsRows]
+      .map(row => row.map(esc).join(","))
+      .join("\r\n");
+
+    const blob = new Blob([`\ufeff${csvContent}`], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = `sales_report_POS_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+  } catch (error) {
+    alert('CSV匯出錯誤');
+  }
+});
 
 // ==========================================================
 // ✅ Pilot 匯出：去掉全欄位包引號 + 修正 UNIT/QTYSTR/INVRETURN
@@ -1697,8 +1745,6 @@ exportPilotBtn.onclick = () => {
   const custCode = "0002";
   const whCode = "0000";
   const staffCode = "02";
-
-  // ✅ 你要的固定單號：你之後只改這一行就好
   const FIX_CODE = "2026001";
 
   const date = now.getFullYear() + '/' +
@@ -1723,77 +1769,53 @@ exportPilotBtn.onclick = () => {
   let s2_rows = [];
   let v1_rows = [];
 
-  Object.values(clients).forEach(c => {
-    if (!c.isValid) return;
+  // ✅ 把所有有效訂單合併成「單一 master」
+  const validClients = Object.values(clients).filter(c => c && c.isValid);
+  if (validClients.length === 0) { alert("沒有有效訂單可匯出"); return; }
 
-    const mERI = c.eri || ("0H5" + rnd());
-    let grossTotal = 0;
-    let netTotal = 0;
-    let totalQty = 0;
+  const mERI = generateERI('master');
 
-    c.items.forEach(it => {
+  let grossTotal = 0; // 原價總額
+  let netTotal = 0;   // 折後總額
+  let totalQty = 0;
+
+  // ✅ 付款彙總
+  let cultureAmt = 0;
+  let cashAmt = 0;
+  let cardLineAmt = 0;
+
+  // ✅ 逐筆合併明細（不合併商品，先維持一筆一行，最不容易出事）
+  let serial = 1;
+
+  validClients.forEach(c => {
+    const pay = c.paymentMethod || "現金";
+    const amt = Math.round(c.amount || 0);
+
+    if (pay.includes("文化幣")) {
+      const coinMatch = pay.match(/文化幣.*?\((\d+)\)/);
+      const cashMatch = pay.match(/現金\((\d+)\)/);
+      if (coinMatch && coinMatch[1]) cultureAmt += parseInt(coinMatch[1], 10);
+      if (cashMatch && cashMatch[1]) cashAmt += parseInt(cashMatch[1], 10);
+      if ((!cashMatch || !cashMatch[1]) && coinMatch && coinMatch[1]) {
+        const ccc = parseInt(coinMatch[1], 10);
+        if (amt - ccc > 0) cashAmt += (amt - ccc);
+      }
+    } else if (pay.includes("信用卡") || pay.includes("LINE")) {
+      cardLineAmt += amt;
+    } else {
+      cashAmt += amt;
+    }
+
+    (c.items || []).forEach(it => {
       const discountRate = (it.discount !== undefined) ? it.discount : 100;
       const netPrice = it.price * (discountRate / 100);
+
       grossTotal += it.price * it.quantity;
       netTotal += netPrice * it.quantity;
       totalQty += it.quantity;
-    });
 
-    grossTotal = Math.round(grossTotal);
-    netTotal = Math.round(netTotal);
-    const diff = netTotal - grossTotal;
-
-    // =========================
-    // S1
-    // =========================
-    let r1_map = {};
-    r1_map["ERI"] = mERI;
-    r1_map["CODE"] = FIX_CODE;     // ✅ 改：固定純數字單號（避免 lg.pk.invalid）
-    r1_map["STAFF"] = staffCode;
-    r1_map["CUST"] = custCode;
-    r1_map["SDATE"] = date;
-    r1_map["CURR"] = "NTD";
-    r1_map["RATE"] = 1;
-    r1_map["GWN"] = whCode;
-    r1_map["TAX"] = 0;
-    r1_map["AMT"] = grossTotal;
-    r1_map["PLUSSUB"] = diff;
-    r1_map["TOTAL"] = netTotal;
-    r1_map["QTY"] = totalQty;
-    r1_map["EDITOR"] = "POS";
-    r1_map["REMARK"] = "POS_Import";
-    r1_map["TAXCATE"] = 3;
-    r1_map["INVCATE"] = 3;
-    r1_map["INVDATE"] = date;
-    r1_map["BILDATE"] = date;
-    r1_map["RADVDATE"] = date;
-    r1_map["COST"] = netTotal;
-    r1_map["DPTNO"] = "0000";
-    r1_map["TYPE"] = 0;
-    r1_map["PRNIMMED"] = 0;
-    r1_map["PRNONCE"] = 0;
-    r1_map["ACCGEN"] = 0;
-    r1_map["INVAMT"] = 0;
-    r1_map["COMPNO"] = "0000";
-    r1_map["PRINTX"] = 0;
-    r1_map["BILCUST"] = custCode;
-    r1_map["INVNAME"] = "POS";
-    r1_map["PAYCASH"] = 1;
-    r1_map["NORCV"] = 0;
-    r1_map["EINVFLAG"] = 0;
-    r1_map["LASTUPD"] = ts;
-
-    s1_rows.push(s1_header.map(h => r1_map[h] !== undefined ? r1_map[h] : ""));
-
-    // =========================
-    // S2
-    // =========================
-    c.items.forEach((it, idx2) => {
       const dERI = it.detailERI || ("0H8" + rnd());
-      const discountRate = (it.discount !== undefined) ? it.discount : 100;
-      const netPrice = it.price * (discountRate / 100);
       const rowNetAmt = Math.round(netPrice * it.quantity);
-
       const unit = it.unit || "個";
 
       let r2_map = {};
@@ -1805,24 +1827,28 @@ exportPilotBtn.onclick = () => {
       r2_map["PROD"] = it.code;
       r2_map["SDATE"] = date;
       r2_map["TYPE"] = 0;
-      r2_map["CODE"] = FIX_CODE;      // ✅ 改：S2 也要跟 S1 同一張單號
-      r2_map["SERIAL"] = idx2 + 1;    // ✅ 改：從 1 開始（很多系統要求）
-      r2_map["SPEC"] = it.price;      // 原價
+      r2_map["CODE"] = FIX_CODE;
+      r2_map["SERIAL"] = serial++;
+
+      r2_map["SPEC"] = it.price;
       r2_map["QTY"] = it.quantity;
       r2_map["UNIT"] = unit;
-      r2_map["PRICE"] = netPrice;     // 淨單價
-      r2_map["AMT"] = rowNetAmt;      // 淨總額
+      r2_map["PRICE"] = netPrice;
+      r2_map["AMT"] = rowNetAmt;
+
       r2_map["REALQTY"] = it.quantity;
       r2_map["SUBQTY"] = 0;
       r2_map["QTYSTR"] = `${it.quantity}${unit}`;
       r2_map["CURR"] = "NTD";
       r2_map["RATE"] = 1;
-      r2_map["STDPRC"] = it.price;    // 原價
+      r2_map["STDPRC"] = it.price;
       r2_map["DISCOUNT"] = discountRate;
+
       r2_map["INVQTY"] = 0;
       r2_map["SAMPLE"] = 0;
       r2_map["INVRETURN"] = "";
       r2_map["VLIDDATE"] = date;
+
       r2_map["INVPRC"] = 0;
       r2_map["INVAMT"] = 0;
       r2_map["INVAMT1"] = 0;
@@ -1833,63 +1859,92 @@ exportPilotBtn.onclick = () => {
 
       s2_rows.push(s2_header.map(h => r2_map[h] !== undefined ? r2_map[h] : ""));
     });
-
-    // V1
-    let cultureAmt = 0, mainAmt = netTotal;
-    if ((c.paymentMethod || "").includes("文化幣")) {
-      const match = c.paymentMethod.match(/文化幣.*?\((\d+)\)/);
-      if (match && match[1]) { cultureAmt = parseInt(match[1]); mainAmt = netTotal - cultureAmt; }
-      else if (c.paymentMethod === "文化幣") { cultureAmt = netTotal; mainAmt = 0; }
-    }
-
-    let sn = 0;
-    if (cultureAmt > 0) {
-      let rv1 = new Array(v1_header.length).fill("");
-      rv1[0] = "01E" + rnd();
-      rv1[1] = mERI;
-      rv1[2] = sn++;
-      rv1[3] = "61";
-      rv1[4] = "1144.61";
-      rv1[5] = 0;
-      rv1[6] = -Math.round(cultureAmt);
-      rv1[9] = ts;
-      v1_rows.push(rv1);
-    }
-    if (mainAmt > 0) {
-      let pc = "5", ps = "1144.355";
-      if ((c.paymentMethod || "").includes("信用卡") || (c.paymentMethod || "").includes("LINE")) { pc = "16"; ps = "1144.358"; }
-      let rv2 = new Array(v1_header.length).fill("");
-      rv2[0] = "01E" + rnd();
-      rv2[1] = mERI;
-      rv2[2] = sn++;
-      rv2[3] = pc;
-      rv2[4] = ps;
-      rv2[5] = 0;
-      rv2[6] = -Math.round(mainAmt);
-      rv2[9] = ts;
-      v1_rows.push(rv2);
-    }
   });
 
-  // ✅ PILOT 下載工具：不輸出表頭、全欄位加引號、CRLF、無 BOM
+  grossTotal = Math.round(grossTotal);
+  netTotal = Math.round(netTotal);
+  const diff = netTotal - grossTotal;
+
+  // ✅ S1 只一行
+  let r1_map = {};
+  r1_map["ERI"] = mERI;
+  r1_map["CODE"] = FIX_CODE;
+  r1_map["STAFF"] = staffCode;
+  r1_map["CUST"] = custCode;
+  r1_map["SDATE"] = date;
+  r1_map["CURR"] = "NTD";
+  r1_map["RATE"] = 1;
+  r1_map["GWN"] = whCode;
+  r1_map["TAX"] = 0;
+  r1_map["AMT"] = grossTotal;
+  r1_map["PLUSSUB"] = diff;
+  r1_map["TOTAL"] = netTotal;
+  r1_map["QTY"] = totalQty;
+  r1_map["EDITOR"] = "POS";
+  r1_map["REMARK"] = "POS_Import";
+  r1_map["TAXCATE"] = 3;
+  r1_map["INVCATE"] = 3;
+  r1_map["INVDATE"] = date;
+  r1_map["BILDATE"] = date;
+  r1_map["RADVDATE"] = date;
+  r1_map["COST"] = netTotal;
+  r1_map["DPTNO"] = "0000";
+  r1_map["TYPE"] = 0;
+  r1_map["PRNIMMED"] = 0;
+  r1_map["PRNONCE"] = 0;
+  r1_map["ACCGEN"] = 0;
+  r1_map["INVAMT"] = 0;
+  r1_map["COMPNO"] = "0000";
+  r1_map["PRINTX"] = 0;
+  r1_map["BILCUST"] = custCode;
+  r1_map["INVNAME"] = "POS";
+  r1_map["PAYCASH"] = 1;
+  r1_map["NORCV"] = 0;
+  r1_map["EINVFLAG"] = 0;
+  r1_map["LASTUPD"] = ts;
+
+  s1_rows.push(s1_header.map(h => r1_map[h] !== undefined ? r1_map[h] : ""));
+
+  // ✅ V1：三種付款各出一行（有金額才出）
+  let sn = 0;
+  const pushV = (code, subj, amt) => {
+    if (!amt) return;
+    let rv = new Array(v1_header.length).fill("");
+    rv[0] = "01E" + rnd();
+    rv[1] = mERI;
+    rv[2] = sn++;
+    rv[3] = code;
+    rv[4] = subj;
+    rv[5] = 0;
+    rv[6] = -Math.round(amt);
+    rv[9] = ts;
+    v1_rows.push(rv);
+  };
+
+  pushV("61", "1144.61", cultureAmt);
+  pushV("16", "1144.358", cardLineAmt);
+  pushV("5", "1144.355", cashAmt);
+
+  // ✅ 下載（不再全欄位包引號；只在必要時才加引號）
   const dl = (rows, filename) => {
+    const mustQuote = (s) => /[",\r\n]/.test(String(s));
     const esc = (v) => {
       if (v === null || v === undefined) return "";
-      let s = String(v);
-      s = s.replace(/"/g, '""');
-      return s;
+      let s = String(v).replace(/"/g, '""');
+      return mustQuote(s) ? `"${s}"` : s;
     };
 
     const csvContent = rows
-      .map(r => r.map(v => `"${esc(v)}"`).join(','))
+      .map(r => r.map(esc).join(','))
       .join('\r\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    const u = URL.createObjectURL(blob);
+    a.href = u;
     a.download = filename;
     a.click();
-    URL.revokeObjectURL(a.href);
+    URL.revokeObjectURL(u);
   };
 
   dl(s1_rows, "STKSALE1.csv");
@@ -1897,18 +1952,20 @@ exportPilotBtn.onclick = () => {
   setTimeout(() => dl(v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
 };
 
-      // ===== 啟動 =====
-      loadDiscountRates();
+// ===== 啟動 =====
+loadDiscountRates();
 
-      // ✅ 先載入系統四檔，再渲染
-      loadMasterData().then(() => {
-        updateCartDisplay();
-        updateSummaryTable();
-        calculateChange();
-      });
+// ✅ 先載入系統四檔，再渲染
+loadMasterData().then(() => {
+  updateCartDisplay();
+  updateSummaryTable();
+  calculateChange();
+});
 
-      // ===== 你原本清空按鈕已在上面覆蓋 =====
+// ===== 你原本清空按鈕已在上面覆蓋 =====
+
     });
   </script>
 </body>
 </html>
+
