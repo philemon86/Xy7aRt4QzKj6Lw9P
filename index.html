@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>20.0腓利門雲POS</title>
+  <title>21.0腓利門雲POS</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
   <style>
     /* --- 核心配色：大地色系優化 --- */
@@ -1742,50 +1742,56 @@ exportCsvBtn.addEventListener('click', () => {
 exportPilotBtn.onclick = () => {
   const now = new Date();
 
+  // ✅ 你指定：固定單別（避免跟系統既有單別衝突）
+  // 注意：系統端也要允許/存在此單別，否則會被拒收
+  const DOC_CODE = "1159999";
+
   const custCode = "0002";
   const whCode = "0000";
   const staffCode = "02";
-  const FIX_CODE = "2026001";
 
-  const date = now.getFullYear() + '/' +
-    String(now.getMonth() + 1).padStart(2, '0') + '/' +
-    String(now.getDate()).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  const MM = String(now.getMonth() + 1).padStart(2, "0");
+  const DD = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mi = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
 
-  const yy = String(now.getFullYear()).slice(-2);
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mi = String(now.getMinutes()).padStart(2, '0');
-  const ss = String(now.getSeconds()).padStart(2, '0');
-  const ts = yy + mm + dd + hh + mi + ss;
+  const date = `${yyyy}/${MM}/${DD}`;          // 2026/01/30
+  const ts = String(yyyy).slice(-2) + MM + DD + hh + mi + ss; // 260130092658
 
-  const rnd = () => "0010LU0" + Math.random().toString(36).substr(2, 6).toUpperCase();
+  // ✅ ERI：沿用你原本 generateERI()（16碼），確保每次匯出都不同，避免重複
+  // 若你要更保守，可用時間+亂數，但你目前這套已夠用
+  const newERI = (type) => generateERI(type);
 
-  let s1_header = ["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"];
-  let s2_header = ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"];
-  let v1_header = ["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"];
+  // ✅ Header：完全照會計系統匯出欄位順序
+  const s1_header = ["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"];
+  const s2_header = ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"];
+  const v1_header = ["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"];
 
-  let s1_rows = [];
-  let s2_rows = [];
-  let v1_rows = [];
+  // ✅ rows：會計系統範本是「含表頭」
+  let s1_rows = [s1_header];
+  let s2_rows = [s2_header];
+  let v1_rows = [v1_header];
 
-  // ✅ 把所有有效訂單合併成「單一 master」
+  // ✅ 全部有效訂單合併成 1 張主檔（你原本設計）
   const validClients = Object.values(clients).filter(c => c && c.isValid);
   if (validClients.length === 0) { alert("沒有有效訂單可匯出"); return; }
 
-  const mERI = generateERI('master');
+  const mERI = newERI("master");   // STKSALE1 的 ERI，同時也是 STKSALE2.MASTERI、VCHRPLUS.SRCERI
 
-  let grossTotal = 0; // 原價總額
-  let netTotal = 0;   // 折後總額
+  let grossTotal = 0; // 原價總額（STDPRC * QTY）
+  let netTotal = 0;   // 折後總額（PRICE * QTY）
   let totalQty = 0;
 
-  // ✅ 付款彙總
+  // ✅ 付款彙總（VCHRPLUS 用）
   let cultureAmt = 0;
   let cashAmt = 0;
   let cardLineAmt = 0;
 
-  // ✅ 逐筆合併明細（不合併商品，先維持一筆一行，最不容易出事）
-  let serial = 1;
+  // ✅ STKSALE2 序號：會計系統範本從 0 開始
+  let serial = 0;
+
 
   validClients.forEach(c => {
     const pay = c.paymentMethod || "現金";
@@ -1968,4 +1974,5 @@ loadMasterData().then(() => {
   </script>
 </body>
 </html>
+
 
