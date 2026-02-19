@@ -1,19 +1,26 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>21.0腓利門雲POS</title>
+  <title>腓利門雲POS</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
   <style>
     /* --- 核心配色：大地色系優化 --- */
     :root {
-      --bg-color: #F4E4C1;
-      --primary-btn: #A0522D;
-      --primary-btn-hover: #8B4513;
-      --border-color: #D2B48C;
-      --input-bg: #FFF8DC;
-      --text-color: #333;
+      --bg-color: #F5EFE9;
+      --card-bg: #FFFFFF;
+      --primary-btn: #8C7A6B;
+      --primary-btn-hover: #756557;
+      --danger-btn: #B07D75;
+      --danger-btn-hover: #986B64;
+      --border-color: #E2DCD3;
+      --input-bg: #FCFAF8;
+      --text-color: #4A4036;
+      --text-muted: #8C7A6B;
+      --transition-smooth: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+      --shadow-sm: 0 2px 8px rgba(94, 79, 64, 0.06);
+      --shadow-md: 0 6px 16px rgba(94, 79, 64, 0.08);
     }
 
     body {
@@ -28,6 +35,7 @@
       background-color: var(--bg-color);
       padding-bottom: 50px;
       color: var(--text-color);
+      -webkit-font-smoothing: antialiased;
     }
 
     .flex-container {
@@ -37,37 +45,41 @@
       width: 100%;
       max-width: 1200px;
       margin-top: 20px;
+      gap: 20px;
     }
 
     .container-half {
-      background-color: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background-color: var(--card-bg);
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
       width: 48%;
       margin-bottom: 20px;
       min-height: 300px;
       box-sizing: border-box;
       position: relative;
       border-top: 4px solid var(--primary-btn);
+      transition: var(--transition-smooth);
     }
 
     .container-full {
-      background-color: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background-color: var(--card-bg);
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
       width: 100%;
       margin-bottom: 20px;
       box-sizing: border-box;
       border-top: 4px solid var(--primary-btn);
+      transition: var(--transition-smooth);
     }
 
     .header, .form-group, .table-container, .payment-info, .notes-container, .accounting-container {
       border: 1px solid var(--border-color);
-      padding: 10px;
-      border-radius: 4px;
+      padding: 16px;
+      border-radius: 8px;
       margin-bottom: 20px;
+      background-color: #FFFFFF;
     }
 
     .header {
@@ -78,30 +90,43 @@
 
     .header button, .form-group button, .btn-group button, .acct-btn {
       background-color: var(--primary-btn);
-      color: white;
+      color: #FFFFFF;
       border: none;
-      padding: 10px 15px;
-      border-radius: 4px;
+      padding: 10px 18px;
+      border-radius: 8px;
       cursor: pointer;
       margin-left: 5px;
       font-weight: bold;
-      transition: background 0.2s;
+      letter-spacing: 0.5px;
+      transition: var(--transition-smooth);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
     .header button:hover, .form-group button:hover {
       background-color: var(--primary-btn-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
 
-    #clear-all-btn { background-color: #a94442; }
-    #clear-all-btn:hover { background-color: #8a3331; }
+    #clear-all-btn { background-color: var(--danger-btn); }
+    #clear-all-btn:hover { background-color: var(--danger-btn-hover); }
 
     .form-group input, .notes-container textarea {
-      width: calc(100% - 20px);
+      width: calc(100% - 24px);
       padding: 12px;
       font-size: 1.1em;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
       background-color: var(--input-bg);
+      color: var(--text-color);
+      transition: var(--transition-smooth);
+    }
+
+    .form-group input:focus, .notes-container textarea:focus {
+      outline: none;
+      border-color: var(--primary-btn);
+      box-shadow: 0 0 0 3px rgba(140, 122, 107, 0.15);
+      background-color: #FFFFFF;
     }
 
     .notes-container textarea {
@@ -112,19 +137,21 @@
     .total {
       font-size: 1.8em;
       font-weight: bold;
-      color: #FFF;
+      color: #FFFFFF;
       background-color: var(--primary-btn);
-      padding: 15px;
+      padding: 18px;
       border-radius: 8px 8px 0 0;
       text-align: right;
+      letter-spacing: 1px;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
     }
 
     .payment-info {
       background-color: #FFFFFF;
       border-radius: 0 0 8px 8px;
-      border-top: 2px solid var(--primary-btn);
-      padding: 15px;
+      border-top: none;
+      box-shadow: var(--shadow-sm);
+      padding: 20px;
       display: flex;
       flex-direction: column;
       gap: 15px;
@@ -144,11 +171,15 @@
     }
 
     .payment-info input#paid-amount {
-      max-width: 120px;
-      padding: 5px;
+      max-width: 140px;
+      padding: 8px 12px;
       font-size: 1.4em;
       text-align: right;
-      border: 2px solid var(--border-color);
+      border: 1.5px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--primary-btn);
+      font-weight: bold;
+      transition: var(--transition-smooth);
     }
 
     .checkout-buttons-area {
@@ -163,30 +194,38 @@
       flex: 1;
       background-color: var(--primary-btn);
       border: none;
-      border-radius: 5px;
-      padding: 15px 10px;
+      border-radius: 10px;
+      padding: 18px 10px;
       text-align: left;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: var(--transition-smooth);
       display: flex;
       flex-direction: column;
       justify-content: center;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 0 rgba(0,0,0,0.15),
+                  0 8px 15px rgba(0,0,0,0.1);
       padding-left: 15px;
     }
 
     .checkout-btn:hover {
-      background-color: var(--primary-btn-hover);
+      filter: brightness(1.05);
       transform: translateY(-2px);
+      box-shadow: 0 6px 0 rgba(0,0,0,0.15),
+                  0 12px 20px rgba(0,0,0,0.12);
     }
 
-    .checkout-btn:active { transform: translateY(0); }
+    .checkout-btn:active {
+      filter: brightness(0.95);
+      transform: translateY(4px);
+      box-shadow: 0 0px 0 rgba(0,0,0,0.15),
+                  0 2px 4px rgba(0,0,0,0.1);
+    }
 
     .checkout-btn .btn-key {
       font-size: 2.2em !important;
       font-weight: 800 !important;
-      color: #FFF8DC !important;
-      margin-bottom: 5px;
+      color: #FFFFFF !important;
+      margin-bottom: 4px;
       display: block;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
       line-height: 1;
@@ -194,43 +233,46 @@
 
     .checkout-btn .btn-label {
       font-size: 0.9em !important;
-      color: #F5F5DC !important;
+      color: rgba(255,255,255,0.85) !important;
       display: block;
       font-weight: normal;
     }
 
     .btn-alert {
-      animation: heartBeat 1s infinite;
-      background-color: #ff8c00 !important;
-      transform: scale(1.05);
+      animation: gentlePulse 1.5s cubic-bezier(0.25, 0.8, 0.25, 1) infinite;
+      background-color: var(--danger-btn) !important;
       z-index: 10;
     }
 
-    @keyframes heartBeat {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
+    @keyframes gentlePulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(176, 125, 117, 0.4); }
+      50% { transform: scale(1.03); box-shadow: 0 0 0 10px rgba(176, 125, 117, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(176, 125, 117, 0); }
     }
 
     .table-container { overflow-x: auto; }
 
     table {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
       margin-bottom: 20px;
     }
 
     th, td {
-      padding: 8px;
+      padding: 12px 8px;
       text-align: left;
       border-bottom: 1px solid var(--border-color);
       vertical-align: middle;
+      color: var(--text-color);
     }
 
     th {
       font-size: 0.9em;
-      color: var(--primary-btn);
-      background-color: #f9f4e8;
+      color: var(--text-color);
+      background-color: var(--input-bg);
+      font-weight: 700;
+      border-bottom: 2px solid var(--border-color);
     }
 
     td { font-size: 0.9em; }
@@ -265,6 +307,147 @@
 
     .stat-item b { color: var(--primary-btn); }
 
+    #search-results { font-size: 0.9em; }
+    .search-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .search-text { flex: 1; }
+    .search-add-btn {
+      padding: 4px 8px;
+      font-size: 0.85em;
+      margin-left: 8px;
+      white-space: nowrap;
+    }
+
+    /* --- 歷史訂單摘要卡 --- */
+    .history-summary-box {
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .summary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px dashed var(--border-color);
+      padding-bottom: 10px;
+    }
+    .summary-title {
+      font-weight: 700;
+      color: var(--text-color);
+      font-size: 1.1em;
+    }
+    .summary-actions {
+      font-size: 0.85em;
+      color: var(--text-muted);
+    }
+    .summary-kpi-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-evenly;
+    }
+    .kpi-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .kpi-label {
+      font-size: 0.85em;
+      color: var(--text-muted);
+    }
+    .kpi-value {
+      font-size: 1.8em;
+      font-weight: 800;
+      color: var(--primary-btn);
+    }
+    .kpi-value .unit {
+      font-size: 0.5em;
+      font-weight: normal;
+      color: var(--text-muted);
+      margin-left: 4px;
+    }
+    .kpi-divider {
+      width: 1px;
+      height: 40px;
+      background-color: var(--border-color);
+    }
+    .summary-payment-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .pay-badge {
+      display: flex;
+      align-items: center;
+      background-color: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 6px 12px;
+      font-size: 0.9em;
+      box-shadow: 0 2px 4px rgba(94, 79, 64, 0.04);
+    }
+    .pay-name {
+      color: var(--text-muted);
+      margin-right: 8px;
+      font-size: 0.9em;
+    }
+    .pay-val {
+      font-weight: 700;
+      color: var(--text-color);
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 20px;
+      justify-content: space-between;
+    }
+    .action-bar .btn {
+      flex: 1;
+      min-width: 150px;
+      padding: 14px 12px;
+      border-radius: 12px;
+      border: none;
+      font-family: sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      color: #FFFFFF;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.15),
+                  0 8px 15px rgba(0,0,0,0.1);
+      transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .action-bar .btn:hover {
+      filter: brightness(1.08);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 0 rgba(0,0,0,0.15),
+                  0 12px 20px rgba(0,0,0,0.12);
+    }
+    .action-bar .btn:active {
+      filter: brightness(0.95);
+      transform: translateY(4px);
+      box-shadow: 0 0px 0 rgba(0,0,0,0.15),
+                  0 2px 4px rgba(0,0,0,0.1);
+    }
+    .btn-earth-1 { background-color: #7E6B57; }
+    .btn-earth-2 { background-color: #92816E; }
+    .btn-earth-3 { background-color: #A69684; }
+    .btn-earth-4 { background-color: #6C5A49; }
+    .btn-earth-5 { background-color: #B09281; }
+
     @media (max-width: 768px) {
       .flex-container {
         flex-direction: column;
@@ -278,6 +461,9 @@
       .checkout-buttons-area { flex-wrap: wrap; }
       .checkout-btn { min-width: 45%; }
     }
+
+    /* --- 熱感應列印（80mm） --- */
+    #receipt-print { display: none; }
 
     .animate-click { animation: pulse-green 0.5s ease-out; }
 
@@ -325,77 +511,155 @@
     }
 
     /* --- 記帳模式樣式 --- */
+    .header-title {
+      font-size: 1.2em;
+      font-weight: 800;
+      color: var(--primary-btn);
+    }
+
     .accounting-split-wrapper {
       display: flex;
-      gap: 20px;
+      gap: 24px;
       flex-wrap: wrap;
     }
+
     .accounting-col {
       flex: 1;
       min-width: 300px;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      padding: 10px;
-      background-color: #FFF8DC;
+      background-color: #FFFFFF;
+      border: none;
+      border-radius: 12px;
+      padding: 24px 20px;
+      box-shadow: var(--shadow-sm);
     }
+
+    .accounting-col.initial-col {
+      background-color: var(--input-bg);
+    }
+
     .accounting-col h4 {
       margin-top: 0;
       color: var(--primary-btn);
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 5px;
+      font-size: 1.1em;
+      font-weight: 700;
       text-align: center;
-    }
-    .accounting-col.initial-col {
-      background-color: #f0f8ff;
-      border-color: #b0c4de;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px dashed var(--border-color);
     }
 
     .money-input-group {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
-      padding: 4px 8px;
-      background-color: rgba(255,255,255,0.6);
-      border-radius: 3px;
+      margin-bottom: 12px;
+      padding: 6px 4px;
+      border-bottom: 1px solid rgba(226, 220, 211, 0.4);
     }
 
     .money-input-group label {
       font-size: 0.95em;
-      font-weight: bold;
-      color: #555;
+      font-weight: 700;
+      color: var(--text-color);
       width: 80px;
     }
 
     .money-input-group input {
-      width: 100px;
+      width: 110px;
       box-sizing: border-box;
-      border: 1px solid #ccc;
-      padding: 5px;
+      border: 1.5px solid var(--border-color);
+      background-color: #FFFFFF;
+      padding: 8px 12px;
       text-align: right;
-      border-radius: 3px;
+      border-radius: 8px;
+      font-size: 1.1em;
+      font-weight: bold;
+      color: var(--primary-btn);
+      transition: var(--transition-smooth);
+    }
+
+    .money-input-group input:focus {
+      outline: none;
+      border-color: var(--primary-btn);
+      box-shadow: 0 0 0 3px rgba(140, 122, 107, 0.15);
+    }
+
+    .expense-block {
+      margin-top: 24px;
+      padding: 16px 20px;
+      background-color: rgba(176, 125, 117, 0.08);
+      border: 1px solid rgba(176, 125, 117, 0.2);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+    }
+
+    .expense-block label {
+      font-weight: 700;
+      color: var(--danger-btn);
+      margin-right: 12px;
+    }
+
+    .expense-block input {
+      width: 120px;
+      padding: 8px 12px;
+      border: 1.5px solid rgba(176, 125, 117, 0.4);
+      border-radius: 6px;
+      text-align: right;
+      font-size: 1.1em;
+      font-weight: bold;
+      color: var(--danger-btn);
+      background-color: #FFFFFF;
     }
 
     .acct-summary {
-      background-color: #f9f9f9;
-      padding: 15px;
-      border-radius: 5px;
-      border: 2px solid var(--primary-btn);
-      margin-top: 15px;
+      background-color: #FFFFFF;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      margin-top: 24px;
+      border-top: 4px solid var(--primary-btn);
     }
 
     .acct-row {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
       font-size: 1.1em;
+      color: var(--text-color);
+      font-weight: 600;
+    }
+
+    .text-muted {
+      color: var(--text-muted);
+      font-weight: normal;
+    }
+
+    .text-small {
+      font-size: 0.9em;
+      margin-top: -6px;
+      margin-bottom: 16px;
+    }
+
+    .summary-divider {
+      height: 1px;
+      background-color: var(--border-color);
+      margin: 16px 0;
     }
 
     .acct-row.highlight {
-      border-top: 1px solid #ccc;
-      padding-top: 8px;
-      font-weight: bold;
-      color: #a94442;
+      font-size: 1.3em;
+      font-weight: 800;
+      color: var(--primary-btn);
+    }
+
+    .acct-row.diff-row {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border-color);
+      font-size: 1.2em;
+      font-weight: 800;
+      color: var(--danger-btn);
     }
 
     .btn-change-pay {
@@ -476,6 +740,72 @@
     }
 
     .modal-btn:active { transform: scale(0.95); }
+    .order-detail-content {
+      width: 100%;
+      max-height: 240px;
+      overflow: auto;
+      background: #fff;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: left;
+      white-space: pre-wrap;
+      box-sizing: border-box;
+      margin: 8px 0 12px 0;
+    }
+    #order-detail-modal .modal-btn-grid {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    .client-link.has-note::after {
+      content: " *";
+      color: var(--primary-btn);
+      font-weight: 800;
+      margin-left: 2px;
+    }
+    .client-link {
+      color: var(--text-color);
+      text-decoration: none;
+      font-weight: 700;
+      display: inline-block;
+      transition: var(--transition-smooth);
+    }
+    .client-link:hover {
+      color: var(--primary-btn);
+      transform: translateY(-1px);
+      text-shadow: 0 2px 6px rgba(94, 79, 64, 0.2);
+    }
+    .order-note-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .order-note-block label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+    .order-note-block textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      transition: var(--transition-smooth);
+    }
+    .order-note-block textarea:focus {
+      outline: none;
+      border-color: var(--primary-btn);
+      box-shadow: 0 0 0 3px rgba(140, 122, 107, 0.15);
+      background: #fff;
+    }
 
     .btn-m-cash { background-color: #28a745; }
     .btn-m-card { background-color: #007bff; }
@@ -498,20 +828,13 @@
 
       <div class="header" style="justify-content:flex-end;">
         <span id="current-date" style="margin-right:auto;font-weight:bold;"></span>
-        <div class="btn-group">
-          <button id="backup-btn" style="background-color:#4682B4;">備份</button>
-          <button id="restore-btn" style="background-color:#20B2AA;">還原</button>
-          <button id="export-csv-btn">匯出 CSV</button>
-          <button id="export-pilot-btn" style="background-color:#2E7D32;">匯出 Pilot 會計檔</button>
-          <button id="clear-all-btn">清空</button>
-        </div>
       </div>
 
       <div class="form-group">
         <label for="product-code">商品掃描 (輸入代碼/條碼)：</label>
         <form id="scan-form" onsubmit="return false;" style="display:flex;gap:5px;">
-          <input type="text" id="product-code" placeholder="掃描後按 Enter 自動加入" autofocus autocomplete="off" style="flex:1;">
-          <button type="submit" style="white-space:nowrap;">加入</button>
+          <input type="text" id="product-code" placeholder="掃描後按 Enter 自動加入" autofocus autocomplete="off" style="flex:1;text-transform:uppercase;">
+          <button type="submit" class="btn btn-earth-2" style="white-space:nowrap;">加入</button>
         </form>
         <div id="product-info" style="color:var(--primary-btn);margin-top:5px;font-weight:bold;height:1.2em;"></div>
       </div>
@@ -549,6 +872,12 @@
           <span>實付金額：<input type="number" id="paid-amount" value="1000"></span>
           <span>找錢：<span id="change-amount">0</span> 元</span>
         </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <label style="display:flex;gap:6px;align-items:center;">
+            <input type="checkbox" id="print-enabled">
+            結帳後列印
+          </label>
+        </div>
 
         <div class="checkout-buttons-area">
           <button id="btn-f7" class="checkout-btn"><span class="btn-key">F7</span><span class="btn-label">信用卡</span></button>
@@ -562,10 +891,28 @@
 
   <div class="flex-container">
     <div class="container-half">
-      <div class="table-title">
-        <b>歷史訂單 (作廢/刪除/修改付款)</b><br>
-        訂單數: <span id="total-orders">0</span> | 平均消費: <span id="average-amount">0</span> 元
-        <div id="payment-stats" class="stats-info"></div>
+      <div class="history-summary-box">
+        <div class="summary-header">
+          <span class="summary-title">歷史訂單</span>
+          <span class="summary-actions">(作廢 / 刪除 / 修改付款)</span>
+        </div>
+        <div class="summary-kpi-row">
+          <div class="kpi-item">
+            <span class="kpi-label">訂單數</span>
+            <span class="kpi-value" id="total-orders">0</span>
+          </div>
+          <div class="kpi-divider"></div>
+          <div class="kpi-item">
+            <span class="kpi-label">平均消費</span>
+            <span class="kpi-value"><span id="average-amount">0</span><span class="unit">元</span></span>
+          </div>
+        </div>
+        <div class="summary-payment-row">
+          <div class="pay-badge"><span class="pay-name">現金</span><span class="pay-val" id="pay-cash">0</span></div>
+          <div class="pay-badge"><span class="pay-name">刷卡</span><span class="pay-val" id="pay-credit">0</span></div>
+          <div class="pay-badge"><span class="pay-name">LINE</span><span class="pay-val" id="pay-line">0</span></div>
+          <div class="pay-badge"><span class="pay-name">文化</span><span class="pay-val" id="pay-culture">0</span></div>
+        </div>
       </div>
       <div class="table-container" style="max-height:400px;overflow-y:auto;">
         <table id="summary-table">
@@ -596,8 +943,8 @@
   <div class="flex-container">
     <div class="container-full">
       <div class="header">
-        <b>記帳模式 (現金盤點與對帳)</b>
-        <button onclick="clearAccountingInputs()">清空盤點數據</button>
+        <span class="header-title">記帳模式 (現金盤點與對帳)</span>
+        <button onclick="clearAccountingInputs()" class="btn btn-earth-4">歸零</button>
       </div>
 
       <div class="accounting-container">
@@ -625,25 +972,52 @@
           </div>
         </div>
 
-        <div style="margin-top:15px;padding:10px;background-color:#ffebee;border-radius:4px;border:1px solid #ffcccb;">
-          <label style="font-weight:bold;">(-) 額外支出 (憑證)：</label>
-          <input type="number" id="expenses-cash" value="0" min="0" style="width:100px;padding:5px;">
+        <div class="expense-block">
+          <label>(-) 額外支出：</label>
+          <input type="number" id="expenses-cash" value="0" min="0">
         </div>
 
         <div class="acct-summary">
-          <div class="acct-row"><span>盤點現金總額：</span><span id="calc-drawer-total">0</span></div>
-          <div class="acct-row" style="color:#666;"><span>(-) 初始金額總計：</span><span id="calc-initial">0</span></div>
-          <div class="acct-row" style="color:#666;"><span>(+) 支出費用憑證：</span><span id="calc-expenses">0</span></div>
-          <hr>
-          <div class="acct-row highlight"><span>= 實際營業額 (現金)：</span><span id="calc-net-cash">0</span></div>
-          <div class="acct-row" style="color:#555;font-size:0.9em;"><span>(系統記錄現金營收：<span id="sys-cash-total">0</span>)</span></div>
-          <div class="acct-row" id="cash-diff-row" style="font-weight:bold;margin-top:5px;">
+          <div class="acct-row">
+            <span>盤點現金總額：</span><span id="calc-drawer-total">0</span>
+          </div>
+          <div class="acct-row text-muted">
+            <span>(-) 初始金額總計：</span><span id="calc-initial">0</span>
+          </div>
+          <div class="acct-row text-muted">
+            <span>(+) 支出費用憑證：</span><span id="calc-expenses">0</span>
+          </div>
+
+          <div class="summary-divider"></div>
+
+          <div class="acct-row highlight">
+            <span>= 實際營業額 (現金)：</span><span id="calc-net-cash">0</span>
+          </div>
+          <div class="acct-row text-small text-muted">
+            <span>(系統記錄現金營收：<span id="sys-cash-total">0</span>)</span>
+          </div>
+          <div class="acct-row diff-row" id="cash-diff-row">
             <span>差異：</span><span id="cash-diff">0</span>
           </div>
         </div>
       </div>
     </div>
   </div>
+
+  <div class="flex-container">
+    <div class="container-full">
+      <div class="action-bar">
+        <button id="export-csv-btn" class="btn btn-earth-2">匯總訂單資訊</button>
+        <button id="backup-btn" class="btn btn-earth-3">存檔</button>
+        <button id="restore-btn" class="btn btn-earth-4">讀檔</button>
+        <button id="export-pilot-btn" class="btn btn-earth-1">匯出 Pilot 會計檔</button>
+        <button id="clear-all-btn" class="btn btn-earth-5">清空</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 熱感應列印區 -->
+  <div id="receipt-print"></div>
 
   <div id="payment-modal" class="modal-overlay">
     <div class="modal-content">
@@ -655,6 +1029,20 @@
         <button class="modal-btn btn-m-culture" onclick="selectPaymentMethod('文化幣')">文化幣</button>
       </div>
       <button class="modal-btn btn-m-cancel" onclick="closePaymentModal()">取消</button>
+    </div>
+  </div>
+
+  <div id="order-detail-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="modal-title">訂單內容</h3>
+      <pre id="order-detail-content" class="order-detail-content"></pre>
+      <div class="order-note-block">
+        <label for="order-note-input">備註</label>
+        <textarea id="order-note-input" rows="3" placeholder="可填統編、載具、特殊交代..."></textarea>
+      </div>
+      <div class="modal-btn-grid">
+        <button class="modal-btn btn-m-cancel" onclick="closeOrderDetail()">關閉</button>
+      </div>
     </div>
   </div>
 
@@ -770,6 +1158,7 @@
       const summaryTableBody = document.querySelector('#summary-table tbody');
       const overallSummaryTableBody = document.querySelector('#overall-summary-table tbody');
       const overallTotalAmountElement = document.getElementById('overall-total-amount');
+      const receiptPrint = document.getElementById('receipt-print');
 
       const btnF7 = document.getElementById('btn-f7');
       const btnF8 = document.getElementById('btn-f8');
@@ -786,8 +1175,12 @@
 
       const totalOrdersElement = document.getElementById('total-orders');
       const averageAmountElement = document.getElementById('average-amount');
-      const paymentStatsElement = document.getElementById('payment-stats');
+      const payCashElement = document.getElementById('pay-cash');
+      const payCreditElement = document.getElementById('pay-credit');
+      const payLineElement = document.getElementById('pay-line');
+      const payCultureElement = document.getElementById('pay-culture');
       const notesElement = document.getElementById('notes');
+      const printEnabledInput = document.getElementById('print-enabled');
 
       // 記帳模式
       const expensesCashInput = document.getElementById('expenses-cash');
@@ -820,6 +1213,10 @@
       // Modal
       let editingClientId = null;
       const paymentModal = document.getElementById('payment-modal');
+      const orderDetailModal = document.getElementById('order-detail-modal');
+      const orderDetailContent = document.getElementById('order-detail-content');
+      const orderNoteInput = document.getElementById('order-note-input');
+      let detailClientId = null;
 
       // --- 音效 ---
       const POSAudio = {
@@ -1217,6 +1614,16 @@
         setTimeout(() => btnElement.classList.remove('animate-click'), 500);
       };
 
+      // 列印開關（預設關）
+      let printEnabled = false;
+      if (printEnabledInput) {
+        printEnabledInput.checked = false;
+        printEnabledInput.addEventListener('change', () => {
+          printEnabled = printEnabledInput.checked;
+          localStorage.setItem('printEnabled', printEnabled ? 'true' : 'false');
+        });
+      }
+
 const handleCulturalCoinCheckout = () => {
   if (cart.length === 0) {
     if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
@@ -1244,6 +1651,191 @@ const handleCulturalCoinCheckout = () => {
   triggerButtonAnimation(btnF9);
   performCheckout(methodStr, true);
 };
+
+      const formatMoney = (n) => Math.round(n).toString();
+      const renderReceipt = (client) => {
+        if (!client) return;
+        const now = new Date();
+        const dt = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const itemsHtml = (client.items || []).map(it => {
+          const unit = it.unit || "";
+          const sub = it.price * it.quantity * (it.discount / 100);
+          return `
+            <div class="receipt-item">
+              <div class="item-name">${it.name || it.code}</div>
+              <div class="item-details">
+                <span>${it.quantity}${unit} x ${formatMoney(it.price)}</span>
+                <span>小計：${formatMoney(sub)}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const paid = Number(paidAmountInput.value || 0);
+        const total = Number(client.amount || 0);
+        const change = Math.max(0, Math.round(paid - total));
+
+        const recBooks = Object.values(products || {}).filter(p => p && p.class === "02-1" && p.name);
+        const pick = recBooks.length ? recBooks[Math.floor(Math.random() * recBooks.length)] : null;
+        const recTitle = pick ? pick.name : "對觀福音書";
+
+        receiptPrint.innerHTML = `
+          <div class="receipt-title">腓利門書房</div>
+
+          <div class="receipt-meta">日期：${dt}</div>
+          <div class="receipt-meta">單號：${client.id}</div>
+          <div class="receipt-meta">付款：${client.paymentMethod || '現金'}</div>
+
+          <div class="receipt-sep"></div>
+
+          ${itemsHtml}
+
+          <div class="receipt-sep"></div>
+
+          <div class="receipt-totals">
+            <div class="total-row">
+              <span>合計：</span><span>${formatMoney(total)}</span>
+            </div>
+            <div class="total-row">
+              <span>實收：</span><span>${formatMoney(paid)}</span>
+            </div>
+            <div class="total-row highlight">
+              <span>找零：</span><span>${formatMoney(change)}</span>
+            </div>
+          </div>
+
+          <div class="receipt-footer">
+            <div class="receipt-reco-top">✦ 閱讀這一本 ✦</div>
+            <div class="receipt-reco-title">［${recTitle}］</div>
+            <div class="receipt-reco-bottom">使我的靈魂甦醒</div>
+          </div>
+        `;
+      };
+
+      const printReceipt = (client) => {
+        if (!printEnabled) return;
+        renderReceipt(client);
+
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Receipt</title>
+  <style>
+    @page {
+      size: 46mm auto;
+      margin: 0;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      color: #000;
+      background: #fff;
+      line-height: 1.4;
+    }
+    .receipt {
+      width: 44mm;
+      margin: 0 auto;
+      padding-right: 3mm;
+      box-sizing: border-box;
+      word-wrap: break-word;
+    }
+    .receipt-title {
+      text-align: center;
+      font-weight: 900;
+      font-size: 22px;
+      margin: 8px 0 12px 0;
+      letter-spacing: 1px;
+    }
+    .receipt-meta {
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+    .receipt-sep {
+      border-top: 1px dashed #000;
+      margin: 8px 0;
+    }
+    .receipt-item {
+      margin: 6px 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .item-name {
+      font-weight: bold;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+    .item-details {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+    .receipt-totals {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin-top: 4px;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      width: 65%;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+    .total-row.highlight {
+      font-weight: bold;
+      font-size: 14px;
+      border-top: 1px solid #000;
+      padding-top: 2px;
+    }
+    .receipt-footer {
+      margin-top: 15px;
+      margin-bottom: 10px;
+      text-align: center;
+      border: 1.5px solid #000;
+      border-radius: 4px;
+      padding: 6px;
+    }
+    .receipt-reco-top,
+    .receipt-reco-bottom {
+      font-size: 10px;
+      font-weight: bold;
+    }
+    .receipt-reco-title {
+      font-size: 10px;
+      font-weight: 900;
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt">${receiptPrint.innerHTML}</div>
+</body>
+</html>`;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        iframe.onload = () => {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+          setTimeout(() => document.body.removeChild(iframe), 1000);
+        };
+      };
 
 
       const performCheckout = (paymentMethod, isComposite = false) => {
@@ -1290,6 +1882,16 @@ const handleCulturalCoinCheckout = () => {
         updateSummaryTable();
         saveSummary();
 
+        // 熱感應列印（使用系統印表機）
+        printReceipt(clients[clientId]);
+
+        // 每 20 筆訂單自動存檔 + 匯出會計檔
+        const validCount = Object.values(clients).filter(c => c && c.isValid).length;
+        if (validCount > 0 && validCount % 20 === 0) {
+          doBackup();
+          exportPilot();
+        }
+
         clientCounter++;
         localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
         localStorage.removeItem('cart');
@@ -1324,7 +1926,7 @@ const handleCulturalCoinCheckout = () => {
 
       scanForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const raw = productCodeInput.value.trim();
+        const raw = productCodeInput.value.trim().toUpperCase();
         if (!raw) return;
 
         const parsed = parseProductInput(raw);
@@ -1357,11 +1959,53 @@ const handleCulturalCoinCheckout = () => {
       });
 
       productCodeInput.addEventListener('input', (e) => {
+        e.target.value = e.target.value.toUpperCase();
         const v = e.target.value.trim();
         const p = products[v];
         if (p) productInfoElement.textContent = `${p.name} ${Math.round(p.price)}元`;
         else productInfoElement.textContent = '';
       });
+
+      let keywordShowMore = false;
+      const renderKeywordResults = (list) => {
+        searchResultsElement.innerHTML = '';
+        const unique = Array.from(new Set(list));
+        const maxCount = keywordShowMore ? 10 : 3;
+        const display = unique.slice(0, maxCount);
+
+        display.forEach(p => {
+          const div = document.createElement('div');
+          div.className = 'search-row';
+          const textSpan = document.createElement('div');
+          textSpan.className = 'search-text';
+          const stockStr = (p.qty !== undefined) ? `庫存:${p.qty}` : '';
+          textSpan.textContent = `${p.code} ｜ ${p.name} ｜ ${Math.round(p.price)}元 ${stockStr}`;
+          const btn = document.createElement('button');
+          btn.textContent = '加入';
+          btn.className = 'search-add-btn';
+          btn.addEventListener('click', () => {
+            addProductToCart(p.code);
+            productInfoElement.textContent = `${p.name}`;
+            searchResultsElement.innerHTML = '';
+            keywordSearchInput.value = '';
+            keywordShowMore = false;
+          });
+          div.appendChild(textSpan);
+          div.appendChild(btn);
+          searchResultsElement.appendChild(div);
+        });
+
+        if (unique.length > 3) {
+          const moreBtn = document.createElement('button');
+          moreBtn.textContent = keywordShowMore ? '收合' : `看更多 (${Math.min(10, unique.length)})`;
+          moreBtn.style.marginTop = "6px";
+          moreBtn.addEventListener('click', () => {
+            keywordShowMore = !keywordShowMore;
+            renderKeywordResults(list);
+          });
+          searchResultsElement.appendChild(moreBtn);
+        }
+      };
 
       keywordSearchInput.addEventListener('input', (e) => {
         const keywords = e.target.value.trim().toLowerCase().split(' ').filter(Boolean);
@@ -1372,26 +2016,8 @@ const handleCulturalCoinCheckout = () => {
             (p.barcode || "").includes(k)
           )
         );
-
-        searchResultsElement.innerHTML = '';
-        const unique = Array.from(new Set(matched));
-        const display = unique.slice(0, 3);
-
-        display.forEach(p => {
-          const div = document.createElement('div');
-          div.textContent = `${p.code} ｜ ${p.name} ｜ ${Math.round(p.price)}元`;
-          const btn = document.createElement('button');
-          btn.textContent = '加入';
-          btn.style.marginLeft = "10px";
-          btn.addEventListener('click', () => {
-            addProductToCart(p.code);
-            productInfoElement.textContent = `${p.name}`;
-            searchResultsElement.innerHTML = '';
-            keywordSearchInput.value = '';
-          });
-          div.appendChild(btn);
-          searchResultsElement.appendChild(div);
-        });
+        keywordShowMore = false;
+        renderKeywordResults(matched);
       });
 
       const calculatePaymentStats = () => {
@@ -1442,8 +2068,9 @@ const handleCulturalCoinCheckout = () => {
             });
           }
 
+          const noteClass = client.note ? 'client-link has-note' : 'client-link';
           row.innerHTML = `
-            <td><a href="#" class="client-link" data-client-id="${client.id}">${client.id}</a> ${!client.isValid ? '(已作廢)' : ''}</td>
+            <td><a href="#" class="${noteClass}" data-client-id="${client.id}">${client.id}</a> ${!client.isValid ? '(已作廢)' : ''}</td>
             <td>${Math.round(client.amount)}</td>
             <td><button class="btn-change-pay" data-client-id="${client.id}">${method}</button></td>
             <td class="btn-action-group">
@@ -1471,12 +2098,10 @@ const handleCulturalCoinCheckout = () => {
         averageAmountElement.textContent = validOrders > 0 ? Math.round(overallTotal / validOrders) : 0;
 
         const stats = calculatePaymentStats();
-        paymentStatsElement.innerHTML = `
-          <div class="stat-item">現金: <b>${stats.cash}</b></div>
-          <div class="stat-item">刷卡: <b>${stats.credit}</b></div>
-          <div class="stat-item">LINE: <b>${stats.linepay}</b></div>
-          <div class="stat-item">文化: <b>${stats.culture}</b></div>
-        `;
+        if (payCashElement) payCashElement.textContent = stats.cash;
+        if (payCreditElement) payCreditElement.textContent = stats.credit;
+        if (payLineElement) payLineElement.textContent = stats.linepay;
+        if (payCultureElement) payCultureElement.textContent = stats.culture;
 
         sysCashTotalEl.textContent = stats.cash;
         updateAccountingCalc();
@@ -1556,7 +2181,21 @@ const handleCulturalCoinCheckout = () => {
         if (!client) return;
         const method = client.paymentMethod || '現金';
         const items = client.items.map(item => `${item.code} ｜ ${item.name} x ${item.quantity} (${Math.round(item.price * item.quantity)})`).join('\n');
-        alert(`客戶：${clientId} ${!client.isValid ? '(已作廢)' : ''}\n付款方式：${method}\n\n購買商品：\n${items}`);
+        const header = `訂單：${clientId} ${!client.isValid ? '(已作廢)' : ''}\n付款方式：${method}`;
+        orderDetailContent.textContent = `${header}\n\n購買商品：\n${items}`;
+        orderNoteInput.value = client.note || '';
+        detailClientId = clientId;
+        orderDetailModal.style.display = 'flex';
+      };
+
+      window.closeOrderDetail = () => {
+        if (detailClientId && clients[detailClientId]) {
+          clients[detailClientId].note = orderNoteInput.value.trim();
+          saveSummary();
+          updateSummaryTable();
+        }
+        detailClientId = null;
+        orderDetailModal.style.display = 'none';
       };
 
       window.clearAccountingInputs = () => {
@@ -1605,7 +2244,7 @@ const handleCulturalCoinCheckout = () => {
       };
 
       // ===== 備份 / 還原 / 清空 =====
-      backupBtn.addEventListener('click', () => {
+      function doBackup() {
         const backupData = { cart, clients, overallSummary, clientCounter, sessionRules, priceOverrides, notes: notesElement.value, timestamp: new Date().toISOString() };
         const dataStr = JSON.stringify(backupData, null, 2);
         const blob = new Blob([dataStr], { type: 'application/json' });
@@ -1615,7 +2254,9 @@ const handleCulturalCoinCheckout = () => {
         a.download = `pos_backup_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`;
         a.click();
         URL.revokeObjectURL(url);
-      });
+      }
+
+      backupBtn.addEventListener('click', doBackup);
 
       restoreBtn.addEventListener('click', () => {
         if (confirm('注意：還原將覆蓋目前訂單資料。')) importFileInput.click();
@@ -1662,13 +2303,14 @@ exportCsvBtn.addEventListener('click', () => {
     const overallTotalAmount = Object.values(overallSummary).reduce((sum, item) => sum + item.totalAmount, 0);
 
     const summaryRows = [
-      ['客戶名稱', '消費金額', '付款方式', '狀態'],
-      ...Object.values(clients).map(client => [
-        client.id,
+      ['客戶名稱', '消費金額', '付款方式', '狀態', '備註'],
+      ...Object.values(clients).map(client => ([
+        `${client.id}`,
         Math.round(client.amount),
         client.paymentMethod || '現金',
-        client.isValid ? '有效' : '已作廢'
-      ]),
+        client.isValid ? '有效' : '已作廢',
+        client.note || ''
+      ])),
       [],
       ['商品代碼', '名稱', '總數量', '總金額'],
       ...Object.values(overallSummary).map(item => [
@@ -1696,18 +2338,22 @@ exportCsvBtn.addEventListener('click', () => {
 
     const detailsRows = [
       ['詳細內容：'],
-      ['客戶名稱', '付款方式', '商品名稱', '數量', '單價', '折扣', '小計', '狀態'],
+      ['客戶名稱', '付款方式', '商品名稱', '數量', '單價', '折扣', '小計', '狀態', '備註'],
       ...Object.values(clients).flatMap(client =>
-        (client.items || []).map(item => [
-          client.id,
-          client.paymentMethod || '現金',
-          item.name,
-          item.quantity,
-          Math.round(item.price),
-          `${item.discount}%`,
-          Math.round(item.price * item.quantity * (item.discount / 100)),
-          client.isValid ? '有效' : '已作廢'
-        ])
+        (client.items || []).map(item => {
+          const note = client.note ? ` ${client.note}` : '';
+          return [
+            `${client.id}`,
+            client.paymentMethod || '現金',
+            item.name,
+            item.quantity,
+            Math.round(item.price),
+            `${item.discount}%`,
+            Math.round(item.price * item.quantity * (item.discount / 100)),
+            client.isValid ? '有效' : '已作廢',
+            client.note || ''
+          ];
+        })
       )
     ];
 
@@ -1739,12 +2385,13 @@ exportCsvBtn.addEventListener('click', () => {
 // ==========================================================
 // ✅ Pilot 匯出：去掉全欄位包引號 + 修正 UNIT/QTYSTR/INVRETURN
 // ==========================================================
-exportPilotBtn.onclick = () => {
+function exportPilot() {
   const now = new Date();
 
   // ✅ 你指定：固定單別（避免跟系統既有單別衝突）
   // 注意：系統端也要允許/存在此單別，否則會被拒收
   const DOC_CODE = "1159999";
+  const FIX_CODE = DOC_CODE;
 
   const custCode = "0002";
   const whCode = "0000";
@@ -1766,7 +2413,18 @@ exportPilotBtn.onclick = () => {
 
   // ✅ Header：完全照會計系統匯出欄位順序
   const s1_header = ["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"];
-  const s2_header = ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"];
+  // 匯入版型切換：A = Pilot 匯出格式（預設），B = 另一版型（VLIDDATE 位置不同）
+  const S2_PROFILE = "E"; // A=Pilot匯出格式, B=VLIDDATE 在 UNIT 後, C=VLIDDATE 在 PRICE 後, D=VLIDDATE 在 RATE 後, E=VLIDDATE 在 DISCOUNT 位置
+  const EXPORT_ENCODING = "big5"; // big5 or utf8
+  const s2_header = (S2_PROFILE === "B")
+    ? ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","VLIDDATE","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]
+    : (S2_PROFILE === "C")
+      ? ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","VLIDDATE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]
+      : (S2_PROFILE === "D")
+        ? ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","VLIDDATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]
+        : (S2_PROFILE === "E")
+          ? ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","VLIDDATE","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2","DISCOUNT"]
+          : ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"];
   const v1_header = ["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"];
 
   // ✅ rows：會計系統範本是「含表頭」
@@ -1784,10 +2442,10 @@ exportPilotBtn.onclick = () => {
   let netTotal = 0;   // 折後總額（PRICE * QTY）
   let totalQty = 0;
 
-  // ✅ 付款彙總（VCHRPLUS 用）
-  let cultureAmt = 0;
-  let cashAmt = 0;
-  let cardLineAmt = 0;
+  // ✅ 付款逐筆（VCHRPLUS 用）
+  const vpay_cc = [];
+  const vpay_line = [];
+  const vpay_culture = [];
 
   // ✅ STKSALE2 序號：會計系統範本從 0 開始
   let serial = 0;
@@ -1799,35 +2457,35 @@ exportPilotBtn.onclick = () => {
 
     if (pay.includes("文化幣")) {
       const coinMatch = pay.match(/文化幣.*?\((\d+)\)/);
-      const cashMatch = pay.match(/現金\((\d+)\)/);
-      if (coinMatch && coinMatch[1]) cultureAmt += parseInt(coinMatch[1], 10);
-      if (cashMatch && cashMatch[1]) cashAmt += parseInt(cashMatch[1], 10);
-      if ((!cashMatch || !cashMatch[1]) && coinMatch && coinMatch[1]) {
-        const ccc = parseInt(coinMatch[1], 10);
-        if (amt - ccc > 0) cashAmt += (amt - ccc);
-      }
-    } else if (pay.includes("信用卡") || pay.includes("LINE")) {
-      cardLineAmt += amt;
+      const cultureAmt = (coinMatch && coinMatch[1]) ? parseInt(coinMatch[1], 10) : amt;
+      if (cultureAmt > 0) vpay_culture.push(cultureAmt);
+    } else if (pay.includes("LINE")) {
+      if (amt > 0) vpay_line.push(amt);
+    } else if (pay.includes("信用卡")) {
+      if (amt > 0) vpay_cc.push(amt);
     } else {
-      cashAmt += amt;
+      // 現金不列入加減項目
     }
 
     (c.items || []).forEach(it => {
       const discountRate = (it.discount !== undefined) ? it.discount : 100;
-      const netPrice = it.price * (discountRate / 100);
+      // 匯出以實際成交單價為準，折扣一律 100%
+      const soldPrice = it.price * (discountRate / 100);
 
-      grossTotal += it.price * it.quantity;
-      netTotal += netPrice * it.quantity;
+      grossTotal += soldPrice * it.quantity;
+      netTotal += soldPrice * it.quantity;
       totalQty += it.quantity;
 
-      const dERI = it.detailERI || ("0H8" + rnd());
-      const rowNetAmt = Math.round(netPrice * it.quantity);
-      const unit = it.unit || "個";
+      const dERI = it.detailERI || newERI("detail");
+      const rowNetAmt = Math.round(soldPrice * it.quantity);
+      const unitCode = it.unitCode || (products[it.code] && products[it.code].unitCode) || "";
+      const unitName = unitMap[unitCode] || it.unit || unitCode || "個";
+      const exportUnit = unitName;
 
       let r2_map = {};
       r2_map["ERI"] = dERI;
       r2_map["MASTERI"] = mERI;
-      r2_map["STAFF"] = staffCode;
+      r2_map["STAFF"] = "";
       r2_map["CUST"] = custCode;
       r2_map["GWN"] = whCode;
       r2_map["PROD"] = it.code;
@@ -1836,27 +2494,29 @@ exportPilotBtn.onclick = () => {
       r2_map["CODE"] = FIX_CODE;
       r2_map["SERIAL"] = serial++;
 
-      r2_map["SPEC"] = it.price;
+      r2_map["SPEC"] = "";
       r2_map["QTY"] = it.quantity;
-      r2_map["UNIT"] = unit;
-      r2_map["PRICE"] = netPrice;
+      r2_map["UNIT"] = exportUnit;
+      r2_map["PRICE"] = soldPrice;
       r2_map["AMT"] = rowNetAmt;
 
       r2_map["REALQTY"] = it.quantity;
       r2_map["SUBQTY"] = 0;
-      r2_map["QTYSTR"] = `${it.quantity}${unit}`;
+      r2_map["PRODDESC"] = "";
+      r2_map["QTYSTR"] = exportUnit;
       r2_map["CURR"] = "NTD";
       r2_map["RATE"] = 1;
-      r2_map["STDPRC"] = it.price;
-      r2_map["DISCOUNT"] = discountRate;
+      r2_map["STDPRC"] = soldPrice;
+      r2_map["DISCOUNT"] = 100;
 
-      r2_map["INVQTY"] = 0;
+      r2_map["INVQTY"] = it.quantity;
       r2_map["SAMPLE"] = 0;
-      r2_map["INVRETURN"] = "";
+      r2_map["INVRETURN"] = 0;
+      r2_map["VPNO"] = "";
       r2_map["VLIDDATE"] = date;
 
-      r2_map["INVPRC"] = 0;
-      r2_map["INVAMT"] = 0;
+      r2_map["INVPRC"] = soldPrice;
+      r2_map["INVAMT"] = Math.round(rowNetAmt);
       r2_map["INVAMT1"] = 0;
       r2_map["GIFT"] = 0;
       r2_map["MFLAG"] = 0;
@@ -1911,12 +2571,12 @@ exportPilotBtn.onclick = () => {
 
   s1_rows.push(s1_header.map(h => r1_map[h] !== undefined ? r1_map[h] : ""));
 
-  // ✅ V1：三種付款各出一行（有金額才出）
+  // ✅ V1：逐筆列出（先信用卡、再 LINE PAY、最後文化幣）
   let sn = 0;
   const pushV = (code, subj, amt) => {
     if (!amt) return;
     let rv = new Array(v1_header.length).fill("");
-    rv[0] = "01E" + rnd();
+    rv[0] = newERI("pay");
     rv[1] = mERI;
     rv[2] = sn++;
     rv[3] = code;
@@ -1927,24 +2587,70 @@ exportPilotBtn.onclick = () => {
     v1_rows.push(rv);
   };
 
-  pushV("61", "1144.61", cultureAmt);
-  pushV("16", "1144.358", cardLineAmt);
-  pushV("5", "1144.355", cashAmt);
+  vpay_cc.forEach(amt => pushV("5", "1144.355", amt));
+  vpay_line.forEach(amt => pushV("51", "1144.358", amt));
+  vpay_culture.forEach(amt => pushV("61", "1144.61", amt));
 
-  // ✅ 下載（不再全欄位包引號；只在必要時才加引號）
+  // ✅ 下載（全欄位包引號；不加 BOM，對齊系統匯出格式）
   const dl = (rows, filename) => {
-    const mustQuote = (s) => /[",\r\n]/.test(String(s));
     const esc = (v) => {
       if (v === null || v === undefined) return "";
       let s = String(v).replace(/"/g, '""');
-      return mustQuote(s) ? `"${s}"` : s;
+      return `"${s}"`;
     };
 
     const csvContent = rows
       .map(r => r.map(esc).join(','))
       .join('\r\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    const encodeBig5 = (() => {
+      let map = null;
+      const buildMap = () => {
+        const m = new Map();
+        for (let i = 0; i < 0x80; i++) m.set(String.fromCharCode(i), [i]);
+        const dec = new TextDecoder("big5");
+        const trails = [];
+        for (let t = 0x40; t <= 0x7E; t++) trails.push(t);
+        for (let t = 0xA1; t <= 0xFE; t++) trails.push(t);
+        for (let lead = 0x81; lead <= 0xFE; lead++) {
+          for (let i = 0; i < trails.length; i++) {
+            const trail = trails[i];
+            const ch = dec.decode(new Uint8Array([lead, trail]));
+            if (ch && ch !== "\uFFFD" && !m.has(ch)) {
+              m.set(ch, [lead, trail]);
+            }
+          }
+        }
+        return m;
+      };
+      return (str) => {
+        if (!map) map = buildMap();
+        const out = [];
+        for (const ch of str) {
+          const b = map.get(ch);
+          if (b) {
+            if (b.length === 1) out.push(b[0]);
+            else out.push(b[0], b[1]);
+          } else {
+            out.push(0x3F);
+          }
+        }
+        return new Uint8Array(out);
+      };
+    })();
+
+    let blob;
+    if (EXPORT_ENCODING === "big5") {
+      try {
+        const bytes = encodeBig5(csvContent);
+        blob = new Blob([bytes], { type: 'text/csv;charset=big5' });
+      } catch (e) {
+        alert("Big5 轉碼失敗，改用 UTF-8 匯出");
+        blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+      }
+    } else {
+      blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    }
     const a = document.createElement('a');
     const u = URL.createObjectURL(blob);
     a.href = u;
@@ -1957,6 +2663,8 @@ exportPilotBtn.onclick = () => {
   setTimeout(() => dl(s2_rows, "STKSALE2.csv"), 500);
   setTimeout(() => dl(v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
 };
+
+exportPilotBtn.onclick = exportPilot;
 
 // ===== 啟動 =====
 loadDiscountRates();
@@ -1974,5 +2682,8 @@ loadMasterData().then(() => {
   </script>
 </body>
 </html>
+
+
+
 
 
