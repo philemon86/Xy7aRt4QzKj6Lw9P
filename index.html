@@ -466,7 +466,7 @@
       .accounting-split-wrapper { flex-direction: column; }
       .accounting-col { min-width: 100%; }
       .money-input-group label { width: auto; font-size: 0.9em; }
-      .money-input-group input { width: 80px; font-size: 1em; }
+      .money-input-group input { width: 60px; font-size: 0.95em; }
       .accounting-col h4 { font-size: 1em; }
     }
 
@@ -558,18 +558,20 @@
 
     .money-input-group {
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
-      margin-bottom: 12px;
-      padding: 6px 4px;
+      margin-bottom: 8px;
+      padding: 4px 2px;
       border-bottom: 1px solid rgba(226, 220, 211, 0.4);
+      gap: 6px;
     }
 
     .money-input-group label {
       font-size: 0.95em;
       font-weight: 700;
       color: var(--text-color);
-      width: 80px;
+      width: 58px;
+      white-space: nowrap;
     }
 
     .money-input-group input {
