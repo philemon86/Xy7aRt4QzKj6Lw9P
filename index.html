@@ -464,7 +464,7 @@
       .payment-details { flex-direction: column; align-items: flex-start; gap: 8px; }
       .payment-info input#paid-amount { max-width: 100%; width: 100%; }
       .accounting-split-wrapper { flex-direction: column; }
-      .accounting-col { min-width: 100%; }
+      .accounting-col { min-width: 100%; width: 100%; padding: 14px 10px; }
       .money-input-group label { width: auto; font-size: 0.9em; }
       .money-input-group input { width: 60px; font-size: 0.95em; }
       .accounting-col h4 { font-size: 1em; }
@@ -539,6 +539,7 @@
       border-radius: 12px;
       padding: 24px 20px;
       box-shadow: var(--shadow-sm);
+      box-sizing: border-box;
     }
 
     .accounting-col.initial-col {
