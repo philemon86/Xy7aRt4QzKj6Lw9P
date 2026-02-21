@@ -190,62 +190,6 @@
       margin-top: 10px;
     }
 
-    .total-row {
-      display: flex;
-      gap: 12px;
-      align-items: stretch;
-    }
-
-    .total-row .total {
-      flex: 1;
-    }
-
-    #clear-cart-btn {
-      background-color: var(--danger-btn);
-      color: #FFFFFF;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-      letter-spacing: 0.5px;
-      transition: var(--transition-smooth);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      white-space: nowrap;
-    }
-
-    #clear-cart-btn:hover {
-      background-color: var(--danger-btn-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
-
-    .bulk-input textarea {
-      width: calc(100% - 24px);
-      padding: 12px;
-      font-size: 1em;
-      border: 1.5px solid var(--border-color);
-      border-radius: 8px;
-      background-color: var(--input-bg);
-      color: var(--text-color);
-      transition: var(--transition-smooth);
-      resize: vertical;
-      min-height: 90px;
-    }
-
-    .bulk-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .bulk-result {
-      margin-top: 6px;
-      font-size: 0.9em;
-      color: var(--text-muted);
-      min-height: 1.2em;
-    }
-
     .checkout-btn {
       flex: 1;
       background-color: var(--primary-btn);
@@ -912,17 +856,6 @@
         <div id="search-results" class="search-results" style="margin-top:10px;"></div>
       </div>
 
-      <div class="form-group bulk-input">
-        <label for="bulk-input">批次輸入（每行一筆）：</label>
-        <textarea id="bulk-input" placeholder="格式：\n2*ABC123\nABC123,2\nABC123"></textarea>
-        <div class="bulk-actions">
-          <button id="bulk-add-btn" class="btn btn-earth-2">批次加入</button>
-          <button id="bulk-clear-btn" class="btn btn-earth-5">清除輸入</button>
-          <button id="bulk-backup-btn" class="btn btn-earth-4">回填購物車</button>
-        </div>
-        <div id="bulk-result" class="bulk-result"></div>
-      </div>
-
       <div id="db-status" style="font-size:0.8em;color:gray;text-align:right;"></div>
     </div>
 
@@ -943,10 +876,7 @@
         </table>
       </div>
 
-      <div class="total-row">
-        <button id="clear-cart-btn">清除購物車</button>
-        <div class="total">應付金額：<span id="total-amount">0</span> 元</div>
-      </div>
+      <div class="total">應付金額：<span id="total-amount">0</span> 元</div>
 
       <div class="payment-info">
         <div class="payment-details">
@@ -1230,11 +1160,6 @@
       const searchResultsElement = document.getElementById('search-results');
       const productCodeInput = document.getElementById('product-code');
       const scanForm = document.getElementById('scan-form');
-      const bulkInput = document.getElementById('bulk-input');
-      const bulkAddBtn = document.getElementById('bulk-add-btn');
-      const bulkClearBtn = document.getElementById('bulk-clear-btn');
-      const bulkBackupBtn = document.getElementById('bulk-backup-btn');
-      const bulkResult = document.getElementById('bulk-result');
       const paidAmountInput = document.getElementById('paid-amount');
       const productInfoElement = document.getElementById('product-info');
       const dbStatusElement = document.getElementById('db-status');
@@ -1255,7 +1180,6 @@
       const exportCsvBtn = document.getElementById('export-csv-btn');
       const exportPilotBtn = document.getElementById('export-pilot-btn');
       const clearAllBtn = document.getElementById('clear-all-btn');
-      const clearCartBtn = document.getElementById('clear-cart-btn');
       const backupBtn = document.getElementById('backup-btn');
       const restoreBtn = document.getElementById('restore-btn');
       const importFileInput = document.getElementById('import-file');
@@ -1283,68 +1207,6 @@
       let cart = JSON.parse(localStorage.getItem('cart')) || [];
       let products = {}; // key: CODE 或 BARCODE
       let discountRates = {};
-      // 單品固定折扣（不走分類/聯合折扣）
-      const SPECIAL_DISCOUNT_MAP = {
-        "W960I01": 100,
-        "W960I02": 100,
-        "W960I05": 100,
-        "W960I06": 100,
-        "W960I203": 100,
-        "W960I204": 100,
-        "W960I209": 100,
-        "W960I210": 100,
-        "FBZ03-01": 100,
-        "FBZ03-02": 100,
-        "MAX001": 100,
-        "MAX002": 100,
-        "OCQ001": 100,
-        "OCQ002": 100,
-        "OCQ003": 100,
-        "OCQ004": 100,
-        "PG37": 90,
-        "PG39-1": 90,
-        "PG39-2": 90,
-        "PG39-3": 90,
-        "CM029": 100,
-        "CM033": 100,
-        "CM058": 100,
-        "CM125": 100,
-        "CUP04B": 100,
-        "CUP04GR": 100,
-        "CUP04P": 100,
-        "CUP04PU": 100,
-        "CUP04W": 100,
-        "CUP05B": 100,
-        "CUP05GR": 100,
-        "CUP05P": 100,
-        "CUP05PU": 100,
-        "CUP05W": 100,
-        "CUP06": 100,
-        "ESV/CN67ATI": 100,
-        "BC101": 100,
-        "BC109": 100,
-        "1501": 100,
-        "8173": 100,
-        "C136": 60,
-        "C167": 60,
-        "C170": 60,
-        "C173": 60,
-        "C177": 60,
-        "C178": 60,
-        "C180": 60,
-        "C181": 60,
-        "C190": 60,
-        "C222": 70,
-        "C050": 100,
-        "CM17": 100,
-        "12001": 100,
-        "15013": 100,
-        "15014": 100,
-        "PRAY001": 100,
-        "PRAY002": 100,
-        "PRAY003": 100
-        "FQ6001": 100
-      };
       let clients = JSON.parse(localStorage.getItem('clients')) || {};
       let overallSummary = JSON.parse(localStorage.getItem('overallSummary')) || {};
       let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
@@ -1548,16 +1410,7 @@
         }
       };
 
-      const getSpecialDiscount = (item) => {
-        if (!item) return undefined;
-        if (SPECIAL_DISCOUNT_MAP[item.code] !== undefined) return SPECIAL_DISCOUNT_MAP[item.code];
-        if (item.barcode && SPECIAL_DISCOUNT_MAP[item.barcode] !== undefined) return SPECIAL_DISCOUNT_MAP[item.barcode];
-        return undefined;
-      };
-
       const calculateItemDiscount = (item) => {
-        const special = getSpecialDiscount(item);
-        if (special !== undefined) return special;
         if (item.isManual) return item.discount;
         if (item.class && sessionRules[item.class] !== undefined) return sessionRules[item.class];
         return item.defaultDiscount || 100;
@@ -1602,9 +1455,6 @@
 
           if (priceOverrides[realCode] !== undefined) newItem.price = priceOverrides[realCode];
           newItem.discount = calculateItemDiscount(newItem);
-          if (getSpecialDiscount(newItem) !== undefined) {
-            newItem.isManual = true; // 鎖定折扣，避免被分類/聯合折扣覆蓋
-          }
 
           cart.push(newItem);
         }
@@ -1615,36 +1465,6 @@
         saveCart();
         productCodeInput.value = '';
         productCodeInput.focus();
-      };
-
-      const addProductWithQuantity = (codeOrBarcode, quantity) => {
-        resetIdleTimer();
-        const qty = parseInt(quantity, 10);
-        if (isNaN(qty) || qty === 0) return false;
-
-        const product = products[codeOrBarcode];
-        if (!product) return false;
-
-        const realCode = product.code;
-        const existingItem = cart.find(it => it.code === realCode);
-        if (existingItem) {
-          existingItem.quantity += qty;
-          if (!existingItem.isManual) existingItem.discount = calculateItemDiscount(existingItem);
-        } else {
-          const newItem = {
-            ...product,
-            quantity: qty,
-            isManual: false,
-            discount: 0,
-          };
-          if (priceOverrides[realCode] !== undefined) newItem.price = priceOverrides[realCode];
-          newItem.discount = calculateItemDiscount(newItem);
-          if (getSpecialDiscount(newItem) !== undefined) {
-            newItem.isManual = true;
-          }
-          cart.push(newItem);
-        }
-        return true;
       };
 
       const updateCartDisplay = () => {
@@ -2109,10 +1929,9 @@ const handleCulturalCoinCheckout = () => {
 
       // 支援 2*CODE
       const parseProductInput = (input) => {
-        const starLeft = input.match(/^(\d+)\*([\w\-\/]+)$/);
-        if (starLeft) return { quantity: parseInt(starLeft[1], 10), code: starLeft[2] };
-        const starRight = input.match(/^([\w\-\/]+)\*(\d+)$/);
-        if (starRight) return { quantity: parseInt(starRight[2], 10), code: starRight[1] };
+        const pattern = /^(\d+)\*([\w-]+)$/;
+        const match = input.match(pattern);
+        if (match) return { quantity: parseInt(match[1],10), code: match[2] };
         return null;
       };
 
@@ -2148,65 +1967,6 @@ const handleCulturalCoinCheckout = () => {
           POSAudio.error();
           productCodeInput.select();
         }
-      });
-
-      const parseBulkLine = (line) => {
-        const raw = line.trim().toUpperCase();
-        if (!raw) return null;
-        let qty = 1;
-        let code = raw;
-        const starLeft = raw.match(/^(\d+)\*([\w\-\/]+)$/);
-        const starRight = raw.match(/^([\w\-\/]+)\*(\d+)$/);
-        const comma = raw.match(/^([\w\-\/]+)\s*,\s*(\d+)$/);
-        if (starLeft) { qty = parseInt(starLeft[1], 10); code = starLeft[2]; }
-        else if (starRight) { code = starRight[1]; qty = parseInt(starRight[2], 10); }
-        else if (comma) { code = comma[1]; qty = parseInt(comma[2], 10); }
-        return { code, qty };
-      };
-
-      bulkAddBtn.addEventListener('click', () => {
-        const lines = (bulkInput.value || '').split(/\r?\n/);
-        let success = 0;
-        let failed = [];
-        lines.forEach(line => {
-          const parsed = parseBulkLine(line);
-          if (!parsed) return;
-          const ok = addProductWithQuantity(parsed.code, parsed.qty);
-          if (ok) success += 1;
-          else failed.push(parsed.code);
-        });
-        if (success > 0) {
-          updateCartDisplay();
-          calculateTotal();
-          saveCart();
-          productCodeInput.focus();
-        }
-        if (bulkResult) {
-          if (failed.length > 0) {
-            bulkResult.textContent = `已加入 ${success} 筆，失敗：${failed.join(', ')}`;
-          } else {
-            bulkResult.textContent = `已加入 ${success} 筆`;
-          }
-        }
-      });
-
-      bulkClearBtn.addEventListener('click', () => {
-        bulkInput.value = '';
-        if (bulkResult) bulkResult.textContent = '';
-        bulkInput.focus();
-      });
-
-      bulkBackupBtn.addEventListener('click', () => {
-        if (cart.length === 0) return;
-        if (!confirm('要把目前購物車回填到批次輸入，並清空購物車嗎？')) return;
-        const lines = cart.map(item => `${item.code}*${item.quantity}`);
-        bulkInput.value = lines.join('\n');
-        cart = [];
-        updateCartDisplay();
-        calculateTotal();
-        localStorage.removeItem('cart');
-        if (bulkResult) bulkResult.textContent = '已回填並清空購物車';
-        bulkInput.focus();
       });
 
       productCodeInput.addEventListener('input', (e) => {
@@ -2544,17 +2304,6 @@ const handleCulturalCoinCheckout = () => {
           location.reload();
         }
       };
-
-      clearCartBtn.addEventListener('click', () => {
-        if (cart.length === 0) return;
-        if (confirm('確定要清除購物車？')) {
-          cart = [];
-          updateCartDisplay();
-          calculateTotal();
-          localStorage.removeItem('cart');
-          productCodeInput.focus();
-        }
-      });
 
 // ===== 你原本匯出 CSV（保留）=====
 exportCsvBtn.addEventListener('click', () => {
@@ -2944,3 +2693,8 @@ loadMasterData().then(() => {
   </script>
 </body>
 </html>
+
+
+
+
+
