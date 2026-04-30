@@ -190,6 +190,37 @@
       margin-top: 10px;
     }
 
+    .checkout-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .cart-table-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .cart-table-scroll {
+      max-height: 320px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      border-radius: 8px;
+    }
+
+    #cart-table {
+      margin-bottom: 0;
+    }
+
+    #cart-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background-color: #f3ece5;
+    }
+
     .total-row {
       display: flex;
       gap: 12px;
@@ -513,6 +544,12 @@
       .container-half, .container-full {
         width: 100%;
         margin-bottom: 20px;
+      }
+      .checkout-panel {
+        gap: 12px;
+      }
+      .cart-table-scroll {
+        max-height: 280px;
       }
       .checkout-buttons-area { flex-wrap: wrap; }
       .checkout-btn { min-width: 45%; }
@@ -926,21 +963,23 @@
       <div id="db-status" style="font-size:0.8em;color:gray;text-align:right;"></div>
     </div>
 
-    <div class="container-half">
-      <div class="table-container">
+    <div class="container-half checkout-panel">
+      <div class="table-container cart-table-shell">
         <div class="table-title" style="font-weight:bold;color:var(--primary-btn);margin-bottom:5px;">本次結帳明細</div>
-        <table id="cart-table">
-          <thead>
-            <tr>
-              <th>名稱</th>
-              <th>單價</th>
-              <th>數量</th>
-              <th style="min-width:100px;">折扣 %</th>
-              <th>小計</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+        <div class="cart-table-scroll">
+          <table id="cart-table">
+            <thead>
+              <tr>
+                <th>名稱</th>
+                <th>單價</th>
+                <th>數量</th>
+                <th style="min-width:100px;">折扣 %</th>
+                <th>小計</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="total-row">
@@ -2986,6 +3025,8 @@ loadMasterData().then(() => {
   </script>
 </body>
 </html>
+
+
 
 
 
