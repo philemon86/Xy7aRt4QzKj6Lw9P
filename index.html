@@ -1339,10 +1339,6 @@
         "C050": 100,
         "CM17": 100,
         "12001": 100,
-        "FG035-01": 100,
-        "FG035-02": 100,
-        "FG035-03": 100,
-        "FG035-04": 100,
         "15013": 100,
         "15014": 100,
         "PRAY001": 100,
@@ -1443,7 +1439,7 @@
         discountRates = {
           "POS": 100, "02-2": 100, "09-2": 90, "09-5": 100, "09-4": 100, "09-1": 100,
           "09-3": 90, "06-1": 100, "07-1": 90, "07-2": 90, "07-3": 90, "07-4": 90,
-          "07-5": 90, "07-6": 90, "07-7": 90, "06-2": 100, "02-1": 90, "08-2": 90,
+          "07-5": 90, "07-6": 90, "07-7": 90, "06-2": 100, "02-1": 80, "08-2": 90,
           "08-5": 90, "08-3": 90, "08-4": 90, "08-1": 90, "12": 100, "03-2": 100,
           "02-3": 80, "03-4": 100, "04-2": 100, "11": 100, "03-1": 100, "04-1": 100,
           "01": 90, "05-2": 90, "05-1": 100, "03-3": 100
@@ -2498,17 +2494,58 @@ const handleCulturalCoinCheckout = () => {
         }
       };
 
+      const isiPadLikeDevice = () => {
+        const ua = navigator.userAgent || '';
+        const isIOS = /iPad|iPhone|iPod/i.test(ua);
+        const isTouchMac = /Macintosh/i.test(ua) && navigator.maxTouchPoints > 1;
+        return isIOS || isTouchMac;
+      };
+
+      const canShareFiles = (files) => {
+        return !!(
+          navigator.share &&
+          typeof navigator.canShare === 'function' &&
+          navigator.canShare({ files })
+        );
+      };
+
+      const triggerBrowserDownload = (blob, filename) => {
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      };
+
+      const exportFiles = async (files, fallbackMessage) => {
+        if (isiPadLikeDevice() && canShareFiles(files)) {
+          try {
+            await navigator.share({ files, title: '匯出檔案' });
+            return true;
+          } catch (error) {
+            if (error && error.name === 'AbortError') return false;
+          }
+        }
+
+        files.forEach(file => triggerBrowserDownload(file, file.name));
+        if (files.length > 1 && isiPadLikeDevice() && fallbackMessage) {
+          alert(fallbackMessage);
+        }
+        return true;
+      };
       // ===== 備份 / 還原 / 清空 =====
-      function doBackup() {
+      async function doBackup() {
         const backupData = { cart, clients, overallSummary, clientCounter, sessionRules, priceOverrides, notes: notesElement.value, timestamp: new Date().toISOString() };
         const dataStr = JSON.stringify(backupData, null, 2);
-        const blob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `pos_backup_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        const filename = `pos_backup_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`;
+        const file = new File([dataStr], filename, { type: 'application/json' });
+        await exportFiles(
+          [file],
+          'iPad 若沒有直接下載，請在分享面板選擇「儲存到檔案」。'
+        );
       }
 
       backupBtn.addEventListener('click', doBackup);
@@ -2561,7 +2598,7 @@ const handleCulturalCoinCheckout = () => {
       });
 
 // ===== 你原本匯出 CSV（保留）=====
-exportCsvBtn.addEventListener('click', () => {
+exportCsvBtn.addEventListener('click', async () => {
   try {
     updateSummaryTable();
     const notes = localStorage.getItem('notes') || '無備註';
@@ -2635,13 +2672,12 @@ exportCsvBtn.addEventListener('click', () => {
       .map(row => row.map(esc).join(","))
       .join("\r\n");
 
-    const blob = new Blob([`\ufeff${csvContent}`], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.download = `sales_report_POS_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const filename = `sales_report_POS_${new Date().toISOString().split('T')[0]}.csv`;
+    const file = new File([`\ufeff${csvContent}`], filename, { type: "text/csv;charset=utf-8;" });
+    await exportFiles(
+      [file],
+      'iPad 若沒有直接下載，請在分享面板選擇「儲存到檔案」。'
+    );
 
   } catch (error) {
     alert('CSV匯出錯誤');
@@ -2651,7 +2687,7 @@ exportCsvBtn.addEventListener('click', () => {
 // ==========================================================
 // ✅ Pilot 匯出：去掉全欄位包引號 + 修正 UNIT/QTYSTR/INVRETURN
 // ==========================================================
-function exportPilot() {
+async function exportPilot() {
   const now = new Date();
 
   // ✅ 你指定：固定單別（避免跟系統既有單別衝突）
@@ -2858,7 +2894,7 @@ function exportPilot() {
   vpay_culture.forEach(amt => pushV("61", "1144.61", amt));
 
   // ✅ 下載（全欄位包引號；不加 BOM，對齊系統匯出格式）
-  const dl = (rows, filename) => {
+  const buildExportFile = (rows, filename) => {
     const esc = (v) => {
       if (v === null || v === undefined) return "";
       let s = String(v).replace(/"/g, '""');
@@ -2917,17 +2953,19 @@ function exportPilot() {
     } else {
       blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
     }
-    const a = document.createElement('a');
-    const u = URL.createObjectURL(blob);
-    a.href = u;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(u);
+    return new File([blob], filename, { type: blob.type || 'text/csv' });
   };
 
-  dl(s1_rows, "STKSALE1.csv");
-  setTimeout(() => dl(s2_rows, "STKSALE2.csv"), 500);
-  setTimeout(() => dl(v1_rows, "VCHRPLUS_SALE1.csv"), 1000);
+  const files = [
+    buildExportFile(s1_rows, "STKSALE1.csv"),
+    buildExportFile(s2_rows, "STKSALE2.csv"),
+    buildExportFile(v1_rows, "VCHRPLUS_SALE1.csv")
+  ];
+
+  await exportFiles(
+    files,
+    'iPad 對多個 CSV 下載支援有限。若跳出分享面板，請選擇「儲存到檔案」；若仍被阻擋，請改用桌機匯出 Pilot 會計檔。'
+  );
 };
 
 exportPilotBtn.onclick = exportPilot;
@@ -2948,6 +2986,9 @@ loadMasterData().then(() => {
   </script>
 </body>
 </html>
+
+
+
 
 
 
