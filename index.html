@@ -2047,6 +2047,44 @@
         return lines.length ? lines.join(' / ') : '';
       };
 
+      const getInvoiceInfoFromOrderModal = () => {
+        const rawDonateCarrier = (orderDonateCarrierInput?.value || '').trim();
+        const rawTaxId = (orderTaxIdInput?.value || '').trim();
+        const hasTaxId = rawTaxId !== '';
+        const hasCarrier = rawDonateCarrier !== '' && !/^\d+$/.test(rawDonateCarrier);
+        const hasDonation = rawDonateCarrier !== '' && /^\d+$/.test(rawDonateCarrier);
+
+        if (hasTaxId) {
+          return {
+            donationCode: '',
+            carrier: '',
+            taxId: rawTaxId
+          };
+        }
+
+        if (hasCarrier) {
+          return {
+            donationCode: '',
+            carrier: rawDonateCarrier,
+            taxId: ''
+          };
+        }
+
+        if (hasDonation) {
+          return {
+            donationCode: rawDonateCarrier,
+            carrier: '',
+            taxId: ''
+          };
+        }
+
+        return {
+          donationCode: '',
+          carrier: '',
+          taxId: ''
+        };
+      };
+
       const openQrImageModal = (title, imageSrc) => {
         qrModalTitle.textContent = title;
         qrModalImage.src = imageSrc;
