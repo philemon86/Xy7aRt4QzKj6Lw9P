@@ -233,6 +233,45 @@
       font-size: 0.9em;
     }
 
+    .invoice-hint a {
+      color: var(--primary-btn);
+      font-weight: 700;
+    }
+
+    .payment-qr-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .payment-qr-btn {
+      flex: 1;
+      min-width: 180px;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.98em;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+
+    .payment-qr-btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.04);
+    }
+
+    .payment-qr-line {
+      background: #06c755;
+    }
+
+    .payment-qr-culture {
+      background: #d8482f;
+    }
+
     .checkout-panel {
       display: flex;
       flex-direction: column;
@@ -604,6 +643,8 @@
       .money-input-group label { width: auto; font-size: 0.9em; }
       .money-input-group input { width: 60px; font-size: 0.95em; }
       .accounting-col h4 { font-size: 1em; }
+      .invoice-input-row { grid-template-columns: 1fr; }
+      .payment-qr-btn { min-width: 100%; }
     }
 
     /* --- 熱感應列印（80mm） --- */
@@ -954,6 +995,34 @@
       background: #fff;
     }
 
+    .qr-modal-content {
+      background: rgba(255,255,255,0.98);
+      padding: 14px;
+      border-radius: 14px;
+      max-width: min(92vw, 560px);
+      max-height: 92vh;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .qr-modal-title {
+      color: var(--primary-btn);
+      font-weight: 800;
+      font-size: 1.1em;
+    }
+
+    .qr-modal-image {
+      display: block;
+      max-width: 100%;
+      max-height: calc(92vh - 80px);
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+    }
+
     .btn-m-cash { background-color: #28a745; }
     .btn-m-card { background-color: #007bff; }
     .btn-m-line { background-color: #20c997; }
@@ -1058,7 +1127,11 @@
             <input type="text" id="invoice-tax-id" placeholder="可留白">
           </div>
         </div>
-        <div class="invoice-hint">未輸入載具或統編時，預設捐贈碼為 2995。</div>
+        <div class="invoice-hint">未輸入載具或統編時，預設捐贈碼為 <a href="https://www.rehoboth-welfare.org.tw/" target="_blank" rel="noopener noreferrer">2995</a>。</div>
+        <div class="payment-qr-actions">
+          <button type="button" id="show-linepay-qr" class="payment-qr-btn payment-qr-line">LINE PAY 收款碼</button>
+          <button type="button" id="show-culture-qr" class="payment-qr-btn payment-qr-culture">文化幣 收款碼</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1220,6 +1293,13 @@
     </div>
   </div>
 
+  <div id="qr-image-modal" class="modal-overlay">
+    <div class="qr-modal-content">
+      <div id="qr-modal-title" class="qr-modal-title"></div>
+      <img id="qr-modal-image" class="qr-modal-image" alt="收款碼">
+    </div>
+  </div>
+
   <script>
     // =========================
     // 0) 小工具：安全字串/數字
@@ -1363,6 +1443,8 @@
       const printEnabledInput = document.getElementById('print-enabled');
       const invoiceDonateCarrierInput = document.getElementById('invoice-donate-carrier');
       const invoiceTaxIdInput = document.getElementById('invoice-tax-id');
+      const showLinepayQrBtn = document.getElementById('show-linepay-qr');
+      const showCultureQrBtn = document.getElementById('show-culture-qr');
 
       // 記帳模式
       const expensesCashInput = document.getElementById('expenses-cash');
@@ -1464,6 +1546,9 @@
       const orderDetailModal = document.getElementById('order-detail-modal');
       const orderDetailContent = document.getElementById('order-detail-content');
       const orderNoteInput = document.getElementById('order-note-input');
+      const qrImageModal = document.getElementById('qr-image-modal');
+      const qrModalTitle = document.getElementById('qr-modal-title');
+      const qrModalImage = document.getElementById('qr-modal-image');
       let detailClientId = null;
 
       // --- 音效 ---
@@ -1950,6 +2035,18 @@
         return lines.length ? lines.join(' / ') : '';
       };
 
+      const openQrImageModal = (title, imageSrc) => {
+        qrModalTitle.textContent = title;
+        qrModalImage.src = imageSrc;
+        qrModalImage.alt = title;
+        qrImageModal.style.display = 'flex';
+      };
+
+      const closeQrImageModal = () => {
+        qrImageModal.style.display = 'none';
+        qrModalImage.src = '';
+      };
+
       const triggerButtonAnimation = (btnElement) => {
         if (!btnElement) return;
         btnElement.classList.add('animate-click');
@@ -2252,6 +2349,12 @@ const handleCulturalCoinCheckout = () => {
       btnF8.addEventListener('click', () => performCheckout('LINE PAY'));
       btnF9.addEventListener('click', () => handleCulturalCoinCheckout());
       btnF10.addEventListener('click', () => performCheckout('現金'));
+      showLinepayQrBtn.addEventListener('click', () => openQrImageModal('LINE PAY 收款碼', 'LINEPAY.jpg'));
+      showCultureQrBtn.addEventListener('click', () => openQrImageModal('文化幣 收款碼', '文化幣.jpg'));
+      qrModalImage.addEventListener('click', closeQrImageModal);
+      qrImageModal.addEventListener('click', (e) => {
+        if (e.target === qrImageModal) closeQrImageModal();
+      });
 
       document.addEventListener('keydown', (e) => {
         if (cart.length > 0) {
