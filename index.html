@@ -1283,6 +1283,16 @@
     <div class="modal-content">
       <h3 class="modal-title">訂單內容</h3>
       <pre id="order-detail-content" class="order-detail-content"></pre>
+      <div class="order-edit-grid">
+        <div class="order-edit-field">
+          <label for="order-donate-carrier-input">捐贈 / 載具</label>
+          <input id="order-donate-carrier-input" type="text" placeholder="2995 或載具號碼">
+        </div>
+        <div class="order-edit-field">
+          <label for="order-tax-id-input">統編</label>
+          <input id="order-tax-id-input" type="text" placeholder="可留白">
+        </div>
+      </div>
       <div class="order-note-block">
         <label for="order-note-input">備註</label>
         <textarea id="order-note-input" rows="3" placeholder="可填統編、載具、特殊交代..."></textarea>
@@ -1545,6 +1555,8 @@
       const paymentModal = document.getElementById('payment-modal');
       const orderDetailModal = document.getElementById('order-detail-modal');
       const orderDetailContent = document.getElementById('order-detail-content');
+      const orderDonateCarrierInput = document.getElementById('order-donate-carrier-input');
+      const orderTaxIdInput = document.getElementById('order-tax-id-input');
       const orderNoteInput = document.getElementById('order-note-input');
       const qrImageModal = document.getElementById('qr-image-modal');
       const qrModalTitle = document.getElementById('qr-modal-title');
@@ -2699,6 +2711,8 @@ const handleCulturalCoinCheckout = () => {
           ...invoiceLines
         ].join('\n');
         orderDetailContent.textContent = `${header}\n\n購買商品：\n${items}`;
+        orderDonateCarrierInput.value = client.invoiceInfo?.carrier || client.invoiceInfo?.donationCode || '';
+        orderTaxIdInput.value = client.invoiceInfo?.taxId || '';
         orderNoteInput.value = client.note || '';
         detailClientId = clientId;
         orderDetailModal.style.display = 'flex';
@@ -2706,6 +2720,7 @@ const handleCulturalCoinCheckout = () => {
 
       window.closeOrderDetail = () => {
         if (detailClientId && clients[detailClientId]) {
+          clients[detailClientId].invoiceInfo = getInvoiceInfoFromOrderModal();
           clients[detailClientId].note = orderNoteInput.value.trim();
           saveSummary();
           updateSummaryTable();
