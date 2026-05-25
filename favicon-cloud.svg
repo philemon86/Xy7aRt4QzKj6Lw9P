@@ -2,10 +2,10 @@
   <rect width="64" height="64" rx="14" fill="#173153"/>
   <text
     x="32"
-    y="41"
+    y="43"
     text-anchor="middle"
-    font-size="34"
-    font-family="'Microsoft JhengHei', 'PingFang TC', sans-serif"
-    font-weight="800"
-    fill="#ffffff">雲</text>
+    font-size="30"
+    font-family="'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif"
+    font-weight="700"
+    fill="#ffffff">☁</text>
 </svg>
