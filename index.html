@@ -190,6 +190,49 @@
       margin-top: 10px;
     }
 
+    .invoice-input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    .invoice-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .invoice-field label {
+      color: var(--text-muted);
+      font-size: 0.95em;
+      font-weight: bold;
+    }
+
+    .invoice-field input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px 12px;
+      font-size: 1em;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      background-color: var(--input-bg);
+      color: var(--text-color);
+    }
+
+    .invoice-field input:focus {
+      outline: none;
+      border-color: var(--primary-btn);
+      box-shadow: 0 0 0 3px rgba(140, 122, 107, 0.15);
+      background-color: #FFFFFF;
+    }
+
+    .invoice-hint {
+      color: var(--text-muted);
+      font-size: 0.9em;
+    }
+
     .checkout-panel {
       display: flex;
       flex-direction: column;
@@ -1005,6 +1048,17 @@
           <button id="btn-f9" class="checkout-btn"><span class="btn-key">F9</span><span class="btn-label">文化幣</span></button>
           <button id="btn-f10" class="checkout-btn"><span class="btn-key">F10</span><span class="btn-label">現金</span></button>
         </div>
+        <div class="invoice-input-row">
+          <div class="invoice-field">
+            <label for="invoice-donate-carrier">捐贈 / 載具</label>
+            <input type="text" id="invoice-donate-carrier" value="2995" placeholder="2995 或載具號碼">
+          </div>
+          <div class="invoice-field">
+            <label for="invoice-tax-id">統編</label>
+            <input type="text" id="invoice-tax-id" placeholder="可留白">
+          </div>
+        </div>
+        <div class="invoice-hint">未輸入載具或統編時，預設捐贈碼為 2995。</div>
       </div>
     </div>
   </div>
@@ -1307,6 +1361,8 @@
       const payCultureElement = document.getElementById('pay-culture');
       const notesElement = document.getElementById('notes');
       const printEnabledInput = document.getElementById('print-enabled');
+      const invoiceDonateCarrierInput = document.getElementById('invoice-donate-carrier');
+      const invoiceTaxIdInput = document.getElementById('invoice-tax-id');
 
       // 記帳模式
       const expensesCashInput = document.getElementById('expenses-cash');
@@ -1842,6 +1898,58 @@
       };
       paidAmountInput.addEventListener('input', calculateChange);
 
+      const getInvoiceInfoFromInputs = () => {
+        const rawDonateCarrier = (invoiceDonateCarrierInput?.value || '').trim();
+        const rawTaxId = (invoiceTaxIdInput?.value || '').trim();
+        const hasTaxId = rawTaxId !== '';
+        const hasCarrier = rawDonateCarrier !== '' && !/^\d+$/.test(rawDonateCarrier);
+        const hasDonation = rawDonateCarrier !== '' && /^\d+$/.test(rawDonateCarrier);
+
+        if (hasTaxId) {
+          return {
+            donationCode: '',
+            carrier: '',
+            taxId: rawTaxId
+          };
+        }
+
+        if (hasCarrier) {
+          return {
+            donationCode: '',
+            carrier: rawDonateCarrier,
+            taxId: ''
+          };
+        }
+
+        if (hasDonation) {
+          return {
+            donationCode: rawDonateCarrier,
+            carrier: '',
+            taxId: ''
+          };
+        }
+
+        return {
+          donationCode: '2995',
+          carrier: '',
+          taxId: ''
+        };
+      };
+
+      const formatInvoiceInfoLines = (invoiceInfo) => {
+        if (!invoiceInfo) return [];
+        const lines = [];
+        if (invoiceInfo.donationCode) lines.push(`捐贈：${invoiceInfo.donationCode}`);
+        if (invoiceInfo.carrier) lines.push(`載具：${invoiceInfo.carrier}`);
+        if (invoiceInfo.taxId) lines.push(`統編：${invoiceInfo.taxId}`);
+        return lines;
+      };
+
+      const formatInvoiceInfoInline = (invoiceInfo) => {
+        const lines = formatInvoiceInfoLines(invoiceInfo);
+        return lines.length ? lines.join(' / ') : '';
+      };
+
       const triggerButtonAnimation = (btnElement) => {
         if (!btnElement) return;
         btnElement.classList.add('animate-click');
@@ -1908,6 +2016,7 @@ const handleCulturalCoinCheckout = () => {
         const paid = Number(paidAmountInput.value || 0);
         const total = Number(client.amount || 0);
         const change = Math.max(0, Math.round(paid - total));
+        const invoiceLines = formatInvoiceInfoLines(client.invoiceInfo);
 
         const recBooks = Object.values(products || {}).filter(p => p && p.class === "02-1" && p.name);
         const pick = recBooks.length ? recBooks[Math.floor(Math.random() * recBooks.length)] : null;
@@ -1919,6 +2028,7 @@ const handleCulturalCoinCheckout = () => {
           <div class="receipt-meta">日期：${dt}</div>
           <div class="receipt-meta">單號：${client.id}</div>
           <div class="receipt-meta">付款：${client.paymentMethod || '現金'}</div>
+          ${invoiceLines.map(line => `<div class="receipt-meta">${line}</div>`).join('')}
 
           <div class="receipt-sep"></div>
 
@@ -2090,12 +2200,14 @@ const handleCulturalCoinCheckout = () => {
         const totalAmount = parseFloat(totalAmountElement.textContent);
         const clientId = generateClientId();
         const mERI = generateERI('master');
+        const invoiceInfo = getInvoiceInfoFromInputs();
 
         clients[clientId] = {
           id: clientId,
           eri: mERI,
           amount: totalAmount,
           paymentMethod: paymentMethod,
+          invoiceInfo,
           items: cart.map(i => ({ ...i, detailERI: generateERI('detail') })),
           isValid: true,
           ts: new Date().getTime().toString().slice(-12)
@@ -2132,6 +2244,8 @@ const handleCulturalCoinCheckout = () => {
 
         productCodeInput.focus();
         paidAmountInput.value = 1000;
+        if (invoiceDonateCarrierInput) invoiceDonateCarrierInput.value = '2995';
+        if (invoiceTaxIdInput) invoiceTaxIdInput.value = '';
       };
 
       btnF7.addEventListener('click', () => performCheckout('信用卡'));
@@ -2362,7 +2476,7 @@ const handleCulturalCoinCheckout = () => {
             });
           }
 
-          const noteClass = client.note ? 'client-link has-note' : 'client-link';
+          const noteClass = (client.note || formatInvoiceInfoInline(client.invoiceInfo)) ? 'client-link has-note' : 'client-link';
           row.innerHTML = `
             <td><a href="#" class="${noteClass}" data-client-id="${client.id}">${client.id}</a> ${!client.isValid ? '(已作廢)' : ''}</td>
             <td>${Math.round(client.amount)}</td>
@@ -2475,7 +2589,12 @@ const handleCulturalCoinCheckout = () => {
         if (!client) return;
         const method = client.paymentMethod || '現金';
         const items = client.items.map(item => `${item.code} ｜ ${item.name} x ${item.quantity} (${Math.round(item.price * item.quantity)})`).join('\n');
-        const header = `訂單：${clientId} ${!client.isValid ? '(已作廢)' : ''}\n付款方式：${method}`;
+        const invoiceLines = formatInvoiceInfoLines(client.invoiceInfo);
+        const header = [
+          `訂單：${clientId} ${!client.isValid ? '(已作廢)' : ''}`,
+          `付款方式：${method}`,
+          ...invoiceLines
+        ].join('\n');
         orderDetailContent.textContent = `${header}\n\n購買商品：\n${items}`;
         orderNoteInput.value = client.note || '';
         detailClientId = clientId;
@@ -2649,11 +2768,14 @@ exportCsvBtn.addEventListener('click', async () => {
     const overallTotalAmount = Object.values(overallSummary).reduce((sum, item) => sum + item.totalAmount, 0);
 
     const summaryRows = [
-      ['客戶名稱', '消費金額', '付款方式', '狀態', '備註'],
+      ['客戶名稱', '消費金額', '付款方式', '捐贈', '載具', '統編', '狀態', '備註'],
       ...Object.values(clients).map(client => ([
         `${client.id}`,
         Math.round(client.amount),
         client.paymentMethod || '現金',
+        client.invoiceInfo?.donationCode || '',
+        client.invoiceInfo?.carrier || '',
+        client.invoiceInfo?.taxId || '',
         client.isValid ? '有效' : '已作廢',
         client.note || ''
       ])),
@@ -2684,13 +2806,15 @@ exportCsvBtn.addEventListener('click', async () => {
 
     const detailsRows = [
       ['詳細內容：'],
-      ['客戶名稱', '付款方式', '商品名稱', '數量', '單價', '折扣', '小計', '狀態', '備註'],
+      ['客戶名稱', '付款方式', '捐贈', '載具', '統編', '商品名稱', '數量', '單價', '折扣', '小計', '狀態', '備註'],
       ...Object.values(clients).flatMap(client =>
         (client.items || []).map(item => {
-          const note = client.note ? ` ${client.note}` : '';
           return [
             `${client.id}`,
             client.paymentMethod || '現金',
+            client.invoiceInfo?.donationCode || '',
+            client.invoiceInfo?.carrier || '',
+            client.invoiceInfo?.taxId || '',
             item.name,
             item.quantity,
             Math.round(item.price),
