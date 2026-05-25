@@ -976,6 +976,7 @@
       font-size: 12px;
       color: var(--text-muted);
       font-weight: 700;
+      text-align: left;
     }
     .order-note-block textarea {
       width: 100%;
@@ -2962,8 +2963,17 @@ exportCsvBtn.addEventListener('click', async () => {
     const stats = calculatePaymentStats();
     const overallTotalAmount = Object.values(overallSummary).reduce((sum, item) => sum + item.totalAmount, 0);
 
+    const buildOrderMetaText = (client) => {
+      const invoiceText = formatInvoiceInfoInline(client.invoiceInfo);
+      const noteText = (client.note || '').trim();
+      if (invoiceText && noteText) return `${invoiceText} / 備註：${noteText}`;
+      if (invoiceText) return invoiceText;
+      if (noteText) return `備註：${noteText}`;
+      return '';
+    };
+
     const summaryRows = [
-      ['客戶名稱', '消費金額', '付款方式', '捐贈', '載具', '統編', '狀態', '備註'],
+      ['客戶名稱', '消費金額', '付款方式', '捐贈', '載具', '統編', '狀態', '備註', '訂單資料'],
       ...Object.values(clients).map(client => ([
         `${client.id}`,
         Math.round(client.amount),
@@ -2972,7 +2982,8 @@ exportCsvBtn.addEventListener('click', async () => {
         client.invoiceInfo?.carrier || '',
         client.invoiceInfo?.taxId || '',
         client.isValid ? '有效' : '已作廢',
-        client.note || ''
+        client.note || '',
+        buildOrderMetaText(client)
       ])),
       [],
       ['商品代碼', '名稱', '總數量', '總金額'],
@@ -3001,7 +3012,7 @@ exportCsvBtn.addEventListener('click', async () => {
 
     const detailsRows = [
       ['詳細內容：'],
-      ['客戶名稱', '付款方式', '捐贈', '載具', '統編', '商品名稱', '數量', '單價', '折扣', '小計', '狀態', '備註'],
+      ['客戶名稱', '付款方式', '捐贈', '載具', '統編', '商品名稱', '數量', '單價', '折扣', '小計', '狀態', '備註', '訂單資料'],
       ...Object.values(clients).flatMap(client =>
         (client.items || []).map(item => {
           return [
@@ -3016,7 +3027,8 @@ exportCsvBtn.addEventListener('click', async () => {
             `${item.discount}%`,
             Math.round(item.price * item.quantity * (item.discount / 100)),
             client.isValid ? '有效' : '已作廢',
-            client.note || ''
+            client.note || '',
+            buildOrderMetaText(client)
           ];
         })
       )
