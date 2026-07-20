@@ -492,16 +492,6 @@
       .action-bar { grid-template-columns: 1fr; }
       .total { font-size: 1.5em; padding: 20px; }
     }
-
-    /* Modal 等其他通用樣式保留原設定並加上圓潤過渡 */
-    .modal-content {
-      border-radius: var(--radius-card);
-      border: none;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-    }
-    .modal-btn {
-      border-radius: var(--radius-pill);
-    }
     
     .discount-wrapper {
       position: relative;
@@ -648,54 +638,198 @@
     .btn-void { background-color: #666; color: white; border: none; border-radius: 3px; cursor: pointer; }
     .btn-del { background-color: #a94442; color: white; border: none; border-radius: 3px; cursor: pointer; }
 
-    /* Modal */
+    /* =========================================
+       Modal (彈出視窗) 完整樣式修正
+       ========================================= */
+    
     .modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
+      background-color: rgba(60, 56, 51, 0.6);
+      backdrop-filter: blur(4px);
       display: none;
       justify-content: center;
       align-items: center;
       z-index: 1000;
     }
 
+    .modal-content {
+      background-color: var(--card-bg);
+      padding: 32px;
+      border-radius: var(--radius-card);
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.2);
+      text-align: center;
+      border: 1px solid var(--border-color);
+      box-sizing: border-box;
+    }
+
     .modal-title {
       margin-top: 0;
       color: var(--primary-btn);
-      margin-bottom: 20px;
+      margin-bottom: 24px;
+      font-weight: 800;
+      font-size: 1.4em;
     }
 
     .modal-btn-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 15px;
+      gap: 12px;
+      margin-bottom: 16px;
     }
 
-    .modal-btn:active { transform: scale(0.95); }
+    .modal-btn {
+      padding: 16px;
+      border: none;
+      border-radius: var(--radius-pill);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      color: white;
+      transition: var(--transition-smooth);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .modal-btn:hover {
+      filter: brightness(1.08);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    }
+
+    .modal-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* 莫蘭迪色系付款按鈕 */
+    .btn-m-cash { background-color: #82A284; }
+    .btn-m-card { background-color: #7993A6; }
+    .btn-m-line { background-color: #55A884; }
+    .btn-m-culture { background-color: #D18F68; }
+    .btn-m-cancel { background-color: #A39E98; width: 100%; margin-top: 12px; }
+
+    /* 訂單明細內容 */
     .order-detail-content {
       width: 100%;
       max-height: 240px;
-      overflow: auto;
-      background: #fff;
+      overflow-y: auto;
+      background: var(--input-bg);
       border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 10px;
-      font-size: 12px;
-      line-height: 1.4;
+      border-radius: var(--radius-input);
+      padding: 16px;
+      font-size: 14px;
+      line-height: 1.6;
       text-align: left;
       white-space: pre-wrap;
       box-sizing: border-box;
-      margin: 8px 0 12px 0;
+      margin: 12px 0 24px 0;
+      color: var(--text-color);
     }
+
+    .order-edit-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .order-edit-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      text-align: left;
+    }
+
+    .order-edit-field label, .order-note-block label {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-align: left;
+    }
+
+    .order-edit-field input, .order-note-block textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-input);
+      padding: 12px 14px;
+      font-size: 15px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      transition: var(--transition-smooth);
+    }
+
+    .order-edit-field input:focus, .order-note-block textarea:focus {
+      outline: none;
+      border-color: var(--primary-btn);
+      box-shadow: 0 0 0 4px rgba(126, 115, 104, 0.1);
+      background: #fff;
+    }
+
+    .order-note-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    
+    .order-note-block textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    #order-detail-modal .modal-content {
+      max-width: 500px;
+    }
+
     #order-detail-modal .modal-btn-grid {
       display: flex;
       justify-content: center;
-      gap: 10px;
+      margin-bottom: 0;
     }
+
+    #order-detail-modal .btn-m-cancel {
+      width: auto;
+      min-width: 160px;
+      margin-top: 0;
+    }
+
+    /* QR Code Modal 優化 */
+    .qr-modal-content {
+      background: var(--card-bg);
+      padding: 32px;
+      border-radius: var(--radius-card);
+      max-width: min(92vw, 560px);
+      max-height: 92vh;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .qr-modal-title {
+      color: var(--primary-btn);
+      font-weight: 800;
+      font-size: 1.4em;
+      margin: 0;
+    }
+
+    .qr-modal-image {
+      display: block;
+      max-width: 100%;
+      max-height: calc(92vh - 120px);
+      border-radius: var(--radius-input);
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+
     .client-link.has-note::after {
       content: " *";
       color: var(--primary-btn);
@@ -714,108 +848,6 @@
       transform: translateY(-1px);
       text-shadow: 0 2px 6px rgba(94, 79, 64, 0.2);
     }
-    .order-note-block {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-    .order-note-block label {
-      font-size: 12px;
-      color: var(--text-muted);
-      font-weight: 700;
-      text-align: left;
-    }
-    .order-note-block textarea {
-      width: 100%;
-      box-sizing: border-box;
-      border: 1.5px solid var(--border-color);
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 13px;
-      background: var(--input-bg);
-      color: var(--text-color);
-      transition: var(--transition-smooth);
-    }
-    .order-note-block textarea:focus {
-      outline: none;
-      border-color: var(--primary-btn);
-      box-shadow: 0 0 0 3px rgba(140, 122, 107, 0.15);
-      background: #fff;
-    }
-
-    .order-edit-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
-    .order-edit-field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .order-edit-field label {
-      font-size: 12px;
-      color: var(--text-muted);
-      font-weight: 700;
-      text-align: left;
-    }
-
-    .order-edit-field input {
-      width: 100%;
-      box-sizing: border-box;
-      border: 1.5px solid var(--border-color);
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 13px;
-      background: var(--input-bg);
-      color: var(--text-color);
-      transition: var(--transition-smooth);
-    }
-
-    .order-edit-field input:focus {
-      outline: none;
-      border-color: var(--primary-btn);
-      box-shadow: 0 0 0 3px rgba(140, 122, 107, 0.15);
-      background: #fff;
-    }
-
-    .qr-modal-content {
-      background: rgba(255,255,255,0.98);
-      padding: 14px;
-      border-radius: 14px;
-      max-width: min(92vw, 560px);
-      max-height: 92vh;
-      box-shadow: 0 12px 32px rgba(0,0,0,0.28);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .qr-modal-title {
-      color: var(--primary-btn);
-      font-weight: 800;
-      font-size: 1.1em;
-    }
-
-    .qr-modal-image {
-      display: block;
-      max-width: 100%;
-      max-height: calc(92vh - 80px);
-      border-radius: 10px;
-      cursor: pointer;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.18);
-    }
-
-    .btn-m-cash { background-color: #28a745; }
-    .btn-m-card { background-color: #007bff; }
-    .btn-m-line { background-color: #20c997; }
-    .btn-m-culture { background-color: #fd7e14; }
-    .btn-m-cancel { background-color: #6c757d; width: 100%; margin-top: 10px; padding: 10px; }
   </style>
 </head>
 
@@ -1905,32 +1937,33 @@
         });
       }
 
-      const handleCulturalCoinCheckout = () => {
-        if (cart.length === 0) {
-          if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
-          return;
-        }
-        hasShownEmptyCartAlert = false;
+const handleCulturalCoinCheckout = () => {
+  if (cart.length === 0) {
+    if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
+    return;
+  }
+  hasShownEmptyCartAlert = false;
 
-        const totalAmount = Number(totalAmountElement.textContent) || 0;
+  // ✅ 總額一律用 Number，避免 textContent 有空白或 NaN
+  const totalAmount = Number(totalAmountElement.textContent) || 0;
 
-        let coinAmountStr = prompt(`訂單總額為 ${totalAmount} 元。\n請輸入文化幣支付金額：`, totalAmount);
-        if (coinAmountStr === null) return;
+  let coinAmountStr = prompt(`訂單總額為 ${totalAmount} 元。\n請輸入文化幣支付金額：`, totalAmount);
+  if (coinAmountStr === null) return;
 
-        let coinAmount = parseInt(coinAmountStr, 10);
-        if (isNaN(coinAmount) || coinAmount < 0) { alert("請輸入有效的金額！"); POSAudio.error(); return; }
-        if (coinAmount > totalAmount) { alert("文化幣金額不能大於訂單總額！"); POSAudio.error(); coinAmount = totalAmount; }
+  let coinAmount = parseInt(coinAmountStr, 10);
+  if (isNaN(coinAmount) || coinAmount < 0) { alert("請輸入有效的金額！"); POSAudio.error(); return; }
+  if (coinAmount > totalAmount) { alert("文化幣金額不能大於訂單總額！"); POSAudio.error(); coinAmount = totalAmount; }
 
-        const cashAmount = totalAmount - coinAmount;
+  const cashAmount = totalAmount - coinAmount;
 
-        let methodStr = "";
-        if (cashAmount > 0 && coinAmount > 0) methodStr = `文化幣(${coinAmount}) + 現金(${cashAmount})`;
-        else if (coinAmount > 0 && cashAmount === 0) methodStr = `文化幣全額(${coinAmount})`;
-        else methodStr = `現金(${totalAmount})`;
+  let methodStr = "";
+  if (cashAmount > 0 && coinAmount > 0) methodStr = `文化幣(${coinAmount}) + 現金(${cashAmount})`;
+  else if (coinAmount > 0 && cashAmount === 0) methodStr = `文化幣全額(${coinAmount})`;
+  else methodStr = `現金(${totalAmount})`;
 
-        triggerButtonAnimation(btnF9);
-        performCheckout(methodStr, true);
-      };
+  triggerButtonAnimation(btnF9);
+  performCheckout(methodStr, true);
+};
 
       const formatMoney = (n) => Math.round(n).toString();
       const renderReceipt = (client) => {
