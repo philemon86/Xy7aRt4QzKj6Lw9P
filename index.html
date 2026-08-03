@@ -249,7 +249,7 @@
 
     .invoice-input-row {
       display: grid;
-      grid-template-columns: 1.2fr 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
       width: 100%;
     }
@@ -258,6 +258,11 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
+      min-width: 0;
+    }
+
+    .invoice-customer-field {
+      grid-column: 1 / -1;
     }
 
     .invoice-field label {
@@ -268,6 +273,9 @@
 
     .invoice-field input,
     .invoice-field select {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
       padding: 14px 16px;
       font-size: 16px;
       border: 1.5px solid var(--border-color);
@@ -277,18 +285,20 @@
 
     .payment-qr-actions {
       display: flex;
-      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
       width: 100%;
     }
 
     .payment-qr-btn {
-      flex: 1;
+      flex: 0 1 210px;
       border: none;
       border-radius: var(--radius-pill);
-      padding: 16px;
+      padding: 10px 18px;
       color: #fff;
       font-weight: 800;
-      font-size: 15px;
+      font-size: 14px;
       cursor: pointer;
       transition: var(--transition-smooth);
     }
@@ -484,12 +494,14 @@
     @media (max-width: 900px) {
       .flex-container { grid-template-columns: 1fr; gap: 16px; padding: 0 16px; }
       .checkout-buttons-area { grid-template-columns: 1fr 1fr; }
-      .invoice-input-row { grid-template-columns: 1fr; }
+      .invoice-input-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .action-bar { grid-template-columns: repeat(2, 1fr); }
     }
 
     @media (max-width: 600px) {
       .checkout-buttons-area { grid-template-columns: 1fr; }
+      .invoice-input-row { grid-template-columns: 1fr; }
+      .invoice-customer-field { grid-column: auto; }
       .action-bar { grid-template-columns: 1fr; }
       .total { font-size: 1.5em; padding: 20px; }
     }
@@ -939,21 +951,21 @@
           <button id="btn-f10" class="checkout-btn"><span class="btn-key">F10</span><span class="btn-label">現金</span></button>
         </div>
         <div class="invoice-input-row">
-          <div class="invoice-field">
+          <div class="invoice-field invoice-customer-field">
             <label for="invoice-customer">Pilot 客戶（選擇後會固定）</label>
             <input type="text" id="invoice-customer" list="customer-options" value="0002｜書展" placeholder="輸入客戶代號或名稱">
             <datalist id="customer-options"></datalist>
           </div>
           <div class="invoice-field">
             <label for="invoice-donate-carrier">捐贈 / 載具</label>
-            <input type="text" id="invoice-donate-carrier" value="2995" placeholder="2995 或載具號碼">
+            <input type="text" id="invoice-donate-carrier" placeholder="載具號碼或捐贈碼（可留白）">
           </div>
           <div class="invoice-field">
             <label for="invoice-tax-id">統編</label>
             <input type="text" id="invoice-tax-id" placeholder="統編八碼">
           </div>
         </div>
-        <div class="invoice-hint" style="color: var(--text-muted); font-size: 0.9em;">預設 Pilot 客戶為書展；選擇其他客戶後會沿用到下次修改。未輸入載具或統編時，預設捐贈碼為 <a href="https://www.rehoboth-welfare.org.tw/" target="_blank" rel="noopener noreferrer" style="color: var(--primary-btn); font-weight: 700;">2995</a>。</div>
+        <div class="invoice-hint" style="color: var(--text-muted); font-size: 0.9em;">預設 Pilot 客戶為書展；選擇其他客戶後會沿用到下次修改。載具與統編都可留白。</div>
         <div class="payment-qr-actions">
           <button type="button" id="show-linepay-qr" class="payment-qr-btn payment-qr-line">LINE PAY 收款碼</button>
           <button type="button" id="show-culture-qr" class="payment-qr-btn payment-qr-culture">文化幣 收款碼</button>
@@ -1116,7 +1128,7 @@
         </div>
         <div class="order-edit-field">
           <label for="order-donate-carrier-input">捐贈 / 載具</label>
-          <input id="order-donate-carrier-input" type="text" placeholder="2995 或載具號碼">
+          <input id="order-donate-carrier-input" type="text" placeholder="載具號碼或捐贈碼（可留白）">
         </div>
         <div class="order-edit-field">
           <label for="order-tax-id-input">統編</label>
@@ -1916,7 +1928,7 @@
         }
 
         return {
-          donationCode: '2995',
+          donationCode: '',
           carrier: '',
           taxId: ''
         };
@@ -2284,7 +2296,7 @@ const handleCulturalCoinCheckout = () => {
 
         productCodeInput.focus();
         paidAmountInput.value = 1000;
-        if (invoiceDonateCarrierInput) invoiceDonateCarrierInput.value = '2995';
+        if (invoiceDonateCarrierInput) invoiceDonateCarrierInput.value = '';
         if (invoiceTaxIdInput) invoiceTaxIdInput.value = '';
       };
 
