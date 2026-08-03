@@ -3110,14 +3110,14 @@ async function exportPilot() {
     s1_rows.push(s1_header.map(header => master[header] !== undefined ? master[header] : ''));
   });
 
-  // 電子支付的傳票永遠掛在書展出貨單，不分流到其他客戶。
-  const bookFairGroup = groups.find(group => group.customer.code === BOOK_FAIR_CUSTOMER.code && group.documentCode === DOC_CODE);
+  // 所有付款加減項只掛在匯出的第一張出貨單；其餘出貨單視為現金。
+  const firstExportGroup = groups[0];
   let voucherSerial = 0;
   const pushVoucher = (code, subject, amount) => {
-    if (!amount || !bookFairGroup) return;
+    if (!amount || !firstExportGroup) return;
     const voucher = new Array(v1_header.length).fill('');
     voucher[0] = newERI('pay');
-    voucher[1] = bookFairGroup.masterERI;
+    voucher[1] = firstExportGroup.masterERI;
     voucher[2] = voucherSerial++;
     voucher[3] = code;
     voucher[4] = subject;
@@ -3126,18 +3126,34 @@ async function exportPilot() {
     voucher[9] = ts;
     v1_rows.push(voucher);
   };
-  validClients.forEach(client => {
+
+  const sortedPaymentClients = validClients
+    .map((client, originalIndex) => ({ client, originalIndex }))
+    .sort((a, b) => {
+      const timeA = Number(a.client.ts);
+      const timeB = Number(b.client.ts);
+      if (Number.isFinite(timeA) && Number.isFinite(timeB) && timeA !== timeB) return timeA - timeB;
+      const idCompare = String(a.client.id || '').localeCompare(String(b.client.id || ''));
+      return idCompare || a.originalIndex - b.originalIndex;
+    })
+    .map(entry => entry.client);
+  const paymentGroups = { credit: [], line: [], culture: [] };
+
+  sortedPaymentClients.forEach(client => {
     const pay = client.paymentMethod || '現金';
     const amount = Math.round(client.amount || 0);
     if (pay.includes('文化幣')) {
       const match = pay.match(/文化幣.*?\((\d+)\)/);
-      pushVoucher('61', '1144.61', match?.[1] ? parseInt(match[1], 10) : amount);
+      paymentGroups.culture.push(match?.[1] ? parseInt(match[1], 10) : amount);
     } else if (pay.includes('LINE')) {
-      pushVoucher('51', '1144.358', amount);
+      paymentGroups.line.push(amount);
     } else if (pay.includes('信用卡')) {
-      pushVoucher('5', '1144.355', amount);
+      paymentGroups.credit.push(amount);
     }
   });
+  paymentGroups.credit.forEach(amount => pushVoucher('5', '1144.355', amount));
+  paymentGroups.line.forEach(amount => pushVoucher('51', '1144.358', amount));
+  paymentGroups.culture.forEach(amount => pushVoucher('61', '1144.61', amount));
   const buildExportFile = (rows, filename) => {
     const esc = (v) => {
       if (v === null || v === undefined) return "";
