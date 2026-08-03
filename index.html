@@ -3063,6 +3063,11 @@ async function exportPilot() {
     totalAmount = Math.round(totalAmount);
     const invoiceInfo = group.clients.length === 1 ? group.clients[0].invoiceInfo : null;
     const invoiceRemark = formatInvoiceInfoInline(invoiceInfo);
+    const carrierRemarks = [...new Set(group.clients
+      .map(client => client.invoiceInfo?.carrier)
+      .filter(Boolean))]
+      .map(carrier => `載具：${carrier}`);
+    const pilotRemark = ['POS_Import', ...carrierRemarks].join(' / ');
     const master = {
       ERI: group.masterERI,
       CODE: group.documentCode,
@@ -3078,7 +3083,7 @@ async function exportPilot() {
       TOTAL: totalAmount,
       QTY: totalQty,
       EDITOR: 'POS',
-      REMARK: 'POS_Import',
+      REMARK: pilotRemark,
       TAXCATE: 3,
       INVCATE: 3,
       INVDATE: date,
