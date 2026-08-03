@@ -965,7 +965,7 @@
             <input type="text" id="invoice-tax-id" placeholder="統編八碼">
           </div>
         </div>
-        <div class="invoice-hint" style="color: var(--text-muted); font-size: 0.9em;">預設 Pilot 客戶為書展；選擇其他客戶後會沿用到下次修改。載具與統編都可留白。</div>
+        <div class="invoice-hint" style="color: var(--text-muted); font-size: 0.9em;">預設 Pilot 客戶為書展；選擇其他客戶後會沿用。輸入載具時會自動改為 305｜零售（個人），載具與統編不可同時輸入。</div>
         <div class="payment-qr-actions">
           <button type="button" id="show-linepay-qr" class="payment-qr-btn payment-qr-line">LINE PAY 收款碼</button>
           <button type="button" id="show-culture-qr" class="payment-qr-btn payment-qr-culture">文化幣 收款碼</button>
@@ -1485,7 +1485,13 @@
       };
 
       const BOOK_FAIR_CUSTOMER = { code: '0002', name: '書展' };
+      const PERSONAL_CUSTOMER = { code: '305', name: '零售' };
       const formatCustomerOption = (customer) => `${customer.code}｜${customer.name}`;
+      const isCarrierValue = (rawValue) => {
+        const value = String(rawValue || '').trim();
+        return value !== '' && !/^\d+$/.test(value);
+      };
+      const getPersonalCustomer = () => customerMap[PERSONAL_CUSTOMER.code] || PERSONAL_CUSTOMER;
       const resolveAccountingCustomer = (rawValue) => {
         const value = String(rawValue || '').trim();
         if (!value) return BOOK_FAIR_CUSTOMER;
@@ -1504,12 +1510,39 @@
           localStorage.setItem('selectedAccountingCustomerCode', BOOK_FAIR_CUSTOMER.code);
           return;
         }
+        if (isCarrierValue(invoiceDonateCarrierInput?.value) && customer.code !== PERSONAL_CUSTOMER.code) {
+          invoiceDonateCarrierInput.value = '';
+        }
         invoiceCustomerInput.value = formatCustomerOption(customer);
         localStorage.setItem('selectedAccountingCustomerCode', customer.code);
       };
 
+      const applyCarrierCustomerRule = (carrierInput, taxIdInput, customerInput, persist = false) => {
+        if (!isCarrierValue(carrierInput?.value)) return;
+        if (taxIdInput) taxIdInput.value = '';
+        const personalCustomer = getPersonalCustomer();
+        if (customerInput) customerInput.value = formatCustomerOption(personalCustomer);
+        if (persist) localStorage.setItem('selectedAccountingCustomerCode', personalCustomer.code);
+      };
+
+      const clearCarrierWhenTaxIdEntered = (taxIdInput, carrierInput) => {
+        if ((taxIdInput?.value || '').trim() && carrierInput) carrierInput.value = '';
+      };
+
       invoiceCustomerInput?.addEventListener('change', persistSelectedCustomer);
       invoiceCustomerInput?.addEventListener('blur', persistSelectedCustomer);
+      invoiceDonateCarrierInput?.addEventListener('input', () => {
+        applyCarrierCustomerRule(invoiceDonateCarrierInput, invoiceTaxIdInput, invoiceCustomerInput, true);
+      });
+      invoiceTaxIdInput?.addEventListener('input', () => {
+        clearCarrierWhenTaxIdEntered(invoiceTaxIdInput, invoiceDonateCarrierInput);
+      });
+      orderDonateCarrierInput?.addEventListener('input', () => {
+        applyCarrierCustomerRule(orderDonateCarrierInput, orderTaxIdInput, orderCustomerInput);
+      });
+      orderTaxIdInput?.addEventListener('input', () => {
+        clearCarrierWhenTaxIdEntered(orderTaxIdInput, orderDonateCarrierInput);
+      });
 
       // 你原本折扣表保留
       const loadDiscountRates = () => {
@@ -2251,7 +2284,9 @@ const handleCulturalCoinCheckout = () => {
         const clientId = generateClientId();
         const mERI = generateERI('master');
         const invoiceInfo = getInvoiceInfoFromInputs();
-        const accountingCustomer = getSelectedAccountingCustomer();
+        const accountingCustomer = invoiceInfo.carrier
+          ? getPersonalCustomer()
+          : getSelectedAccountingCustomer();
 
         clients[clientId] = {
           id: clientId,
@@ -2666,13 +2701,16 @@ const handleCulturalCoinCheckout = () => {
 
       window.closeOrderDetail = () => {
         if (detailClientId && clients[detailClientId]) {
-          const accountingCustomer = resolveAccountingCustomer(orderCustomerInput.value);
+          const invoiceInfo = getInvoiceInfoFromOrderModal();
+          const accountingCustomer = invoiceInfo.carrier
+            ? getPersonalCustomer()
+            : resolveAccountingCustomer(orderCustomerInput.value);
           if (!accountingCustomer) {
             alert('找不到這個 Pilot 客戶，本筆維持原客戶。');
           } else {
             clients[detailClientId].accountingCustomer = accountingCustomer;
           }
-          clients[detailClientId].invoiceInfo = getInvoiceInfoFromOrderModal();
+          clients[detailClientId].invoiceInfo = invoiceInfo;
           clients[detailClientId].note = orderNoteInput.value.trim();
           saveSummary();
           updateSummaryTable();
