@@ -2974,15 +2974,13 @@ async function exportPilot() {
   const v1_rows = [v1_header];
   const bookFairClients = [];
   const separateClients = [];
-  const isBookFairPayment = (pay) => /信用卡|LINE|文化幣/.test(pay || '');
 
   validClients.forEach(client => {
     const customer = client.accountingCustomer && client.accountingCustomer.code
       ? client.accountingCustomer
       : BOOK_FAIR_CUSTOMER;
     const hasCarrierOrTaxId = !!(client.invoiceInfo?.carrier || client.invoiceInfo?.taxId);
-    const shouldSeparate = !isBookFairPayment(client.paymentMethod) &&
-      (hasCarrierOrTaxId || customer.code !== BOOK_FAIR_CUSTOMER.code);
+    const shouldSeparate = hasCarrierOrTaxId || customer.code !== BOOK_FAIR_CUSTOMER.code;
     (shouldSeparate ? separateClients : bookFairClients).push({ ...client, accountingCustomer: customer });
   });
 
