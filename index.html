@@ -3007,52 +3007,113 @@ async function exportPilot() {
   const v1_header = ["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"];
   const validClients = Object.values(clients).filter(c => c && c.isValid);
   if (validClients.length === 0) { alert("沒有有效訂單可匯出"); return; }
+  const TAX_PROFILES = {
+    taxable: { key: 'taxable', label: '應稅', taxCate: 0 },
+    exempt: { key: 'exempt', label: '免稅', taxCate: 1 }
+  };
+  const roundTo = (value, digits = 2) => {
+    const factor = 10 ** digits;
+    return Math.round((Number(value) + Number.EPSILON) * factor) / factor;
+  };
+  const getCurrentItemBarcode = (item) => {
+    const currentProduct = products[item.code] || (item.barcode && products[item.barcode]);
+    return String(currentProduct?.barcode || item.barcode || '').trim();
+  };
+  const getItemTaxProfile = (item) => (
+    getCurrentItemBarcode(item).startsWith('978')
+      ? TAX_PROFILES.exempt
+      : TAX_PROFILES.taxable
+  );
+  const preparedClients = validClients.map(client => {
+    const customer = client.accountingCustomer && client.accountingCustomer.code
+      ? client.accountingCustomer
+      : BOOK_FAIR_CUSTOMER;
+    const entries = (client.items || []).map(item => {
+      const discountRate = item.discount !== undefined ? item.discount : 100;
+      const soldPrice = Number(item.price || 0) * (Number(discountRate) / 100);
+      return {
+        client,
+        item,
+        soldPrice,
+        grossAmount: Math.round(soldPrice * Number(item.quantity || 0)),
+        taxProfile: getItemTaxProfile(item),
+        barcode: getCurrentItemBarcode(item)
+      };
+    });
+    // 結帳總額是整數；把逐項四捨五入的尾差放在最後一項，確保拆稅後不漏金額。
+    const savedAmount = Number(client.amount);
+    const targetAmount = Number.isFinite(savedAmount)
+      ? Math.round(savedAmount)
+      : entries.reduce((sum, entry) => sum + entry.grossAmount, 0);
+    const allocatedAmount = entries.reduce((sum, entry) => sum + entry.grossAmount, 0);
+    if (entries.length && allocatedAmount !== targetAmount) {
+      entries[entries.length - 1].grossAmount += targetAmount - allocatedAmount;
+    }
+    return { ...client, accountingCustomer: customer, exportEntries: entries, exportAmount: targetAmount };
+  });
   const s1_rows = [s1_header];
   const s2_rows = [s2_header];
   const v1_rows = [v1_header];
   const bookFairClients = [];
   const separateClients = [];
 
-  validClients.forEach(client => {
-    const customer = client.accountingCustomer && client.accountingCustomer.code
-      ? client.accountingCustomer
-      : BOOK_FAIR_CUSTOMER;
+  preparedClients.forEach(client => {
+    const customer = client.accountingCustomer;
     const hasCarrierOrTaxId = !!(client.invoiceInfo?.carrier || client.invoiceInfo?.taxId);
     const shouldSeparate = hasCarrierOrTaxId || customer.code !== BOOK_FAIR_CUSTOMER.code;
-    (shouldSeparate ? separateClients : bookFairClients).push({ ...client, accountingCustomer: customer });
+    (shouldSeparate ? separateClients : bookFairClients).push(client);
   });
 
   const groups = [];
-  if (bookFairClients.length) {
-    groups.push({
-      documentCode: DOC_CODE,
-      customer: BOOK_FAIR_CUSTOMER,
-      clients: bookFairClients,
-      masterERI: newERI('master')
+  const appendTaxGroups = (sourceClients, customer) => {
+    [TAX_PROFILES.taxable, TAX_PROFILES.exempt].forEach(taxProfile => {
+      const clientsInGroup = sourceClients.filter(client =>
+        client.exportEntries.some(entry => entry.taxProfile.key === taxProfile.key)
+      );
+      const entries = clientsInGroup.flatMap(client =>
+        client.exportEntries.filter(entry => entry.taxProfile.key === taxProfile.key)
+      );
+      if (!entries.length) return;
+      groups.push({
+        customer,
+        clients: clientsInGroup,
+        entries,
+        taxProfile,
+        masterERI: newERI('master')
+      });
     });
-  }
-  separateClients.forEach((client, index) => {
-    groups.push({
-      documentCode: `${DOC_CODE}-${index + 1}`,
-      customer: client.accountingCustomer,
-      clients: [client],
-      masterERI: newERI('master')
-    });
+  };
+  // 固定順序：書展應稅、書展免稅，再依原訂單順序排列其他客戶的應稅、免稅。
+  if (bookFairClients.length) appendTaxGroups(bookFairClients, BOOK_FAIR_CUSTOMER);
+  separateClients.forEach(client => appendTaxGroups([client], client.accountingCustomer));
+  groups.forEach((group, index) => {
+    group.documentCode = index === 0 ? DOC_CODE : `${DOC_CODE}-${index}`;
   });
 
+  const exportAudit = {
+    expectedGross: preparedClients.reduce((sum, client) => sum + client.exportAmount, 0),
+    exportedGross: 0,
+    expectedLines: preparedClients.reduce((sum, client) => sum + client.exportEntries.length, 0),
+    exportedLines: 0,
+    expectedQty: preparedClients.reduce((sum, client) => sum + client.exportEntries.reduce((qty, entry) => qty + Number(entry.item.quantity || 0), 0), 0),
+    exportedQty: 0,
+    taxableGross: 0,
+    exemptGross: 0
+  };
+
   groups.forEach(group => {
-    let totalAmount = 0;
+    let grossTotal = 0;
     let totalQty = 0;
     let serial = 0;
 
-    group.clients.forEach(client => {
-      (client.items || []).forEach(item => {
-        const discountRate = item.discount !== undefined ? item.discount : 100;
-        const soldPrice = item.price * (discountRate / 100);
-        const rowAmount = Math.round(soldPrice * item.quantity);
+    group.entries.forEach(entry => {
+        const { item, soldPrice, grossAmount, taxProfile } = entry;
+        const isTaxable = taxProfile.key === TAX_PROFILES.taxable.key;
+        const exportPrice = isTaxable ? roundTo(soldPrice / 1.05) : roundTo(soldPrice);
+        const exportAmount = isTaxable ? roundTo(grossAmount / 1.05) : grossAmount;
         const unitCode = item.unitCode || (products[item.code] && products[item.code].unitCode) || '';
         const exportUnit = unitMap[unitCode] || item.unit || unitCode || '個';
-        totalAmount += soldPrice * item.quantity;
+        grossTotal += grossAmount;
         totalQty += item.quantity;
 
         const detail = {
@@ -3069,23 +3130,23 @@ async function exportPilot() {
           SPEC: '',
           QTY: item.quantity,
           UNIT: exportUnit,
-          PRICE: soldPrice,
-          AMT: rowAmount,
+          PRICE: exportPrice,
+          AMT: exportAmount,
           REALQTY: item.quantity,
           SUBQTY: 0,
           PRODDESC: '',
           QTYSTR: exportUnit,
           CURR: 'NTD',
           RATE: 1,
-          STDPRC: soldPrice,
+          STDPRC: exportPrice,
           DISCOUNT: 100,
           INVQTY: item.quantity,
           SAMPLE: 0,
           INVRETURN: 0,
           VPNO: '',
           VLIDDATE: date,
-          INVPRC: soldPrice,
-          INVAMT: rowAmount,
+          INVPRC: roundTo(soldPrice),
+          INVAMT: grossAmount,
           INVAMT1: 0,
           GIFT: 0,
           MFLAG: 0,
@@ -3093,10 +3154,12 @@ async function exportPilot() {
           LASTUPD: ts
         };
         s2_rows.push(s2_header.map(header => detail[header] !== undefined ? detail[header] : ''));
-      });
     });
 
-    totalAmount = Math.round(totalAmount);
+    const netAmount = group.taxProfile.key === TAX_PROFILES.taxable.key
+      ? Math.round(grossTotal / 1.05)
+      : grossTotal;
+    const taxAmount = grossTotal - netAmount;
     const invoiceInfo = group.clients.length === 1 ? group.clients[0].invoiceInfo : null;
     const invoiceRemark = formatInvoiceInfoInline(invoiceInfo);
     const carrierRemarks = [...new Set(group.clients
@@ -3113,19 +3176,19 @@ async function exportPilot() {
       CURR: 'NTD',
       RATE: 1,
       GWN: whCode,
-      TAX: 0,
-      AMT: totalAmount,
+      TAX: taxAmount,
+      AMT: netAmount,
       PLUSSUB: 0,
-      TOTAL: totalAmount,
+      TOTAL: grossTotal,
       QTY: totalQty,
       EDITOR: 'POS',
       REMARK: pilotRemark,
-      TAXCATE: 3,
-      INVCATE: 3,
+      TAXCATE: group.taxProfile.taxCate,
+      INVCATE: 2,
       INVDATE: date,
       BILDATE: date,
       RADVDATE: date,
-      COST: totalAmount,
+      COST: grossTotal,
       DPTNO: '0000',
       TYPE: 0,
       PRNIMMED: 0,
@@ -3144,7 +3207,30 @@ async function exportPilot() {
       POSREMARK1: invoiceRemark
     };
     s1_rows.push(s1_header.map(header => master[header] !== undefined ? master[header] : ''));
+    exportAudit.exportedGross += grossTotal;
+    exportAudit.exportedLines += group.entries.length;
+    exportAudit.exportedQty += totalQty;
+    exportAudit[group.taxProfile.key === TAX_PROFILES.taxable.key ? 'taxableGross' : 'exemptGross'] += grossTotal;
   });
+
+  const auditErrors = [];
+  if (exportAudit.exportedGross !== exportAudit.expectedGross) auditErrors.push(`金額 ${exportAudit.exportedGross} / ${exportAudit.expectedGross}`);
+  if (exportAudit.exportedLines !== exportAudit.expectedLines) auditErrors.push(`品項 ${exportAudit.exportedLines} / ${exportAudit.expectedLines}`);
+  if (exportAudit.exportedQty !== exportAudit.expectedQty) auditErrors.push(`數量 ${exportAudit.exportedQty} / ${exportAudit.expectedQty}`);
+  if (groups.some(group => {
+    const row = s1_rows.find(masterRow => masterRow[s1_header.indexOf('ERI')] === group.masterERI);
+    if (!row) return true;
+    const tax = Number(row[s1_header.indexOf('TAX')] || 0);
+    const net = Number(row[s1_header.indexOf('AMT')] || 0);
+    const total = Number(row[s1_header.indexOf('TOTAL')] || 0);
+    return tax + net !== total;
+  })) auditErrors.push('稅額＋未稅金額與含稅總額不符');
+  if (auditErrors.length) {
+    const message = `Pilot 匯出核對失敗：${auditErrors.join('；')}`;
+    console.error(message, exportAudit);
+    alert(message);
+    return;
+  }
 
   // 所有付款加減項只掛在匯出的第一張出貨單；其餘出貨單視為現金。
   const firstExportGroup = groups[0];
@@ -3262,6 +3348,8 @@ async function exportPilot() {
     files,
     'iPad 對多個 CSV 下載支援有限。若跳出分享面板，請選擇「儲存到檔案」；若仍被阻擋，請改用桌機匯出 Pilot 會計檔。'
   );
+  dbStatusElement.textContent = `✅ Pilot 匯出核對完成：共 ${groups.length} 張出貨單，應稅 ${exportAudit.taxableGross} 元、免稅 ${exportAudit.exemptGross} 元、合計 ${exportAudit.exportedGross} 元`;
+  dbStatusElement.style.color = 'green';
 };
 
 exportPilotBtn.onclick = exportPilot;
