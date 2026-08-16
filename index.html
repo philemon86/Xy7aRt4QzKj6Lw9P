@@ -3395,11 +3395,20 @@ const handleCulturalCoinCheckout = () => {
         if (detailClientId && clients[detailClientId]) {
           const invoiceInfo = getInvoiceInfoFromOrderModal();
           const bookFairCustomer = resolveAccountingCustomer(orderCustomerInput.value);
-          if (!isBookFairChurchCustomer(bookFairCustomer)) {
-            alert('找不到有效的本場書展教會；統編交易在補齊前無法正式匯出。');
-          } else {
+
+          // 只有「統編發票」才強制要求本場書展教會。
+          // 載具單（305）與一般書展單（0002）不應因未保存教會而跳警告。
+          if (invoiceInfo.taxId) {
+            if (!isBookFairChurchCustomer(bookFairCustomer)) {
+              alert('找不到有效的本場書展教會；統編交易在補齊前無法正式匯出。');
+            } else {
+              clients[detailClientId].bookFairCustomerCode = bookFairCustomer.code;
+            }
+          } else if (isBookFairChurchCustomer(bookFairCustomer)) {
+            // 若舊單有補選教會則保存，但不是載具／一般單的匯出必要條件。
             clients[detailClientId].bookFairCustomerCode = bookFairCustomer.code;
           }
+
           const accountingCustomer = invoiceInfo.carrier
             ? getPersonalCustomer()
             : (invoiceInfo.taxId && isBookFairChurchCustomer(bookFairCustomer)
