@@ -952,8 +952,8 @@
         </div>
         <div class="invoice-input-row">
           <div class="invoice-field invoice-customer-field">
-            <label for="invoice-customer">Pilot 客戶（選擇後會固定）</label>
-            <input type="text" id="invoice-customer" list="customer-options" value="0002｜書展" placeholder="輸入客戶代號或名稱">
+            <label for="invoice-customer">本場書展教會（統編發票使用）</label>
+            <input type="text" id="invoice-customer" list="customer-options" placeholder="輸入教會客戶代號或名稱">
             <datalist id="customer-options"></datalist>
           </div>
           <div class="invoice-field">
@@ -965,7 +965,7 @@
             <input type="text" id="invoice-tax-id" placeholder="統編八碼">
           </div>
         </div>
-        <div class="invoice-hint" style="color: var(--text-muted); font-size: 0.9em;">預設 Pilot 客戶為書展；選擇其他客戶後會沿用。輸入載具時會自動改為 305｜零售（個人），載具與統編不可同時輸入。</div>
+        <div class="invoice-hint" style="color: var(--text-muted); font-size: 0.9em;">書展開始前請先設定本場教會；設定會存入每筆交易。一般書展固定為 0002，個人載具固定為 305，統編發票使用該筆交易保存的本場教會。</div>
         <div class="payment-qr-actions">
           <button type="button" id="show-linepay-qr" class="payment-qr-btn payment-qr-line">LINE PAY 收款碼</button>
           <button type="button" id="show-culture-qr" class="payment-qr-btn payment-qr-culture">文化幣 收款碼</button>
@@ -1123,8 +1123,8 @@
       <pre id="order-detail-content" class="order-detail-content"></pre>
       <div class="order-edit-grid">
         <div class="order-edit-field">
-          <label for="order-customer-input">Pilot 客戶</label>
-          <input id="order-customer-input" type="text" list="customer-options" placeholder="客戶代號或名稱">
+          <label for="order-customer-input">本筆書展教會</label>
+          <input id="order-customer-input" type="text" list="customer-options" placeholder="教會客戶代號或名稱">
         </div>
         <div class="order-edit-field">
           <label for="order-donate-carrier-input">捐贈 / 載具</label>
@@ -1137,7 +1137,7 @@
       </div>
       <div class="order-note-block">
         <label for="order-note-input">備註</label>
-        <textarea id="order-note-input" rows="3" placeholder="可填統編、載具、特殊交代..."></textarea>
+        <textarea id="order-note-input" rows="3" placeholder="特殊交代（載具與統編請填上方正式欄位）"></textarea>
       </div>
       <div class="modal-btn-grid">
         <button class="modal-btn btn-m-cancel" onclick="closeOrderDetail()">關閉</button>
@@ -1152,6 +1152,7 @@
     </div>
   </div>
 
+  <script src="pilot-export.js"></script>
   <script>
     // =========================
     // 0) 小工具：安全字串/數字
@@ -1494,35 +1495,33 @@
       const getPersonalCustomer = () => customerMap[PERSONAL_CUSTOMER.code] || PERSONAL_CUSTOMER;
       const resolveAccountingCustomer = (rawValue) => {
         const value = String(rawValue || '').trim();
-        if (!value) return BOOK_FAIR_CUSTOMER;
+        if (!value) return null;
         const possibleCode = value.split(/[｜|\s]/)[0];
         if (customerMap[possibleCode]) return customerMap[possibleCode];
         return Object.values(customerMap).find(customer => customer.name === value) || null;
       };
-      const getSelectedAccountingCustomer = () => {
-        return resolveAccountingCustomer(invoiceCustomerInput?.value) || BOOK_FAIR_CUSTOMER;
+      const isBookFairChurchCustomer = (customer) => (
+        customer && customer.code !== BOOK_FAIR_CUSTOMER.code && customer.code !== PERSONAL_CUSTOMER.code
+      );
+      const getSelectedBookFairCustomer = () => {
+        const customer = resolveAccountingCustomer(invoiceCustomerInput?.value);
+        return isBookFairChurchCustomer(customer) ? customer : null;
       };
       const persistSelectedCustomer = () => {
         const customer = resolveAccountingCustomer(invoiceCustomerInput?.value);
-        if (!customer) {
-          alert('找不到這個 Pilot 客戶，已恢復為書展。');
-          invoiceCustomerInput.value = formatCustomerOption(BOOK_FAIR_CUSTOMER);
-          localStorage.setItem('selectedAccountingCustomerCode', BOOK_FAIR_CUSTOMER.code);
+        if (!isBookFairChurchCustomer(customer)) {
+          alert('請選擇 CUSTOMER.csv 中的本場教會（不可使用 0002 或 305）。');
+          invoiceCustomerInput.value = '';
+          localStorage.removeItem('bookFairCustomerCode');
           return;
         }
-        if (isCarrierValue(invoiceDonateCarrierInput?.value) && customer.code !== PERSONAL_CUSTOMER.code) {
-          invoiceDonateCarrierInput.value = '';
-        }
         invoiceCustomerInput.value = formatCustomerOption(customer);
-        localStorage.setItem('selectedAccountingCustomerCode', customer.code);
+        localStorage.setItem('bookFairCustomerCode', customer.code);
       };
 
-      const applyCarrierCustomerRule = (carrierInput, taxIdInput, customerInput, persist = false) => {
+      const applyCarrierCustomerRule = (carrierInput, taxIdInput) => {
         if (!isCarrierValue(carrierInput?.value)) return;
         if (taxIdInput) taxIdInput.value = '';
-        const personalCustomer = getPersonalCustomer();
-        if (customerInput) customerInput.value = formatCustomerOption(personalCustomer);
-        if (persist) localStorage.setItem('selectedAccountingCustomerCode', personalCustomer.code);
       };
 
       const clearCarrierWhenTaxIdEntered = (taxIdInput, carrierInput) => {
@@ -1532,13 +1531,13 @@
       invoiceCustomerInput?.addEventListener('change', persistSelectedCustomer);
       invoiceCustomerInput?.addEventListener('blur', persistSelectedCustomer);
       invoiceDonateCarrierInput?.addEventListener('input', () => {
-        applyCarrierCustomerRule(invoiceDonateCarrierInput, invoiceTaxIdInput, invoiceCustomerInput, true);
+        applyCarrierCustomerRule(invoiceDonateCarrierInput, invoiceTaxIdInput);
       });
       invoiceTaxIdInput?.addEventListener('input', () => {
         clearCarrierWhenTaxIdEntered(invoiceTaxIdInput, invoiceDonateCarrierInput);
       });
       orderDonateCarrierInput?.addEventListener('input', () => {
-        applyCarrierCustomerRule(orderDonateCarrierInput, orderTaxIdInput, orderCustomerInput);
+        applyCarrierCustomerRule(orderDonateCarrierInput, orderTaxIdInput);
       });
       orderTaxIdInput?.addEventListener('input', () => {
         clearCarrierWhenTaxIdEntered(orderTaxIdInput, orderDonateCarrierInput);
@@ -1572,7 +1571,7 @@
             fetchTextSmart('CUSTOMERS.csv'),
           ]);
 
-          // Pilot 客戶（來源 CUSTOMER.csv，僅保留代號與名稱）
+          // Pilot 客戶：公開檔只保留匯出必要欄位，不發布正式 CUSTOMER 的地址／聯絡／帳務資料。
           const customerRows = parseCSV(customerTxt);
           const customerHeader = customerRows[0].map(h => stripQuotes(h));
           customerMap = {};
@@ -1580,16 +1579,26 @@
             const r = customerRows[i];
             const code = stripQuotes(r[customerHeader.indexOf('CODE')] || '');
             const name = stripQuotes(r[customerHeader.indexOf('CNAME')] || '');
-            if (code && name) customerMap[code] = { code, name };
+            const invoiceName = stripQuotes(r[customerHeader.indexOf('INVNAME')] || '');
+            const invcate = stripQuotes(r[customerHeader.indexOf('INVCATE')] || '');
+            const einvflag = stripQuotes(r[customerHeader.indexOf('EINVFLAG')] || '');
+            if (code && name) customerMap[code] = { code, name, invoiceName, invcate, einvflag };
           }
           customerOptions.replaceChildren(...Object.values(customerMap).map(customer => {
             const option = document.createElement('option');
             option.value = formatCustomerOption(customer);
             return option;
           }));
-          const savedCustomerCode = localStorage.getItem('selectedAccountingCustomerCode') || BOOK_FAIR_CUSTOMER.code;
-          const selectedCustomer = customerMap[savedCustomerCode] || BOOK_FAIR_CUSTOMER;
-          invoiceCustomerInput.value = formatCustomerOption(selectedCustomer);
+          const savedCustomerCode = localStorage.getItem('bookFairCustomerCode')
+            || localStorage.getItem('selectedAccountingCustomerCode')
+            || '';
+          const selectedCustomer = customerMap[savedCustomerCode];
+          if (isBookFairChurchCustomer(selectedCustomer)) {
+            invoiceCustomerInput.value = formatCustomerOption(selectedCustomer);
+            localStorage.setItem('bookFairCustomerCode', selectedCustomer.code);
+          } else {
+            invoiceCustomerInput.value = '';
+          }
 
           // PRODUNIT
           const unitRows = parseCSV(unitTxt);
@@ -1643,6 +1652,8 @@
             const kind = stripQuotes(getP(r,"KIND"));
             const unitCode = stripQuotes(getP(r,"UNIT"));
             const qty = toNum(getP(r,"CQTY"), 0);
+            const ntaxFlag = stripQuotes(getP(r,"NTAXFLAG"));
+            const cost = toNum(getP(r,"CCOST"), 0);
 
             // ✅ PRICE1 = 主要定價
             const price = toNum(getP(r,"PRICE1"), 0);
@@ -1662,6 +1673,8 @@
               kind: kind,
               unit: unitName,
               unitCode: unitCode,
+              ntaxFlag: ntaxFlag,
+              cost: cost,
               defaultDiscount: defaultDiscount,
             };
 
@@ -2278,23 +2291,32 @@ const handleCulturalCoinCheckout = () => {
           if (paymentMethod === '現金') triggerButtonAnimation(btnF10);
         }
 
-        POSAudio.success();
-
         const totalAmount = parseFloat(totalAmountElement.textContent);
         const clientId = generateClientId();
         const mERI = generateERI('master');
         const invoiceInfo = getInvoiceInfoFromInputs();
+        const bookFairCustomer = getSelectedBookFairCustomer();
+        if (!bookFairCustomer) {
+          alert('結帳前請先設定「本場書展教會」，以便寫入交易快照。');
+          invoiceCustomerInput?.focus();
+          return;
+        }
         const accountingCustomer = invoiceInfo.carrier
           ? getPersonalCustomer()
-          : getSelectedAccountingCustomer();
+          : (invoiceInfo.taxId ? bookFairCustomer : BOOK_FAIR_CUSTOMER);
+
+        POSAudio.success();
 
         clients[clientId] = {
           id: clientId,
+          transactionId: clientId,
           eri: mERI,
           amount: totalAmount,
           paymentMethod: paymentMethod,
+          paymentRecords: PilotExporter.getPaymentRecords({ paymentMethod, amount: totalAmount }),
           invoiceInfo,
           accountingCustomer,
+          bookFairCustomerCode: bookFairCustomer.code,
           items: cart.map(i => ({ ...i, detailERI: generateERI('detail') })),
           isValid: true,
           ts: new Date().getTime().toString().slice(-12)
@@ -2672,6 +2694,10 @@ const handleCulturalCoinCheckout = () => {
         }
 
         clients[editingClientId].paymentMethod = finalMethod;
+        clients[editingClientId].paymentRecords = PilotExporter.getPaymentRecords({
+          paymentMethod: finalMethod,
+          amount: clients[editingClientId].amount
+        });
         saveSummary();
         updateSummaryTable();
         closePaymentModal();
@@ -2684,16 +2710,18 @@ const handleCulturalCoinCheckout = () => {
         const items = client.items.map(item => `${item.code} ｜ ${item.name} x ${item.quantity} (${Math.round(item.price * item.quantity)})`).join('\n');
         const invoiceLines = formatInvoiceInfoLines(client.invoiceInfo);
         const accountingCustomer = client.accountingCustomer || BOOK_FAIR_CUSTOMER;
+        const bookFairCustomer = customerMap[client.bookFairCustomerCode] || null;
         const header = [
           `訂單：${clientId} ${!client.isValid ? '(已作廢)' : ''}`,
           `付款方式：${method}`,
           `Pilot 客戶：${formatCustomerOption(accountingCustomer)}`,
+          `本場書展教會：${bookFairCustomer ? formatCustomerOption(bookFairCustomer) : '未保存'}`,
           ...invoiceLines
         ].join('\n');
         orderDetailContent.textContent = `${header}\n\n購買商品：\n${items}`;
         orderDonateCarrierInput.value = client.invoiceInfo?.carrier || client.invoiceInfo?.donationCode || '';
         orderTaxIdInput.value = client.invoiceInfo?.taxId || '';
-        orderCustomerInput.value = formatCustomerOption(accountingCustomer);
+        orderCustomerInput.value = bookFairCustomer ? formatCustomerOption(bookFairCustomer) : '';
         orderNoteInput.value = client.note || '';
         detailClientId = clientId;
         orderDetailModal.style.display = 'flex';
@@ -2702,14 +2730,21 @@ const handleCulturalCoinCheckout = () => {
       window.closeOrderDetail = () => {
         if (detailClientId && clients[detailClientId]) {
           const invoiceInfo = getInvoiceInfoFromOrderModal();
+          const bookFairCustomer = resolveAccountingCustomer(orderCustomerInput.value);
+          if (!isBookFairChurchCustomer(bookFairCustomer)) {
+            alert('找不到有效的本場書展教會；統編交易在補齊前無法正式匯出。');
+          } else {
+            clients[detailClientId].bookFairCustomerCode = bookFairCustomer.code;
+          }
           const accountingCustomer = invoiceInfo.carrier
             ? getPersonalCustomer()
-            : resolveAccountingCustomer(orderCustomerInput.value);
-          if (!accountingCustomer) {
-            alert('找不到這個 Pilot 客戶，本筆維持原客戶。');
-          } else {
-            clients[detailClientId].accountingCustomer = accountingCustomer;
-          }
+            : (invoiceInfo.taxId && isBookFairChurchCustomer(bookFairCustomer)
+              ? bookFairCustomer
+              : BOOK_FAIR_CUSTOMER);
+          clients[detailClientId].accountingCustomer = accountingCustomer;
+          clients[detailClientId].transactionId = clients[detailClientId].transactionId
+            || clients[detailClientId].id
+            || detailClientId;
           clients[detailClientId].invoiceInfo = invoiceInfo;
           clients[detailClientId].note = orderNoteInput.value.trim();
           saveSummary();
@@ -2808,7 +2843,7 @@ const handleCulturalCoinCheckout = () => {
       };
       // ===== 備份 / 還原 / 清空 =====
       async function doBackup() {
-        const backupData = { cart, clients, overallSummary, clientCounter, sessionRules, priceOverrides, selectedAccountingCustomerCode: getSelectedAccountingCustomer().code, notes: notesElement.value, timestamp: new Date().toISOString() };
+        const backupData = { cart, clients, overallSummary, clientCounter, sessionRules, priceOverrides, bookFairCustomerCode: getSelectedBookFairCustomer()?.code || '', notes: notesElement.value, timestamp: new Date().toISOString() };
         const dataStr = JSON.stringify(backupData, null, 2);
         const filename = `pos_backup_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`;
         const file = new File([dataStr], filename, { type: 'application/json' });
@@ -2838,7 +2873,9 @@ const handleCulturalCoinCheckout = () => {
               localStorage.setItem('clientCounter', JSON.stringify(data.clientCounter || 1));
               localStorage.setItem('sessionRules', JSON.stringify(data.sessionRules || {}));
               localStorage.setItem('priceOverrides', JSON.stringify(data.priceOverrides || {}));
-              localStorage.setItem('selectedAccountingCustomerCode', data.selectedAccountingCustomerCode || BOOK_FAIR_CUSTOMER.code);
+              const restoredBookFairCustomerCode = data.bookFairCustomerCode || data.selectedAccountingCustomerCode || '';
+              if (restoredBookFairCustomerCode) localStorage.setItem('bookFairCustomerCode', restoredBookFairCustomerCode);
+              else localStorage.removeItem('bookFairCustomerCode');
               localStorage.setItem('notes', data.notes || '');
               alert('還原成功！');
               location.reload();
@@ -2975,394 +3012,96 @@ exportCsvBtn.addEventListener('click', async () => {
 });
 
 // ==========================================================
-// ✅ Pilot 匯出：去掉全欄位包引號 + 修正 UNIT/QTYSTR/INVRETURN
+// ✅ Pilot 匯出：固定正式 schema、建立 transaction 關聯並在下載前 hard validation
 // ==========================================================
-async function exportPilot() {
-  const now = new Date();
-  const DOC_CODE = "1159999";
-  const whCode = "0000";
-  const staffCode = "02";
-  const yyyy = now.getFullYear();
-  const MM = String(now.getMonth() + 1).padStart(2, "0");
-  const DD = String(now.getDate()).padStart(2, "0");
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mi = String(now.getMinutes()).padStart(2, "0");
-  const ss = String(now.getSeconds()).padStart(2, "0");
-
-  const date = `${yyyy}/${MM}/${DD}`;
-  const ts = String(yyyy).slice(-2) + MM + DD + hh + mi + ss;
-  const newERI = (type) => generateERI(type);
-  const s1_header = ["ERI","CODE","STAFF","CUST","SDATE","CURR","RATE","PROJNO","GWN","ADDR","TAX","AMT","PLUSSUB","TOTAL","QTY","EDITOR","MEMO","REMARK","ARTICLE","TAXCATE","INVCATE","INVDATE","INVNO","BILDATE","RADVDATE","COST","DPTNO","ACCNO","TYPE","SRCERI","SCRUTINY","PRNIMMED","PRNONCE","ACCDESC","ACCGEN","ACNT","INVAMT","COMPNO","REFNO","PRINTX","BILCUST","BANK","INVNAME","CMPID","PAYCASH","NORCV","CONTACT","TEL","EINVFLAG","APCODE","LASTUPD","POSCODE","POSREMARK1","POSREMARK2","STIME"];
-  const S2_PROFILE = "E"; 
-  const EXPORT_ENCODING = "big5"; 
-  const s2_header = (S2_PROFILE === "B")
-    ? ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","VLIDDATE","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]
-    : (S2_PROFILE === "C")
-      ? ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","VLIDDATE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]
-      : (S2_PROFILE === "D")
-        ? ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","VLIDDATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"]
-        : (S2_PROFILE === "E")
-          ? ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","VLIDDATE","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2","DISCOUNT"]
-          : ["ERI","MASTERI","SRCERI","STAFF","CUST","GWN","PROD","SDATE","TYPE","CODE","SERIAL","SPEC","QTY","UNIT","PRICE","AMT","REALQTY","SUBQTY","REMARK","PRODDESC","QTYSTR","CURR","RATE","STDPRC","DISCOUNT","PROJNO","INVNO","INVQTY","SAMPLE","INVRETURN","VPNO","VLIDDATE","REFNO","INVPRC","INVAMT","INVAMT1","GIFT","MFLAG","SUBAMT","APCODE","LASTUPD","POSREMARK1","POSREMARK2"];
-  const v1_header = ["ERI","SRCERI","SERIAL","CODE","SUBJNO","OP","AMT","REMARK","APCODE","LASTUPD"];
-  const validClients = Object.values(clients).filter(c => c && c.isValid);
-  if (validClients.length === 0) { alert("沒有有效訂單可匯出"); return; }
-  const TAX_PROFILES = {
-    taxable: { key: 'taxable', label: '應稅', taxCate: 0 },
-    exempt: { key: 'exempt', label: '免稅', taxCate: 1 }
-  };
-  const roundTo = (value, digits = 2) => {
-    const factor = 10 ** digits;
-    return Math.round((Number(value) + Number.EPSILON) * factor) / factor;
-  };
-  const getCurrentItemBarcode = (item) => {
-    const currentProduct = products[item.code] || (item.barcode && products[item.barcode]);
-    return String(currentProduct?.barcode || item.barcode || '').trim();
-  };
-  const isValidIsbn13Barcode = (barcode) => {
-    const value = String(barcode || '').trim();
-    if (!/^978\d{10}$/.test(value)) return false;
-    const digits = [...value].map(Number);
-    const weightedSum = digits
-      .slice(0, 12)
-      .reduce((sum, digit, index) => sum + digit * (index % 2 === 0 ? 1 : 3), 0);
-    const expectedCheckDigit = (10 - (weightedSum % 10)) % 10;
-    return digits[12] === expectedCheckDigit;
-  };
-  const getItemTaxProfile = (item) => (
-    isValidIsbn13Barcode(getCurrentItemBarcode(item))
-      ? TAX_PROFILES.exempt
-      : TAX_PROFILES.taxable
-  );
-  const preparedClients = validClients.map(client => {
-    const customer = client.accountingCustomer && client.accountingCustomer.code
-      ? client.accountingCustomer
-      : BOOK_FAIR_CUSTOMER;
-    const entries = (client.items || []).map(item => {
-      const discountRate = item.discount !== undefined ? item.discount : 100;
-      const soldPrice = Number(item.price || 0) * (Number(discountRate) / 100);
-      return {
-        client,
-        item,
-        soldPrice,
-        grossAmount: Math.round(soldPrice * Number(item.quantity || 0)),
-        taxProfile: getItemTaxProfile(item),
-        barcode: getCurrentItemBarcode(item)
-      };
-    });
-    // 結帳總額是整數；把逐項四捨五入的尾差放在最後一項，確保拆稅後不漏金額。
-    const savedAmount = Number(client.amount);
-    const targetAmount = Number.isFinite(savedAmount)
-      ? Math.round(savedAmount)
-      : entries.reduce((sum, entry) => sum + entry.grossAmount, 0);
-    const allocatedAmount = entries.reduce((sum, entry) => sum + entry.grossAmount, 0);
-    if (entries.length && allocatedAmount !== targetAmount) {
-      entries[entries.length - 1].grossAmount += targetAmount - allocatedAmount;
-    }
-    return { ...client, accountingCustomer: customer, exportEntries: entries, exportAmount: targetAmount };
-  });
-  const s1_rows = [s1_header];
-  const s2_rows = [s2_header];
-  const v1_rows = [v1_header];
-  const bookFairClients = [];
-  const separateClients = [];
-
-  preparedClients.forEach(client => {
-    const customer = client.accountingCustomer;
-    const hasCarrierOrTaxId = !!(client.invoiceInfo?.carrier || client.invoiceInfo?.taxId);
-    const shouldSeparate = hasCarrierOrTaxId || customer.code !== BOOK_FAIR_CUSTOMER.code;
-    (shouldSeparate ? separateClients : bookFairClients).push(client);
-  });
-
-  const groups = [];
-  const appendTaxGroups = (sourceClients, customer) => {
-    [TAX_PROFILES.taxable, TAX_PROFILES.exempt].forEach(taxProfile => {
-      const clientsInGroup = sourceClients.filter(client =>
-        client.exportEntries.some(entry => entry.taxProfile.key === taxProfile.key)
-      );
-      const entries = clientsInGroup.flatMap(client =>
-        client.exportEntries.filter(entry => entry.taxProfile.key === taxProfile.key)
-      );
-      if (!entries.length) return;
-      groups.push({
-        customer,
-        clients: clientsInGroup,
-        entries,
-        taxProfile,
-        masterERI: newERI('master')
-      });
-    });
-  };
-  // 固定順序：書展應稅、書展免稅，再依原訂單順序排列其他客戶的應稅、免稅。
-  if (bookFairClients.length) appendTaxGroups(bookFairClients, BOOK_FAIR_CUSTOMER);
-  separateClients.forEach(client => appendTaxGroups([client], client.accountingCustomer));
-  groups.forEach((group, index) => {
-    group.documentCode = index === 0 ? DOC_CODE : `${DOC_CODE}-${index}`;
-  });
-
-  const exportAudit = {
-    expectedGross: preparedClients.reduce((sum, client) => sum + client.exportAmount, 0),
-    exportedGross: 0,
-    expectedLines: preparedClients.reduce((sum, client) => sum + client.exportEntries.length, 0),
-    exportedLines: 0,
-    expectedQty: preparedClients.reduce((sum, client) => sum + client.exportEntries.reduce((qty, entry) => qty + Number(entry.item.quantity || 0), 0), 0),
-    exportedQty: 0,
-    taxableGross: 0,
-    exemptGross: 0
-  };
-
-  groups.forEach(group => {
-    let grossTotal = 0;
-    let totalQty = 0;
-    let serial = 0;
-
-    group.entries.forEach(entry => {
-        const { item, soldPrice, grossAmount, taxProfile } = entry;
-        const isTaxable = taxProfile.key === TAX_PROFILES.taxable.key;
-        const exportPrice = isTaxable ? roundTo(soldPrice / 1.05) : roundTo(soldPrice);
-        const exportAmount = isTaxable ? roundTo(grossAmount / 1.05) : grossAmount;
-        const unitCode = item.unitCode || (products[item.code] && products[item.code].unitCode) || '';
-        const exportUnit = unitMap[unitCode] || item.unit || unitCode || '個';
-        grossTotal += grossAmount;
-        totalQty += item.quantity;
-
-        const detail = {
-          ERI: item.detailERI || newERI('detail'),
-          MASTERI: group.masterERI,
-          STAFF: '',
-          CUST: group.customer.code,
-          GWN: whCode,
-          PROD: item.code,
-          SDATE: date,
-          TYPE: 0,
-          CODE: group.documentCode,
-          SERIAL: serial++,
-          SPEC: '',
-          QTY: item.quantity,
-          UNIT: exportUnit,
-          PRICE: exportPrice,
-          AMT: exportAmount,
-          REALQTY: item.quantity,
-          SUBQTY: 0,
-          PRODDESC: '',
-          QTYSTR: exportUnit,
-          CURR: 'NTD',
-          RATE: 1,
-          STDPRC: exportPrice,
-          DISCOUNT: 100,
-          INVQTY: item.quantity,
-          SAMPLE: 0,
-          INVRETURN: 0,
-          VPNO: '',
-          VLIDDATE: date,
-          INVPRC: roundTo(soldPrice),
-          INVAMT: grossAmount,
-          INVAMT1: 0,
-          GIFT: 0,
-          MFLAG: 0,
-          SUBAMT: 0,
-          LASTUPD: ts
-        };
-        s2_rows.push(s2_header.map(header => detail[header] !== undefined ? detail[header] : ''));
-    });
-
-    const netAmount = group.taxProfile.key === TAX_PROFILES.taxable.key
-      ? Math.round(grossTotal / 1.05)
-      : grossTotal;
-    const taxAmount = grossTotal - netAmount;
-    const invoiceInfo = group.clients.length === 1 ? group.clients[0].invoiceInfo : null;
-    const invoiceRemark = formatInvoiceInfoInline(invoiceInfo);
-    const carrierRemarks = [...new Set(group.clients
-      .map(client => client.invoiceInfo?.carrier)
-      .filter(Boolean))]
-      .map(carrier => `載具：${carrier}`);
-    const pilotRemark = ['POS_Import', ...carrierRemarks].join(' / ');
-    const master = {
-      ERI: group.masterERI,
-      CODE: group.documentCode,
-      STAFF: staffCode,
-      CUST: group.customer.code,
-      SDATE: date,
-      CURR: 'NTD',
-      RATE: 1,
-      GWN: whCode,
-      TAX: taxAmount,
-      AMT: netAmount,
-      PLUSSUB: 0,
-      TOTAL: grossTotal,
-      QTY: totalQty,
-      EDITOR: 'POS',
-      REMARK: pilotRemark,
-      TAXCATE: group.taxProfile.taxCate,
-      INVCATE: 2,
-      INVDATE: date,
-      BILDATE: date,
-      RADVDATE: date,
-      COST: grossTotal,
-      DPTNO: '0000',
-      TYPE: 0,
-      PRNIMMED: 0,
-      PRNONCE: 0,
-      ACCGEN: 0,
-      INVAMT: 0,
-      COMPNO: '0000',
-      PRINTX: 0,
-      BILCUST: group.customer.code,
-      INVNAME: group.customer.name,
-      CMPID: invoiceInfo?.taxId || '',
-      PAYCASH: 1,
-      NORCV: 0,
-      EINVFLAG: 0,
-      LASTUPD: ts,
-      POSREMARK1: invoiceRemark
-    };
-    s1_rows.push(s1_header.map(header => master[header] !== undefined ? master[header] : ''));
-    exportAudit.exportedGross += grossTotal;
-    exportAudit.exportedLines += group.entries.length;
-    exportAudit.exportedQty += totalQty;
-    exportAudit[group.taxProfile.key === TAX_PROFILES.taxable.key ? 'taxableGross' : 'exemptGross'] += grossTotal;
-  });
-
-  const auditErrors = [];
-  if (exportAudit.exportedGross !== exportAudit.expectedGross) auditErrors.push(`金額 ${exportAudit.exportedGross} / ${exportAudit.expectedGross}`);
-  if (exportAudit.exportedLines !== exportAudit.expectedLines) auditErrors.push(`品項 ${exportAudit.exportedLines} / ${exportAudit.expectedLines}`);
-  if (exportAudit.exportedQty !== exportAudit.expectedQty) auditErrors.push(`數量 ${exportAudit.exportedQty} / ${exportAudit.expectedQty}`);
-  if (groups.some(group => {
-    const row = s1_rows.find(masterRow => masterRow[s1_header.indexOf('ERI')] === group.masterERI);
-    if (!row) return true;
-    const tax = Number(row[s1_header.indexOf('TAX')] || 0);
-    const net = Number(row[s1_header.indexOf('AMT')] || 0);
-    const total = Number(row[s1_header.indexOf('TOTAL')] || 0);
-    return tax + net !== total;
-  })) auditErrors.push('稅額＋未稅金額與含稅總額不符');
-  if (auditErrors.length) {
-    const message = `Pilot 匯出核對失敗：${auditErrors.join('；')}`;
-    console.error(message, exportAudit);
-    alert(message);
-    return;
-  }
-
-  // 所有付款加減項只掛在匯出的第一張出貨單；其餘出貨單視為現金。
-  const firstExportGroup = groups[0];
-  let voucherSerial = 0;
-  const pushVoucher = (code, subject, amount) => {
-    if (!amount || !firstExportGroup) return;
-    const voucher = new Array(v1_header.length).fill('');
-    voucher[0] = newERI('pay');
-    voucher[1] = firstExportGroup.masterERI;
-    voucher[2] = voucherSerial++;
-    voucher[3] = code;
-    voucher[4] = subject;
-    voucher[5] = 0;
-    voucher[6] = -Math.round(amount);
-    voucher[9] = ts;
-    v1_rows.push(voucher);
-  };
-
-  const sortedPaymentClients = validClients
-    .map((client, originalIndex) => ({ client, originalIndex }))
-    .sort((a, b) => {
-      const timeA = Number(a.client.ts);
-      const timeB = Number(b.client.ts);
-      if (Number.isFinite(timeA) && Number.isFinite(timeB) && timeA !== timeB) return timeA - timeB;
-      const idCompare = String(a.client.id || '').localeCompare(String(b.client.id || ''));
-      return idCompare || a.originalIndex - b.originalIndex;
-    })
-    .map(entry => entry.client);
-  const paymentGroups = { credit: [], line: [], culture: [] };
-
-  sortedPaymentClients.forEach(client => {
-    const pay = client.paymentMethod || '現金';
-    const amount = Math.round(client.amount || 0);
-    if (pay.includes('文化幣')) {
-      const match = pay.match(/文化幣.*?\((\d+)\)/);
-      paymentGroups.culture.push(match?.[1] ? parseInt(match[1], 10) : amount);
-    } else if (pay.includes('LINE')) {
-      paymentGroups.line.push(amount);
-    } else if (pay.includes('信用卡')) {
-      paymentGroups.credit.push(amount);
-    }
-  });
-  paymentGroups.credit.forEach(amount => pushVoucher('5', '1144.355', amount));
-  paymentGroups.line.forEach(amount => pushVoucher('51', '1144.358', amount));
-  paymentGroups.culture.forEach(amount => pushVoucher('61', '1144.61', amount));
-  const buildExportFile = (rows, filename) => {
-    const esc = (v) => {
-      if (v === null || v === undefined) return "";
-      let s = String(v).replace(/"/g, '""');
-      return `"${s}"`;
-    };
-
-    const csvContent = rows
-      .map(r => r.map(esc).join(','))
-      .join('\r\n');
-
-    const encodeBig5 = (() => {
-      let map = null;
-      const buildMap = () => {
-        const m = new Map();
-        for (let i = 0; i < 0x80; i++) m.set(String.fromCharCode(i), [i]);
-        const dec = new TextDecoder("big5");
-        const trails = [];
-        for (let t = 0x40; t <= 0x7E; t++) trails.push(t);
-        for (let t = 0xA1; t <= 0xFE; t++) trails.push(t);
-        for (let lead = 0x81; lead <= 0xFE; lead++) {
-          for (let i = 0; i < trails.length; i++) {
-            const trail = trails[i];
-            const ch = dec.decode(new Uint8Array([lead, trail]));
-            if (ch && ch !== "\uFFFD" && !m.has(ch)) {
-              m.set(ch, [lead, trail]);
-            }
+const buildPilotExportFile = (rows, filename) => {
+  const csvContent = rows
+    .map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\r\n');
+  const encodeBig5 = (() => {
+    let map = null;
+    const buildMap = () => {
+      const result = new Map();
+      for (let i = 0; i < 0x80; i += 1) result.set(String.fromCharCode(i), [i]);
+      const decoder = new TextDecoder('big5');
+      const trails = [];
+      for (let trail = 0x40; trail <= 0x7E; trail += 1) trails.push(trail);
+      for (let trail = 0xA1; trail <= 0xFE; trail += 1) trails.push(trail);
+      for (let lead = 0x81; lead <= 0xFE; lead += 1) {
+        trails.forEach(trail => {
+          const character = decoder.decode(new Uint8Array([lead, trail]));
+          if (character && character !== '\uFFFD' && !result.has(character)) {
+            result.set(character, [lead, trail]);
           }
-        }
-        return m;
-      };
-      return (str) => {
-        if (!map) map = buildMap();
-        const out = [];
-        for (const ch of str) {
-          const b = map.get(ch);
-          if (b) {
-            if (b.length === 1) out.push(b[0]);
-            else out.push(b[0], b[1]);
-          } else {
-            out.push(0x3F);
-          }
-        }
-        return new Uint8Array(out);
-      };
-    })();
-
-    let blob;
-    if (EXPORT_ENCODING === "big5") {
-      try {
-        const bytes = encodeBig5(csvContent);
-        blob = new Blob([bytes], { type: 'text/csv;charset=big5' });
-      } catch (e) {
-        alert("Big5 轉碼失敗，改用 UTF-8 匯出");
-        blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+        });
       }
-    } else {
-      blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-    }
-    return new File([blob], filename, { type: blob.type || 'text/csv' });
-  };
-
-  const files = [
-    buildExportFile(s1_rows, "STKSALE1.csv"),
-    buildExportFile(s2_rows, "STKSALE2.csv"),
-    buildExportFile(v1_rows, "VCHRPLUS_SALE1.csv")
-  ];
-
-  await exportFiles(
-    files,
-    'iPad 對多個 CSV 下載支援有限。若跳出分享面板，請選擇「儲存到檔案」；若仍被阻擋，請改用桌機匯出 Pilot 會計檔。'
-  );
-  dbStatusElement.textContent = `✅ Pilot 匯出核對完成：共 ${groups.length} 張出貨單，應稅 ${exportAudit.taxableGross} 元、免稅 ${exportAudit.exemptGross} 元、合計 ${exportAudit.exportedGross} 元`;
-  dbStatusElement.style.color = 'green';
+      return result;
+    };
+    return (value) => {
+      if (!map) map = buildMap();
+      const output = [];
+      for (const character of value) {
+        const bytes = map.get(character);
+        if (!bytes) output.push(0x3F);
+        else output.push(...bytes);
+      }
+      return new Uint8Array(output);
+    };
+  })();
+  const blob = new Blob([encodeBig5(csvContent)], { type: 'text/csv;charset=big5' });
+  return new File([blob], filename, { type: blob.type });
 };
 
-exportPilotBtn.onclick = exportPilot;
+async function exportPilot(options = {}) {
+  try {
+    const result = PilotExporter.buildPilotExport({
+      clients,
+      products,
+      customerMap,
+      unitMap,
+      generateERI,
+      now: options.now instanceof Date ? options.now : new Date()
+    });
+    window.lastPilotDryRun = result;
+
+    if (!result.ok) {
+      const message = `Pilot 正式匯出已阻止：\n${result.validationErrors.join('\n')}`;
+      console.error(message, result.audit);
+      dbStatusElement.textContent = `❌ ${result.validationErrors.join('；')}`;
+      dbStatusElement.style.color = 'red';
+      alert(message);
+      return result;
+    }
+
+    if (options.dryRun === true) return result;
+    const files = [
+      buildPilotExportFile(result.rows.stkSale1, 'STKSALE1.csv'),
+      buildPilotExportFile(result.rows.stkSale2, 'STKSALE2.csv'),
+      buildPilotExportFile(result.rows.vchrplus, 'VCHRPLUS_SALE1.csv')
+    ];
+    await exportFiles(
+      files,
+      'iPad 對多個 CSV 下載支援有限。若跳出分享面板，請選擇「儲存到檔案」；若仍被阻擋，請改用桌機匯出 Pilot 會計檔。'
+    );
+    const audit = result.audit;
+    dbStatusElement.textContent = `✅ Pilot 匯出驗證完成：STKSALE1 ${audit.stkSale1Count} 筆、STKSALE2 ${audit.stkSale2Count} 筆、VCHRPLUS ${audit.voucherCount} 筆；應稅 ${audit.taxableGross} 元、免稅 ${audit.exemptGross} 元、合計 ${audit.exportedGross} 元`;
+    dbStatusElement.style.color = 'green';
+    return result;
+  } catch (error) {
+    console.error(error);
+    const message = `Pilot 匯出失敗：${error.message || error}`;
+    dbStatusElement.textContent = `❌ ${message}`;
+    dbStatusElement.style.color = 'red';
+    alert(message);
+    return null;
+  }
+}
+
+window.runPilotDryRun = (now) => exportPilot({
+  dryRun: true,
+  now: now ? new Date(now) : new Date()
+});
+exportPilotBtn.onclick = () => exportPilot();
 
 // ===== 啟動 =====
 loadDiscountRates();
