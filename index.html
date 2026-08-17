@@ -1589,7 +1589,7 @@
         QTY: totalQty,
         EDITOR: 'POS',
         MEMO: '',
-        REMARK: 'POS_Import',
+        REMARK: group.invoiceType === 'carrier' ? '雲端載具' : 'POS_Import',
         ARTICLE: '',
         TAXCATE: group.taxProfile.taxCate,
         INVCATE: normalizeCustomerNumber(customer.invcate, group.invoiceType === 'general' || group.invoiceType === 'donation' ? 3 : 2),
