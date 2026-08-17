@@ -1562,12 +1562,34 @@
 
       const singleClient = group.clients.length === 1 ? group.clients[0] : null;
       const invoiceInfo = singleClient?.invoiceInfo || {};
-      const carrierRemark = group.invoiceType === 'carrier' && invoiceInfo.carrier
-        ? `載具：${String(invoiceInfo.carrier).trim()}`
-        : '';
-      const donationRemark = group.invoiceType === 'donation' && invoiceInfo.donationCode
-        ? `捐贈：${String(invoiceInfo.donationCode).trim()}`
-        : '';
+
+      // PILOT「附註」要保存實際輸入內容，不再使用 POS_Import / 雲端載具等泛稱。
+      // 有正式 PILOT 欄位的資料（例如統編）仍走正式欄位，不重複塞進附註。
+      const remarkParts = [];
+      const addRemark = (value) => {
+        const normalized = String(value || '').trim();
+        if (normalized && !remarkParts.includes(normalized)) remarkParts.push(normalized);
+      };
+
+      if (group.invoiceType === 'carrier' && invoiceInfo.carrier) {
+        addRemark(`載具：${String(invoiceInfo.carrier).trim()}`);
+      }
+      if (group.invoiceType === 'donation' && invoiceInfo.donationCode) {
+        addRemark(`捐贈：${String(invoiceInfo.donationCode).trim()}`);
+      }
+
+      // 2995 會併入一般書展；若該彙整組內確實有 2995，附註仍保留這項已記錄資料。
+      if (group.invoiceType === 'general') {
+        const hasDefaultDonation = group.clients.some(client => (
+          String(client?.invoiceInfo?.donationCode || '').trim() === DEFAULT_DONATION_CODE
+        ));
+        if (hasDefaultDonation) addRemark(`捐贈：${DEFAULT_DONATION_CODE}`);
+      }
+
+      // 手動備註也要進 PILOT 附註；彙整單若有多筆備註則去重後合併。
+      group.clients.forEach(client => addRemark(client?.note));
+
+      const masterRemark = remarkParts.join('；');
       const customer = group.customer || {};
       const invoiceName = String(customer.invoiceName || customer.name || '').trim();
 
@@ -1589,7 +1611,7 @@
         QTY: totalQty,
         EDITOR: 'POS',
         MEMO: '',
-        REMARK: group.invoiceType === 'carrier' ? '雲端載具' : 'POS_Import',
+        REMARK: masterRemark,
         ARTICLE: '',
         TAXCATE: group.taxProfile.taxCate,
         INVCATE: normalizeCustomerNumber(customer.invcate, group.invoiceType === 'general' || group.invoiceType === 'donation' ? 3 : 2),
@@ -1624,7 +1646,7 @@
         APCODE: '',
         LASTUPD: ts,
         POSCODE: '',
-        POSREMARK1: carrierRemark || donationRemark,
+        POSREMARK1: '',
         POSREMARK2: '',
         STIME: '',
         _invoiceType: group.invoiceType,
@@ -1731,8 +1753,8 @@
       if (master._invoiceType === 'carrier') {
         return master.CUST !== PERSONAL_CODE
           || master.BILCUST !== PERSONAL_CODE
-          || !String(master.POSREMARK1).startsWith('載具：')
-          || String(master.REMARK).includes('載具：')
+          || !String(master.REMARK).includes('載具：')
+          || !!String(master.POSREMARK1 || '')
           || String(master.CMPID || '') !== '';
       }
       if (master._invoiceType === 'church') {
@@ -1745,11 +1767,12 @@
       if (master._invoiceType === 'donation') {
         return master.CUST !== BOOK_FAIR_CODE
           || master.BILCUST !== BOOK_FAIR_CODE
-          || !String(master.POSREMARK1).startsWith('捐贈：');
+          || !String(master.REMARK).includes('捐贈：')
+          || !!String(master.POSREMARK1 || '');
       }
       return master.CUST !== BOOK_FAIR_CODE
         || master.BILCUST !== BOOK_FAIR_CODE
-        || !!master.POSREMARK1;
+        || !!String(master.POSREMARK1 || '');
     }).length;
 
     audit.costErrorCount = masterObjects.filter(master => (
