@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>腓利門雲POS</title>
-  <!-- SINGLE-FILE-PILOT-20260816 -->
+  <!-- SINGLE-FILE-PILOT-ERI-DIRECT-TEST-20260818 -->
   <link rel="icon" href="favicon-cloud.svg" type="image/svg+xml" />
   <style>
     /* --- 核心配色：莫蘭迪清透大地色系與圓潤風格 --- */
@@ -1096,7 +1096,7 @@
         <button id="export-csv-btn" class="btn btn-earth-2">匯總訂單資訊</button>
         <button id="backup-btn" class="btn btn-earth-3">存檔</button>
         <button id="restore-btn" class="btn btn-earth-4">讀檔</button>
-        <button id="export-pilot-btn" class="btn btn-earth-1">匯出 Pilot 會計檔</button>
+        <button id="export-pilot-btn" class="btn btn-earth-1">匯出 Pilot ERI 測試檔</button>
         <button id="clear-all-btn" class="btn btn-earth-5">清空</button>
       </div>
     </div>
@@ -1313,6 +1313,8 @@
       duplicateCodeCount: 0,
       duplicateEriCount: 0,
       orphanMasteriCount: 0,
+      masterDetailKeyErrorCount: 0,
+      serialSequenceErrorCount: 0,
       orphanSrceriCount: 0,
       taxCateErrorCount: 0,
       masterAmountErrorCount: 0,
@@ -1459,7 +1461,7 @@
           entries,
           invoiceType,
           taxProfile,
-          masterERI: allocateEri('master')
+          masterERI: ''
         });
       });
     };
@@ -1480,16 +1482,20 @@
     });
 
     const transactionToPrimaryMasterEri = new Map();
-    groups.forEach(group => group.clients.forEach(client => {
-      if (!transactionToPrimaryMasterEri.has(client.transactionId)) {
-        transactionToPrimaryMasterEri.set(client.transactionId, group.masterERI);
-      }
-    }));
 
     const masterObjects = [];
     const detailObjects = [];
 
     groups.forEach(group => {
+      // 每張主單先取 master ERI，再立即產生該主單所有 detail ERI。
+      // 如此 master / detail 都從同一條全域流水依序取得。
+      group.masterERI = allocateEri('master');
+      group.clients.forEach(client => {
+        if (!transactionToPrimaryMasterEri.has(client.transactionId)) {
+          transactionToPrimaryMasterEri.set(client.transactionId, group.masterERI);
+        }
+      });
+
       const grossTotal = group.entries.reduce((sum, entry) => sum + entry.grossAmount, 0);
       const totalQty = group.entries.reduce((sum, entry) => sum + Number(entry.item.quantity || 0), 0);
       const costTotal = roundTo(group.entries.reduce((sum, entry) => sum + entry.costAmount, 0));
@@ -1504,7 +1510,7 @@
         const exportUnit = unitMap[unitCode] || item.unit || unitCode || '個';
 
         return {
-          ERI: allocateEri('detail', item.detailERI),
+          ERI: allocateEri('detail'),
           MASTERI: group.masterERI,
           SRCERI: '',
           STAFF: '',
@@ -1721,6 +1727,24 @@
       ...voucherObjects.map(voucher => voucher.ERI)
     ]);
     audit.orphanMasteriCount = detailObjects.filter(detail => !masterEris.has(detail.MASTERI)).length;
+
+    // PILOT 不只依 MASTERI；CODE / CUST / SDATE / GWN 也要求主明細同步。
+    audit.masterDetailKeyErrorCount = detailObjects.filter(detail => {
+      const master = masterByEri.get(detail.MASTERI);
+      return !master
+        || String(detail.CODE) !== String(master.CODE)
+        || String(detail.CUST) !== String(master.CUST)
+        || String(detail.SDATE) !== String(master.SDATE)
+        || String(detail.GWN) !== String(master.GWN);
+    }).length;
+
+    // 每張單 SERIAL 必須由 0 連續。
+    audit.serialSequenceErrorCount = masterObjects.reduce((count, master) => {
+      const rows = detailObjects.filter(detail => detail.MASTERI === master.ERI);
+      const invalid = rows.some((detail, index) => Number(detail.SERIAL) !== index);
+      return count + (invalid ? 1 : 0);
+    }, 0);
+
     audit.orphanSrceriCount = voucherObjects.filter(voucher => !masterEris.has(voucher.SRCERI)).length;
 
     audit.taxCateErrorCount += detailObjects.filter(detail => {
@@ -1785,6 +1809,8 @@
       duplicateCodeCount: 'STKSALE1 CODE 重複',
       duplicateEriCount: 'ERI 重複',
       orphanMasteriCount: 'STKSALE2 MASTERI 找不到 master',
+      masterDetailKeyErrorCount: 'STKSALE1/STKSALE2 的 CODE、CUST、SDATE、GWN 不一致',
+      serialSequenceErrorCount: 'STKSALE2 SERIAL 不是由 0 連續編號',
       orphanSrceriCount: 'VCHRPLUS SRCERI 找不到 master',
       taxCateErrorCount: '商品稅別或 TAXCATE 錯誤',
       masterAmountErrorCount: 'STKSALE1 AMT/TAX/TOTAL 不平',
@@ -2130,15 +2156,44 @@
         }
       };
 
-      // --- Pilot ERI ---
+      // --- Pilot ERI：直接匯入測試版 ---
+      // master / detail / pay 共用同一條持久化 Base36 流水。
+      // 保持目前已驗證可被 PILOT 接受的 16 碼格式：
+      // 0H5 + 0010LU0 + 6碼  (STKSALE1)
+      // 0H8 + 0010LU0 + 6碼  (STKSALE2)
+      // 01E + 0010LU0 + 6碼  (VCHRPLUS)
+      const PILOT_ERI_COUNTER_KEY = 'pilotEriGlobalCounterV2';
+      const PILOT_ERI_MOD = 36 ** 6;
+
+      function nextPilotEriSuffix() {
+        let counter = Number(localStorage.getItem(PILOT_ERI_COUNTER_KEY));
+
+        // 第一次使用以 epoch seconds 當 seed，之後只遞增。
+        // 避免不同裝置都從 000001 起跑。
+        if (!Number.isSafeInteger(counter) || counter < 0 || counter >= PILOT_ERI_MOD) {
+          counter = Math.floor(Date.now() / 1000) % PILOT_ERI_MOD;
+        }
+
+        counter = (counter + 1) % PILOT_ERI_MOD;
+        localStorage.setItem(PILOT_ERI_COUNTER_KEY, String(counter));
+
+        return counter.toString(36).toUpperCase().padStart(6, '0');
+      }
+
       function generateERI(type) {
         const prefix = { 'master': '0H5', 'detail': '0H8', 'pay': '01E' }[type];
-        const fingerprint = "0010LU0";
-        const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        let suffix = "";
-        for (let i=0;i<6;i++) suffix += chars.charAt(Math.floor(Math.random()*chars.length));
-        return (prefix + fingerprint + suffix).substring(0,16);
+        if (!prefix) throw new Error(`未知 ERI type：${type}`);
+
+        const eri = prefix + '0010LU0' + nextPilotEriSuffix();
+        if (eri.length !== 16) throw new Error(`ERI 長度錯誤：${eri}`);
+        return eri;
       }
+
+      window.__PILOT_ERI_TEST__ = {
+        version: '2026-08-18-direct-sequence-v1',
+        counterKey: PILOT_ERI_COUNTER_KEY,
+        fingerprint: '0010LU0'
+      };
 
       // --- 日期 ---
       const currentDate = new Date().toISOString().split('T')[0].replace(/-/g,'/');
@@ -2980,7 +3035,7 @@ const handleCulturalCoinCheckout = () => {
 
         const totalAmount = parseFloat(totalAmountElement.textContent);
         const clientId = generateClientId();
-        const mERI = generateERI('master');
+        const mERI = ''; // ERI 改由正式 Pilot 匯出時產生
         const invoiceInfo = getInvoiceInfoFromInputs();
         const bookFairCustomer = getSelectedBookFairCustomer();
         if (!bookFairCustomer) {
@@ -3004,7 +3059,7 @@ const handleCulturalCoinCheckout = () => {
           invoiceInfo,
           accountingCustomer,
           bookFairCustomerCode: bookFairCustomer.code,
-          items: cart.map(i => ({ ...i, detailERI: generateERI('detail') })),
+          items: cart.map(i => ({ ...i })),
           isValid: true,
           ts: new Date().getTime().toString().slice(-12)
         };
@@ -3584,8 +3639,12 @@ const handleCulturalCoinCheckout = () => {
 
       document.getElementById('clear-all-btn').onclick = () => {
         if (confirm('確定要刪除全部訂單？(將清除所有資料並重整)')) {
+          const pilotEriCounter = localStorage.getItem(PILOT_ERI_COUNTER_KEY);
           localStorage.clear();
-          alert('資料已清空，系統將重新載入。');
+          if (pilotEriCounter !== null) {
+            localStorage.setItem(PILOT_ERI_COUNTER_KEY, pilotEriCounter);
+          }
+          alert('資料已清空，系統將重新載入。ERI 流水號已保留。');
           location.reload();
         }
       };
