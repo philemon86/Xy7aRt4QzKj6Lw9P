@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>腓利門雲POS</title>
-  <!-- SINGLE-FILE-PILOT-ERI-DIRECT-TEST-20260818 -->
+  <!-- SINGLE-FILE-PILOT-ERI-DIRECT-TEST-20260818-CUSTOMERFIX -->
   <link rel="icon" href="favicon-cloud.svg" type="image/svg+xml" />
   <style>
     /* --- 核心配色：莫蘭迪清透大地色系與圓潤風格 --- */
@@ -953,7 +953,7 @@
         </div>
         <div class="invoice-input-row">
           <div class="invoice-field invoice-customer-field">
-            <label for="invoice-customer">本場書展教會（統編發票使用）</label>
+            <label for="invoice-customer">這張統編發票要開哪個教會？</label>
             <input type="text" id="invoice-customer" list="customer-options" placeholder="輸入教會客戶代號或名稱">
             <datalist id="customer-options"></datalist>
           </div>
@@ -966,7 +966,7 @@
             <input type="text" id="invoice-tax-id" placeholder="統編八碼">
           </div>
         </div>
-        <div class="invoice-hint" style="color: var(--text-muted); font-size: 0.9em;">書展開始前請先設定本場教會；設定會存入每筆交易。一般書展固定為 0002，個人載具固定為 305，統編發票使用該筆交易保存的本場教會。</div>
+        <div class="invoice-hint" style="color: var(--text-muted); font-size: 0.9em;">一般結帳固定使用 0002 書展客戶；只有輸入統編時才需要選擇要開哪個教會。個人載具固定為 305。</div>
         <div class="payment-qr-actions">
           <button type="button" id="show-linepay-qr" class="payment-qr-btn payment-qr-line">LINE PAY 收款碼</button>
           <button type="button" id="show-culture-qr" class="payment-qr-btn payment-qr-culture">文化幣 收款碼</button>
@@ -1488,7 +1488,6 @@
 
     groups.forEach(group => {
       // 每張主單先取 master ERI，再立即產生該主單所有 detail ERI。
-      // 如此 master / detail 都從同一條全域流水依序取得。
       group.masterERI = allocateEri('master');
       group.clients.forEach(client => {
         if (!transactionToPrimaryMasterEri.has(client.transactionId)) {
@@ -1728,7 +1727,6 @@
     ]);
     audit.orphanMasteriCount = detailObjects.filter(detail => !masterEris.has(detail.MASTERI)).length;
 
-    // PILOT 不只依 MASTERI；CODE / CUST / SDATE / GWN 也要求主明細同步。
     audit.masterDetailKeyErrorCount = detailObjects.filter(detail => {
       const master = masterByEri.get(detail.MASTERI);
       return !master
@@ -1738,7 +1736,6 @@
         || String(detail.GWN) !== String(master.GWN);
     }).length;
 
-    // 每張單 SERIAL 必須由 0 連續。
     audit.serialSequenceErrorCount = masterObjects.reduce((count, master) => {
       const rows = detailObjects.filter(detail => detail.MASTERI === master.ERI);
       const invalid = rows.some((detail, index) => Number(detail.SERIAL) !== index);
@@ -2008,6 +2005,7 @@
       const notesElement = document.getElementById('notes');
       const printEnabledInput = document.getElementById('print-enabled');
       const invoiceCustomerInput = document.getElementById('invoice-customer');
+      const invoiceCustomerField = invoiceCustomerInput?.closest('.invoice-customer-field');
       const customerOptions = document.getElementById('customer-options');
       const invoiceDonateCarrierInput = document.getElementById('invoice-donate-carrier');
       const invoiceTaxIdInput = document.getElementById('invoice-tax-id');
@@ -2158,39 +2156,29 @@
 
       // --- Pilot ERI：直接匯入測試版 ---
       // master / detail / pay 共用同一條持久化 Base36 流水。
-      // 保持目前已驗證可被 PILOT 接受的 16 碼格式：
-      // 0H5 + 0010LU0 + 6碼  (STKSALE1)
-      // 0H8 + 0010LU0 + 6碼  (STKSALE2)
-      // 01E + 0010LU0 + 6碼  (VCHRPLUS)
       const PILOT_ERI_COUNTER_KEY = 'pilotEriGlobalCounterV2';
       const PILOT_ERI_MOD = 36 ** 6;
 
       function nextPilotEriSuffix() {
         let counter = Number(localStorage.getItem(PILOT_ERI_COUNTER_KEY));
-
-        // 第一次使用以 epoch seconds 當 seed，之後只遞增。
-        // 避免不同裝置都從 000001 起跑。
         if (!Number.isSafeInteger(counter) || counter < 0 || counter >= PILOT_ERI_MOD) {
           counter = Math.floor(Date.now() / 1000) % PILOT_ERI_MOD;
         }
-
         counter = (counter + 1) % PILOT_ERI_MOD;
         localStorage.setItem(PILOT_ERI_COUNTER_KEY, String(counter));
-
         return counter.toString(36).toUpperCase().padStart(6, '0');
       }
 
       function generateERI(type) {
         const prefix = { 'master': '0H5', 'detail': '0H8', 'pay': '01E' }[type];
         if (!prefix) throw new Error(`未知 ERI type：${type}`);
-
         const eri = prefix + '0010LU0' + nextPilotEriSuffix();
         if (eri.length !== 16) throw new Error(`ERI 長度錯誤：${eri}`);
         return eri;
       }
 
       window.__PILOT_ERI_TEST__ = {
-        version: '2026-08-18-direct-sequence-v1',
+        version: '2026-08-18-direct-sequence-v1-customerfix',
         counterKey: PILOT_ERI_COUNTER_KEY,
         fingerprint: '0010LU0'
       };
@@ -2249,16 +2237,32 @@
         const customer = resolveAccountingCustomer(invoiceCustomerInput?.value);
         return isBookFairChurchCustomer(customer) ? customer : null;
       };
-      const persistSelectedCustomer = () => {
-        const customer = resolveAccountingCustomer(invoiceCustomerInput?.value);
-        if (!isBookFairChurchCustomer(customer)) {
-          alert('請選擇 CUSTOMER.csv 中的本場教會（不可使用 0002 或 305）。');
+
+      const syncInvoiceCustomerVisibility = () => {
+        const hasTaxId = String(invoiceTaxIdInput?.value || '').trim() !== '';
+        if (invoiceCustomerField) invoiceCustomerField.style.display = hasTaxId ? 'flex' : 'none';
+
+        // 沒有統編就是一般 0002，不保留上一張統編發票的教會。
+        if (!hasTaxId && invoiceCustomerInput) {
           invoiceCustomerInput.value = '';
-          localStorage.removeItem('bookFairCustomerCode');
-          return;
         }
+      };
+
+      const persistSelectedCustomer = () => {
+        const raw = String(invoiceCustomerInput?.value || '').trim();
+
+        // 一般結帳不需要教會，空白完全合法。
+        if (!raw) return true;
+
+        const customer = resolveAccountingCustomer(raw);
+        if (!isBookFairChurchCustomer(customer)) {
+          alert('找不到這個教會客戶，請從 CUSTOMER.csv 的教會清單選擇。');
+          invoiceCustomerInput.value = '';
+          return false;
+        }
+
         invoiceCustomerInput.value = formatCustomerOption(customer);
-        localStorage.setItem('bookFairCustomerCode', customer.code);
+        return true;
       };
 
       const applyCarrierCustomerRule = (carrierInput, taxIdInput) => {
@@ -2277,6 +2281,12 @@
       });
       invoiceTaxIdInput?.addEventListener('input', () => {
         clearCarrierWhenTaxIdEntered(invoiceTaxIdInput, invoiceDonateCarrierInput);
+        syncInvoiceCustomerVisibility();
+
+        const taxId = String(invoiceTaxIdInput.value || '').trim();
+        if (/^\d{8}$/.test(taxId) && !getSelectedBookFairCustomer()) {
+          setTimeout(() => invoiceCustomerInput?.focus(), 0);
+        }
       });
       orderDonateCarrierInput?.addEventListener('input', () => {
         applyCarrierCustomerRule(orderDonateCarrierInput, orderTaxIdInput);
@@ -2331,16 +2341,12 @@
             option.value = formatCustomerOption(customer);
             return option;
           }));
-          const savedCustomerCode = localStorage.getItem('bookFairCustomerCode')
-            || localStorage.getItem('selectedAccountingCustomerCode')
-            || '';
-          const selectedCustomer = customerMap[savedCustomerCode];
-          if (isBookFairChurchCustomer(selectedCustomer)) {
-            invoiceCustomerInput.value = formatCustomerOption(selectedCustomer);
-            localStorage.setItem('bookFairCustomerCode', selectedCustomer.code);
-          } else {
-            invoiceCustomerInput.value = '';
-          }
+          // 一般書展預設 0002，不再要求預先設定「本場教會」。
+          // 教會只屬於「當筆統編發票」，因此每次載入先保持空白。
+          invoiceCustomerInput.value = '';
+          localStorage.removeItem('bookFairCustomerCode');
+          localStorage.removeItem('selectedAccountingCustomerCode');
+          syncInvoiceCustomerVisibility();
 
           // PRODUNIT
           const unitRows = parseCSV(unitTxt);
@@ -3035,14 +3041,21 @@ const handleCulturalCoinCheckout = () => {
 
         const totalAmount = parseFloat(totalAmountElement.textContent);
         const clientId = generateClientId();
-        const mERI = ''; // ERI 改由正式 Pilot 匯出時產生
+        const mERI = ''; // ERI 只在正式 Pilot 匯出時產生
         const invoiceInfo = getInvoiceInfoFromInputs();
-        const bookFairCustomer = getSelectedBookFairCustomer();
-        if (!bookFairCustomer) {
-          alert('結帳前請先設定「本場書展教會」，以便寫入交易快照。');
-          invoiceCustomerInput?.focus();
-          return;
+
+        // 一般書展直接用 0002；載具用 305。
+        // 只有這筆有統編時，才要求選擇要開哪個教會。
+        let bookFairCustomer = null;
+        if (invoiceInfo.taxId) {
+          bookFairCustomer = getSelectedBookFairCustomer();
+          if (!bookFairCustomer) {
+            alert('這筆有輸入統編，請選擇「要開哪個教會」後再結帳。');
+            invoiceCustomerInput?.focus();
+            return;
+          }
         }
+
         const accountingCustomer = invoiceInfo.carrier
           ? getPersonalCustomer()
           : (invoiceInfo.taxId ? bookFairCustomer : BOOK_FAIR_CUSTOMER);
@@ -3058,7 +3071,7 @@ const handleCulturalCoinCheckout = () => {
           paymentRecords: PilotExporter.getPaymentRecords({ paymentMethod, amount: totalAmount }),
           invoiceInfo,
           accountingCustomer,
-          bookFairCustomerCode: bookFairCustomer.code,
+          bookFairCustomerCode: bookFairCustomer?.code || '',
           items: cart.map(i => ({ ...i })),
           isValid: true,
           ts: new Date().getTime().toString().slice(-12)
@@ -3097,6 +3110,9 @@ const handleCulturalCoinCheckout = () => {
         paidAmountInput.value = 1000;
         if (invoiceDonateCarrierInput) invoiceDonateCarrierInput.value = '';
         if (invoiceTaxIdInput) invoiceTaxIdInput.value = '';
+        if (invoiceCustomerInput) invoiceCustomerInput.value = '';
+        localStorage.removeItem('bookFairCustomerCode');
+        syncInvoiceCustomerVisibility();
       };
 
       btnF7.addEventListener('click', () => performCheckout('信用卡'));
@@ -3863,6 +3879,7 @@ loadDiscountRates();
 
 // ✅ 先載入系統四檔，再渲染
 loadMasterData().then(() => {
+  syncInvoiceCustomerVisibility();
   updateCartDisplay();
   updateSummaryTable();
   calculateChange();
