@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>腓利門雲POS</title>
-  <!-- SINGLE-FILE-PILOT-ERI-DIRECT-TEST-20260818-CUSTOMERFIX-PLUSFIX -->
+  <!-- SINGLE-FILE-PILOT-ERI-DIRECT-TEST-20260818-CUSTOMERFIX-PLUSFIX-TOTALFIX -->
   <link rel="icon" href="favicon-cloud.svg" type="image/svg+xml" />
   <style>
     /* --- 核心配色：莫蘭迪清透大地色系與圓潤風格 --- */
@@ -1484,6 +1484,7 @@
     });
 
     const transactionToPrimaryMasterEri = new Map();
+    const transactionToMasterSlices = new Map();
 
     const masterObjects = [];
     const detailObjects = [];
@@ -1491,9 +1492,27 @@
     groups.forEach(group => {
       // 每張主單先取 master ERI，再立即產生該主單所有 detail ERI。
       group.masterERI = allocateEri('master');
+
       group.clients.forEach(client => {
         if (!transactionToPrimaryMasterEri.has(client.transactionId)) {
           transactionToPrimaryMasterEri.set(client.transactionId, group.masterERI);
+        }
+
+        // 記住「這個交易」在「這張拆稅 master」中實際占多少銷售額。
+        // 後面付款加減項會按這些 slice 分配，避免把整筆非現金付款全塞進第一張 master。
+        const sliceGross = group.entries
+          .filter(entry => entry.transactionId === client.transactionId)
+          .reduce((sum, entry) => sum + Number(entry.grossAmount || 0), 0);
+
+        if (sliceGross > 0) {
+          if (!transactionToMasterSlices.has(client.transactionId)) {
+            transactionToMasterSlices.set(client.transactionId, []);
+          }
+          transactionToMasterSlices.get(client.transactionId).push({
+            masterERI: group.masterERI,
+            grossAmount: roundTo(sliceGross),
+            taxProfile: group.taxProfile.key
+          });
         }
       });
 
@@ -1670,42 +1689,75 @@
     const voucherSerialByMaster = new Map();
 
     preparedClients.forEach(client => {
-      const primaryMasterEri = transactionToPrimaryMasterEri.get(client.transactionId);
-      if (!primaryMasterEri) audit.paymentAssociationErrorCount += 1;
+      const slices = (transactionToMasterSlices.get(client.transactionId) || [])
+        .map(slice => ({ ...slice, remaining: Number(slice.grossAmount || 0) }));
+
+      if (!slices.length) {
+        audit.paymentAssociationErrorCount += 1;
+        return;
+      }
 
       client.paymentRecords.forEach(record => {
         const mapping = PAYMENT_MAPPING[record.method];
-        // 現金不產 VCHRPLUS；其餘未知付款也不自行發明科目。
+
+        // 現金不產 VCHRPLUS；未知付款也不自行發明科目。
         if (!mapping) return;
         if (!Number.isFinite(record.amount)) return;
 
-        // VCHRPLUS.SERIAL 以每個 SRCERI 為一組，由 0 開始連續。
-        const voucherSerial = voucherSerialByMaster.get(primaryMasterEri) || 0;
+        let remainingPayment = Math.round(Number(record.amount || 0));
 
-        voucherObjects.push({
-          ERI: allocateEri('pay'),
-          SRCERI: primaryMasterEri || '',
-          SERIAL: voucherSerial,
-          CODE: mapping.code,
-          SUBJNO: mapping.subject,
-          OP: 0,
-          AMT: -Math.round(record.amount),
-          REMARK: '',
-          APCODE: '',
-          LASTUPD: ts,
-          _transactionId: client.transactionId,
-          _expectedSrceri: primaryMasterEri,
-          _expectedAmount: -Math.round(record.amount)
-        });
+        // 將這筆非現金付款分配到此 transaction 的各拆稅 master。
+        // 每張 master 最多只扣該 transaction 在該 master 的銷售額，
+        // 因此不會再出現「主單銷售 1,730，但加減項 -2,200」的負殘額。
+        for (const slice of slices) {
+          if (remainingPayment <= 0) break;
+          if (slice.remaining <= 0) continue;
 
-        voucherSerialByMaster.set(primaryMasterEri, voucherSerial + 1);
+          const allocation = Math.min(
+            remainingPayment,
+            Math.round(Number(slice.remaining || 0))
+          );
+          if (allocation <= 0) continue;
+
+          const voucherSerial = voucherSerialByMaster.get(slice.masterERI) || 0;
+
+          voucherObjects.push({
+            ERI: allocateEri('pay'),
+            SRCERI: slice.masterERI,
+            SERIAL: voucherSerial,
+            CODE: mapping.code,
+            SUBJNO: mapping.subject,
+            OP: 0,
+            AMT: -allocation,
+            REMARK: '',
+            APCODE: '',
+            LASTUPD: ts,
+            _transactionId: client.transactionId,
+            _expectedSrceri: slice.masterERI,
+            _expectedAmount: -allocation,
+            _paymentMethod: record.method
+          });
+
+          voucherSerialByMaster.set(slice.masterERI, voucherSerial + 1);
+          slice.remaining = roundTo(slice.remaining - allocation);
+          remainingPayment -= allocation;
+        }
+
+        // 非現金付款若仍有剩餘，代表付款總額大於此交易銷售額或 master 分配有問題。
+        if (remainingPayment !== 0) {
+          audit.paymentAssociationErrorCount += 1;
+        }
       });
     });
 
-    // PILOT 主單的 PLUSSUB 是加減項合計快取。
-    // 若只匯 VCHRPLUS 而 PLUSSUB=0，實務上可能要進 PILOT 修改/存檔後才重新計算並顯示。
-    // 因此匯出時直接同步：PLUSSUB = 同一 SRCERI 下 VCHRPLUS.AMT 合計。
-    // 混稅拆單的付款仍只掛 transaction primary master，其餘 split master 維持 0。
+    // PILOT 實際匯出資料的規則：
+    //   TOTAL = AMT + TAX + PLUSSUB
+    //   PLUSSUB = 該主單所有 VCHRPLUS.AMT 合計
+    //
+    // 例如全額信用卡 450：
+    //   AMT 429 + TAX 21 + PLUSSUB(-450) = TOTAL 0
+    //
+    // 現金不寫 VCHRPLUS，因此現金部分會留在 TOTAL。
     const voucherSumByMaster = new Map();
     voucherObjects.forEach(voucher => {
       const current = Number(voucherSumByMaster.get(voucher.SRCERI) || 0);
@@ -1718,7 +1770,13 @@
     masterObjects.forEach(master => {
       const plusSub = roundTo(voucherSumByMaster.get(master.ERI) || 0);
       master.PLUSSUB = plusSub;
+      master.TOTAL = roundTo(
+        Number(master.AMT || 0)
+        + Number(master.TAX || 0)
+        + plusSub
+      );
       master._expectedPlusSub = plusSub;
+      master._expectedTotal = master.TOTAL;
     });
 
     const s1Rows = [STKSALE1_HEADER, ...masterObjects.map(master => rowFromObject(STKSALE1_HEADER, master))];
@@ -1777,7 +1835,11 @@
     }).length;
 
     audit.masterAmountErrorCount = masterObjects.filter(master => (
-      roundTo(Number(master.AMT) + Number(master.TAX)) !== roundTo(master.TOTAL)
+      roundTo(
+        Number(master.AMT || 0)
+        + Number(master.TAX || 0)
+        + Number(master.PLUSSUB || 0)
+      ) !== roundTo(Number(master.TOTAL || 0))
     )).length;
 
     audit.detailMasterAmountErrorCount = masterObjects.filter(master => {
@@ -1789,7 +1851,8 @@
 
     audit.paymentAssociationErrorCount += voucherObjects.filter(voucher => (
       voucher.SRCERI !== voucher._expectedSrceri
-      || transactionToPrimaryMasterEri.get(voucher._transactionId) !== voucher.SRCERI
+      || !(transactionToMasterSlices.get(voucher._transactionId) || [])
+        .some(slice => slice.masterERI === voucher.SRCERI)
     )).length;
 
     audit.paymentAmountErrorCount += voucherObjects.filter(voucher => (
@@ -1852,7 +1915,7 @@
       serialSequenceErrorCount: 'STKSALE2 SERIAL 不是由 0 連續編號',
       orphanSrceriCount: 'VCHRPLUS SRCERI 找不到 master',
       taxCateErrorCount: '商品稅別或 TAXCATE 錯誤',
-      masterAmountErrorCount: 'STKSALE1 AMT/TAX/TOTAL 不平',
+      masterAmountErrorCount: 'STKSALE1 AMT + TAX + PLUSSUB != TOTAL',
       detailMasterAmountErrorCount: 'STKSALE2 與 master AMT 不平',
       customerResolverErrorCount: '客戶 resolver 錯誤（統編交易須有本場書展教會快照）',
       productResolverErrorCount: 'PRODUCT 正式資料找不到商品',
@@ -3901,7 +3964,10 @@ async function exportPilot(options = {}) {
     const audit = result.audit;
     const plusSubTotal = (result.rows.vchrplus || []).slice(1)
       .reduce((sum, row) => sum + Number(row[6] || 0), 0);
-    dbStatusElement.textContent = `✅ Pilot 匯出驗證完成：STKSALE1 ${audit.stkSale1Count} 筆、STKSALE2 ${audit.stkSale2Count} 筆、VCHRPLUS ${audit.voucherCount} 筆、加減項 ${plusSubTotal} 元；應稅 ${audit.taxableGross} 元、免稅 ${audit.exemptGross} 元、銷售合計 ${audit.exportedGross} 元`;
+    const totalIndex = PilotExporter.STKSALE1_HEADER.indexOf('TOTAL');
+    const remainingCashTotal = (result.rows.stkSale1 || []).slice(1)
+      .reduce((sum, row) => sum + Number(row[totalIndex] || 0), 0);
+    dbStatusElement.textContent = `✅ Pilot 匯出驗證完成：STKSALE1 ${audit.stkSale1Count} 筆、STKSALE2 ${audit.stkSale2Count} 筆、VCHRPLUS ${audit.voucherCount} 筆；非現金加減項 ${plusSubTotal} 元、PILOT剩餘TOTAL ${remainingCashTotal} 元；應稅 ${audit.taxableGross} 元、免稅 ${audit.exemptGross} 元、銷售合計 ${audit.exportedGross} 元`;
     dbStatusElement.style.color = 'green';
     return result;
   } catch (error) {
