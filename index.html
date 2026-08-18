@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>腓利門雲POS</title>
-  <!-- SINGLE-FILE-PILOT-ERI-DIRECT-TEST-20260818-CUSTOMERFIX -->
+  <!-- SINGLE-FILE-PILOT-ERI-DIRECT-TEST-20260818-CUSTOMERFIX-PLUSFIX -->
   <link rel="icon" href="favicon-cloud.svg" type="image/svg+xml" />
   <style>
     /* --- 核心配色：莫蘭迪清透大地色系與圓潤風格 --- */
@@ -1324,6 +1324,8 @@
       transactionIdErrorCount: 0,
       paymentAssociationErrorCount: 0,
       paymentAmountErrorCount: 0,
+      plusSubErrorCount: 0,
+      voucherSerialSequenceErrorCount: 0,
       invoiceFieldErrorCount: 0,
       costErrorCount: 0,
       taxableGross: 0,
@@ -1665,7 +1667,7 @@
     });
 
     const voucherObjects = [];
-    let voucherSerial = 0;
+    const voucherSerialByMaster = new Map();
 
     preparedClients.forEach(client => {
       const primaryMasterEri = transactionToPrimaryMasterEri.get(client.transactionId);
@@ -1677,10 +1679,13 @@
         if (!mapping) return;
         if (!Number.isFinite(record.amount)) return;
 
+        // VCHRPLUS.SERIAL 以每個 SRCERI 為一組，由 0 開始連續。
+        const voucherSerial = voucherSerialByMaster.get(primaryMasterEri) || 0;
+
         voucherObjects.push({
           ERI: allocateEri('pay'),
           SRCERI: primaryMasterEri || '',
-          SERIAL: voucherSerial++,
+          SERIAL: voucherSerial,
           CODE: mapping.code,
           SUBJNO: mapping.subject,
           OP: 0,
@@ -1692,7 +1697,28 @@
           _expectedSrceri: primaryMasterEri,
           _expectedAmount: -Math.round(record.amount)
         });
+
+        voucherSerialByMaster.set(primaryMasterEri, voucherSerial + 1);
       });
+    });
+
+    // PILOT 主單的 PLUSSUB 是加減項合計快取。
+    // 若只匯 VCHRPLUS 而 PLUSSUB=0，實務上可能要進 PILOT 修改/存檔後才重新計算並顯示。
+    // 因此匯出時直接同步：PLUSSUB = 同一 SRCERI 下 VCHRPLUS.AMT 合計。
+    // 混稅拆單的付款仍只掛 transaction primary master，其餘 split master 維持 0。
+    const voucherSumByMaster = new Map();
+    voucherObjects.forEach(voucher => {
+      const current = Number(voucherSumByMaster.get(voucher.SRCERI) || 0);
+      voucherSumByMaster.set(
+        voucher.SRCERI,
+        roundTo(current + Number(voucher.AMT || 0))
+      );
+    });
+
+    masterObjects.forEach(master => {
+      const plusSub = roundTo(voucherSumByMaster.get(master.ERI) || 0);
+      master.PLUSSUB = plusSub;
+      master._expectedPlusSub = plusSub;
     });
 
     const s1Rows = [STKSALE1_HEADER, ...masterObjects.map(master => rowFromObject(STKSALE1_HEADER, master))];
@@ -1770,6 +1796,22 @@
       Number(voucher.AMT) !== Number(voucher._expectedAmount)
     )).length;
 
+    audit.plusSubErrorCount = masterObjects.filter(master => {
+      const expected = roundTo(voucherObjects
+        .filter(voucher => voucher.SRCERI === master.ERI)
+        .reduce((sum, voucher) => sum + Number(voucher.AMT || 0), 0));
+      return roundTo(Number(master.PLUSSUB || 0)) !== expected;
+    }).length;
+
+    const voucherRowsByMaster = new Map();
+    voucherObjects.forEach(voucher => {
+      if (!voucherRowsByMaster.has(voucher.SRCERI)) voucherRowsByMaster.set(voucher.SRCERI, []);
+      voucherRowsByMaster.get(voucher.SRCERI).push(voucher);
+    });
+    audit.voucherSerialSequenceErrorCount = [...voucherRowsByMaster.values()]
+      .filter(rows => rows.some((voucher, index) => Number(voucher.SERIAL) !== index))
+      .length;
+
     audit.invoiceFieldErrorCount = masterObjects.filter(master => {
       if (master._invoiceType === 'carrier') {
         return master.CUST !== PERSONAL_CODE
@@ -1817,6 +1859,8 @@
       transactionIdErrorCount: 'transactionId 缺漏或重複',
       paymentAssociationErrorCount: '付款與 transaction primary master 關聯錯誤',
       paymentAmountErrorCount: '付款金額無效或因拆單不一致',
+      plusSubErrorCount: 'STKSALE1.PLUSSUB 與 VCHRPLUS 加減項合計不一致',
+      voucherSerialSequenceErrorCount: 'VCHRPLUS SERIAL 未依每個 SRCERI 從 0 連續',
       invoiceFieldErrorCount: '載具／統編／抬頭欄位錯誤',
       costErrorCount: 'COST 與 PRODUCT.CCOST × QTY 不符'
     };
@@ -3855,7 +3899,9 @@ async function exportPilot(options = {}) {
       'iPad 對多個 CSV 下載支援有限。若跳出分享面板，請選擇「儲存到檔案」；若仍被阻擋，請改用桌機匯出 Pilot 會計檔。'
     );
     const audit = result.audit;
-    dbStatusElement.textContent = `✅ Pilot 匯出驗證完成：STKSALE1 ${audit.stkSale1Count} 筆、STKSALE2 ${audit.stkSale2Count} 筆、VCHRPLUS ${audit.voucherCount} 筆；應稅 ${audit.taxableGross} 元、免稅 ${audit.exemptGross} 元、合計 ${audit.exportedGross} 元`;
+    const plusSubTotal = (result.rows.vchrplus || []).slice(1)
+      .reduce((sum, row) => sum + Number(row[6] || 0), 0);
+    dbStatusElement.textContent = `✅ Pilot 匯出驗證完成：STKSALE1 ${audit.stkSale1Count} 筆、STKSALE2 ${audit.stkSale2Count} 筆、VCHRPLUS ${audit.voucherCount} 筆、加減項 ${plusSubTotal} 元；應稅 ${audit.taxableGross} 元、免稅 ${audit.exemptGross} 元、銷售合計 ${audit.exportedGross} 元`;
     dbStatusElement.style.color = 'green';
     return result;
   } catch (error) {
