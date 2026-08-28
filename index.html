@@ -1409,18 +1409,33 @@
         };
       });
 
-      const savedAmount = Number(client.amount);
-      const targetAmount = Number.isFinite(savedAmount)
-        ? Math.round(savedAmount)
-        : entries.reduce((sum, entry) => sum + entry.grossAmount, 0);
       const allocatedAmount = entries.reduce((sum, entry) => sum + entry.grossAmount, 0);
+
+      const savedAmount = Number(client.amount);
+      // 舊版在重新開啟含購物車的頁面時沒有重算總額，可能把有商品的訂單存成 0 元。
+      // 明細有正金額時可無歧義地恢復；真正的零元商品仍保留為 0 元。
+      const shouldRecoverZeroAmount = Number.isFinite(savedAmount)
+        && roundTo(savedAmount) === 0
+        && allocatedAmount > 0;
+      const targetAmount = Number.isFinite(savedAmount) && !shouldRecoverZeroAmount
+        ? Math.round(savedAmount)
+        : allocatedAmount;
 
       // 結帳儲存總額為權威；只把極小的整筆尾差留給最後一筆，避免改掉成交總額。
       if (entries.length && allocatedAmount !== targetAmount) {
         entries[entries.length - 1].grossAmount += targetAmount - allocatedAmount;
       }
 
-      const paymentRecords = getPaymentRecords(client);
+      let paymentRecords = getPaymentRecords(client);
+      const savedPaymentTotal = roundTo(paymentRecords.reduce((sum, record) => (
+        sum + (Number.isFinite(record.amount) ? Number(record.amount) : 0)
+      ), 0));
+      if (shouldRecoverZeroAmount && savedPaymentTotal === 0) {
+        paymentRecords = getPaymentRecords({
+          paymentMethod: client.paymentMethod,
+          amount: targetAmount
+        });
+      }
       if (paymentRecords.some(record => !Number.isFinite(record.amount))) {
         audit.paymentAmountErrorCount += 1;
       } else {
@@ -2781,12 +2796,48 @@
         });
       };
 
-      const calculateTotal = () => {
+      const calculateCartTotal = (items = cart) => {
         let total = 0;
+        (items || []).forEach(item => {
+          const discount = item.discount !== undefined ? Number(item.discount) : 100;
+          total += Number(item.price || 0) * Number(item.quantity || 0) * (discount / 100);
+        });
+        return Math.round(total);
+      };
+
+      const calculateTotal = () => {
         cart = cart.filter(item => item.quantity !== 0);
-        cart.forEach(item => total += (item.price * item.quantity * (item.discount / 100)));
-        totalAmountElement.textContent = Math.round(total);
+        totalAmountElement.textContent = calculateCartTotal(cart);
         calculateChange();
+      };
+
+      const repairStoredZeroAmountClients = () => {
+        let repairedCount = 0;
+
+        Object.values(clients).forEach(client => {
+          if (!client || !Array.isArray(client.items)) return;
+
+          const itemTotal = calculateCartTotal(client.items);
+          const savedAmount = Number(client.amount);
+          if (itemTotal <= 0 || (Number.isFinite(savedAmount) && savedAmount !== 0)) return;
+
+          client.amount = itemTotal;
+          const records = Array.isArray(client.paymentRecords) ? client.paymentRecords : [];
+          const paymentTotal = records.reduce((sum, record) => (
+            sum + (Number.isFinite(Number(record?.amount)) ? Number(record.amount) : 0)
+          ), 0);
+
+          if (!records.length || Math.round(paymentTotal) === 0) {
+            client.paymentRecords = PilotExporter.getPaymentRecords({
+              paymentMethod: client.paymentMethod || '現金',
+              amount: itemTotal
+            });
+          }
+          repairedCount += 1;
+        });
+
+        if (repairedCount > 0) saveSummary();
+        return repairedCount;
       };
 
       const calculateChange = () => {
@@ -3146,7 +3197,14 @@ const handleCulturalCoinCheckout = () => {
           if (paymentMethod === '現金') triggerButtonAnimation(btnF10);
         }
 
-        const totalAmount = parseFloat(totalAmountElement.textContent);
+        // 直接由購物車資料重算，避免 DOM 尚未同步時把有商品的訂單存成 0 元。
+        const totalAmount = calculateCartTotal(cart);
+        totalAmountElement.textContent = totalAmount;
+        if (totalAmount <= 0) {
+          alert('訂單金額為 0，請檢查商品價格、數量與折扣後再結帳。');
+          POSAudio.error();
+          return;
+        }
         const clientId = generateClientId();
         const mERI = ''; // ERI 只在正式 Pilot 匯出時產生
         const invoiceInfo = getInvoiceInfoFromInputs();
@@ -3988,13 +4046,14 @@ exportPilotBtn.onclick = () => exportPilot();
 
 // ===== 啟動 =====
 loadDiscountRates();
+repairStoredZeroAmountClients();
 
 // ✅ 先載入系統四檔，再渲染
 loadMasterData().then(() => {
   syncInvoiceCustomerVisibility();
   updateCartDisplay();
   updateSummaryTable();
-  calculateChange();
+  calculateTotal();
 });
 
     });
