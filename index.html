@@ -1324,6 +1324,7 @@
       transactionIdErrorCount: 0,
       paymentAssociationErrorCount: 0,
       paymentAmountErrorCount: 0,
+      skippedZeroAmountCount: 0,
       plusSubErrorCount: 0,
       voucherSerialSequenceErrorCount: 0,
       invoiceFieldErrorCount: 0,
@@ -1441,6 +1442,13 @@
       } else {
         const paymentTotal = roundTo(paymentRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0));
         if (paymentTotal !== roundTo(targetAmount)) audit.paymentAmountErrorCount += 1;
+      }
+
+      // 舊資料可能殘留「0 元且沒有任何銷售額」的有效紀錄。這種紀錄沒有 master，
+      // 也沒有需要寫入 VCHRPLUS 的付款，正式匯出時直接略過，不能誤報付款關聯錯誤。
+      if (roundTo(targetAmount) === 0 && roundTo(allocatedAmount) === 0) {
+        audit.skippedZeroAmountCount += 1;
+        return;
       }
 
       audit.expectedGross += targetAmount;

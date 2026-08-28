@@ -36,6 +36,16 @@ const result = PilotExporter.buildPilotExport({
         { code: 'C001', name: '對觀福音書', price: 150, quantity: 1, discount: 90 }
       ],
       isValid: true
+    },
+    '20260828-000': {
+      id: '20260828-000',
+      transactionId: '20260828-000',
+      amount: 0,
+      paymentMethod: '現金',
+      paymentRecords: [{ method: '現金', amount: 0 }],
+      invoiceInfo: {},
+      items: [],
+      isValid: true
     }
   },
   products: {
@@ -55,6 +65,8 @@ assert.equal(result.audit.expectedGross, 405);
 assert.equal(result.audit.exportedGross, 405);
 assert.equal(result.audit.paymentAssociationErrorCount, 0);
 assert.equal(result.audit.paymentAmountErrorCount, 0);
+assert.equal(result.audit.skippedZeroAmountCount, 1);
+assert.equal(result.audit.stkSale1Count, 1);
 assert.equal(result.rows.vchrplus.length, 2);
 assert.equal(result.rows.vchrplus[1][6], -405);
 
