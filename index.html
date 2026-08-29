@@ -1417,10 +1417,10 @@
 
       const savedAmount = Number(client.amount);
       // 舊版在重新開啟含購物車的頁面時沒有重算總額，可能把有商品的訂單存成 0 元。
-      // 明細有正金額時可無歧義地恢復；真正的零元商品仍保留為 0 元。
+      // 明細有非零金額（包含負值退款／折抵）時可恢復；真正的零元商品仍保留為 0 元。
       const shouldRecoverZeroAmount = Number.isFinite(savedAmount)
         && roundTo(savedAmount) === 0
-        && allocatedAmount > 0;
+        && roundTo(allocatedAmount) !== 0;
       const targetAmount = Number.isFinite(savedAmount) && !shouldRecoverZeroAmount
         ? Math.round(savedAmount)
         : allocatedAmount;
@@ -2397,7 +2397,6 @@
         const customer = resolveAccountingCustomer(invoiceCustomerInput?.value);
         return isBookFairChurchCustomer(customer) ? customer : null;
       };
-
       const syncInvoiceCustomerVisibility = () => {
         const hasTaxId = String(invoiceTaxIdInput?.value || '').trim() !== '';
         if (invoiceCustomerField) invoiceCustomerField.style.display = hasTaxId ? 'flex' : 'none';
@@ -2859,7 +2858,7 @@
 
           const itemTotal = calculateCartTotal(client.items);
           const savedAmount = Number(client.amount);
-          if (itemTotal <= 0 || (Number.isFinite(savedAmount) && savedAmount !== 0)) return;
+          if (itemTotal === 0 || (Number.isFinite(savedAmount) && savedAmount !== 0)) return;
 
           client.amount = itemTotal;
           const records = Array.isArray(client.paymentRecords) ? client.paymentRecords : [];
