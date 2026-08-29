@@ -1218,6 +1218,10 @@
   };
 
   function getPaymentRecords(client) {
+    const total = roundTo(client?.amount);
+    // 零元訂單沒有實際收款，不應產生現金或電子支付紀錄。
+    if (total === 0) return [];
+
     if (Array.isArray(client?.paymentRecords) && client.paymentRecords.length) {
       return client.paymentRecords.map(record => ({
         method: paymentMethodName(record.method || record.paymentMethod || record.type),
@@ -1226,7 +1230,6 @@
     }
 
     const paymentMethod = String(client?.paymentMethod || '現金').trim();
-    const total = roundTo(client?.amount);
     const parts = paymentMethod.split(/\s*\+\s*/).filter(Boolean);
 
     if (parts.length === 1 && !/\([-+]?\d+(?:\.\d+)?\)/.test(parts[0])) {
@@ -1444,9 +1447,9 @@
         if (paymentTotal !== roundTo(targetAmount)) audit.paymentAmountErrorCount += 1;
       }
 
-      // 舊資料可能殘留「0 元且沒有任何銷售額」的有效紀錄。這種紀錄沒有 master，
-      // 也沒有需要寫入 VCHRPLUS 的付款，正式匯出時直接略過，不能誤報付款關聯錯誤。
-      if (roundTo(targetAmount) === 0 && roundTo(allocatedAmount) === 0) {
+      // 只略過沒有明細的空白舊紀錄。有商品的零元訂單仍須輸出 master/detail，
+      // 才能讓 Pilot 正確記錄銷售數量與庫存異動。
+      if (entries.length === 0 && roundTo(targetAmount) === 0 && roundTo(allocatedAmount) === 0) {
         audit.skippedZeroAmountCount += 1;
         return;
       }
@@ -1527,16 +1530,15 @@
           .filter(entry => entry.transactionId === client.transactionId)
           .reduce((sum, entry) => sum + Number(entry.grossAmount || 0), 0);
 
-        if (sliceGross > 0) {
-          if (!transactionToMasterSlices.has(client.transactionId)) {
-            transactionToMasterSlices.set(client.transactionId, []);
-          }
-          transactionToMasterSlices.get(client.transactionId).push({
-            masterERI: group.masterERI,
-            grossAmount: roundTo(sliceGross),
-            taxProfile: group.taxProfile.key
-          });
+        // 零元交易也要保留 master 關聯；雖然不會產生付款加減項，仍是有效銷售。
+        if (!transactionToMasterSlices.has(client.transactionId)) {
+          transactionToMasterSlices.set(client.transactionId, []);
         }
+        transactionToMasterSlices.get(client.transactionId).push({
+          masterERI: group.masterERI,
+          grossAmount: roundTo(sliceGross),
+          taxProfile: group.taxProfile.key
+        });
       });
 
       const grossTotal = group.entries.reduce((sum, entry) => sum + entry.grossAmount, 0);
@@ -2815,7 +2817,9 @@
 
       const calculateTotal = () => {
         cart = cart.filter(item => item.quantity !== 0);
-        totalAmountElement.textContent = calculateCartTotal(cart);
+        const total = calculateCartTotal(cart);
+        totalAmountElement.textContent = total;
+        if (cart.length > 0 && total === 0) paidAmountInput.value = 0;
         calculateChange();
       };
 
@@ -2981,8 +2985,12 @@ const handleCulturalCoinCheckout = () => {
   }
   hasShownEmptyCartAlert = false;
 
-  // ✅ 總額一律用 Number，避免 textContent 有空白或 NaN
-  const totalAmount = Number(totalAmountElement.textContent) || 0;
+  // ✅ 直接由購物車重算，避免 DOM 尚未同步。
+  const totalAmount = calculateCartTotal(cart);
+  if (totalAmount === 0) {
+    performCheckout('零元');
+    return;
+  }
 
   let coinAmountStr = prompt(`訂單總額為 ${totalAmount} 元。\n請輸入文化幣支付金額：`, totalAmount);
   if (coinAmountStr === null) return;
@@ -3208,11 +3216,12 @@ const handleCulturalCoinCheckout = () => {
         // 直接由購物車資料重算，避免 DOM 尚未同步時把有商品的訂單存成 0 元。
         const totalAmount = calculateCartTotal(cart);
         totalAmountElement.textContent = totalAmount;
-        if (totalAmount <= 0) {
-          alert('訂單金額為 0，請檢查商品價格、數量與折扣後再結帳。');
+        if (totalAmount < 0) {
+          alert('訂單金額不可小於 0，請檢查商品價格、數量與折扣後再結帳。');
           POSAudio.error();
           return;
         }
+        const finalPaymentMethod = totalAmount === 0 ? '零元' : paymentMethod;
         const clientId = generateClientId();
         const mERI = ''; // ERI 只在正式 Pilot 匯出時產生
         const invoiceInfo = getInvoiceInfoFromInputs();
@@ -3240,8 +3249,8 @@ const handleCulturalCoinCheckout = () => {
           transactionId: clientId,
           eri: mERI,
           amount: totalAmount,
-          paymentMethod: paymentMethod,
-          paymentRecords: PilotExporter.getPaymentRecords({ paymentMethod, amount: totalAmount }),
+          paymentMethod: finalPaymentMethod,
+          paymentRecords: PilotExporter.getPaymentRecords({ paymentMethod: finalPaymentMethod, amount: totalAmount }),
           invoiceInfo,
           accountingCustomer,
           bookFairCustomerCode: bookFairCustomer?.code || '',
@@ -3612,6 +3621,14 @@ const handleCulturalCoinCheckout = () => {
       window.selectPaymentMethod = (methodType) => {
         if (!editingClientId) return;
         const client = clients[editingClientId];
+        if (Number(client.amount) === 0) {
+          clients[editingClientId].paymentMethod = '零元';
+          clients[editingClientId].paymentRecords = [];
+          saveSummary();
+          updateSummaryTable();
+          closePaymentModal();
+          return;
+        }
         let finalMethod = methodType;
 
         if (methodType === '文化幣') {

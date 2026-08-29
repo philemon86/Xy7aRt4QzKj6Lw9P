@@ -70,4 +70,43 @@ assert.equal(result.audit.stkSale1Count, 1);
 assert.equal(result.rows.vchrplus.length, 2);
 assert.equal(result.rows.vchrplus[1][6], -405);
 
+const zeroAmountResult = PilotExporter.buildPilotExport({
+  clients: {
+    '20260828-002': {
+      id: '20260828-002',
+      transactionId: '20260828-002',
+      amount: 0,
+      paymentMethod: '零元',
+      paymentRecords: [],
+      invoiceInfo: {},
+      items: [
+        { code: 'C254', name: '杏樹枝9', price: 300, quantity: 2, discount: 0 }
+      ],
+      isValid: true
+    }
+  },
+  products: {
+    C254: { code: 'C254', ntaxFlag: '0', cost: 103, unitCode: '1' }
+  },
+  customerMap: {
+    '0002': { code: '0002', name: '書展', invoiceName: '書展', invcate: '3', einvflag: '0' }
+  },
+  unitMap: { '1': '本' },
+  generateERI: createEriGenerator(),
+  now: new Date('2026-08-28T10:00:00+08:00')
+});
+
+assert.equal(zeroAmountResult.ok, true, zeroAmountResult.validationErrors.join('\n'));
+assert.equal(zeroAmountResult.audit.expectedGross, 0);
+assert.equal(zeroAmountResult.audit.exportedGross, 0);
+assert.equal(zeroAmountResult.audit.skippedZeroAmountCount, 0);
+assert.equal(zeroAmountResult.audit.stkSale1Count, 1);
+assert.equal(zeroAmountResult.audit.stkSale2Count, 1);
+assert.equal(zeroAmountResult.audit.voucherCount, 0);
+assert.equal(
+  zeroAmountResult.rows.stkSale2[1][PilotExporter.STKSALE2_HEADER.indexOf('QTY')],
+  2
+);
+assert.deepEqual(PilotExporter.getPaymentRecords({ amount: 0, paymentMethod: '現金' }), []);
+
 console.log('PilotExporter zero-total recovery regression test passed.');
