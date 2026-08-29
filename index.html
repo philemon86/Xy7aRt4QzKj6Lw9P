@@ -2717,7 +2717,7 @@
 
           row.innerHTML = `
             <td>${item.name}<br><small style="color:#888;">${item.code}</small></td>
-            <td><input type="number" value="${item.price}" step="0.1" min="0" style="width:60px;${priceStyle}" class="price-input" data-code="${item.code}"></td>
+            <td><input type="number" value="${item.price}" step="0.1" min="-9999999" title="可輸入負值作為禮券、折抵或退換貨" style="width:60px;${priceStyle}" class="price-input" data-code="${item.code}"></td>
             <td><input type="number" value="${item.quantity}" min="-1000" class="quantity-input" data-code="${item.code}"></td>
             <td>
               <div class="discount-wrapper" title="${statusTitle}">
@@ -2768,7 +2768,7 @@
             resetIdleTimer();
             const code = e.target.dataset.code;
             const newPrice = parseFloat(e.target.value);
-            if (!isNaN(newPrice) && newPrice >= 0) {
+            if (!isNaN(newPrice)) {
               const item = cart.find(it => it.code === code);
               if (item) {
                 item.price = newPrice;

@@ -154,4 +154,46 @@ assert.ok(refundResult.rows.stkSale1.slice(1).every(row => (
   row[PilotExporter.STKSALE1_HEADER.indexOf('TOTAL')] === 0
 )));
 
+const negativePriceResult = PilotExporter.buildPilotExport({
+  clients: {
+    '20260829-004': {
+      id: '20260829-004',
+      transactionId: '20260829-004',
+      amount: -270,
+      paymentMethod: '現金退款',
+      paymentRecords: [{ method: '現金', amount: -270 }],
+      invoiceInfo: {},
+      items: [
+        { code: 'C254', name: '禮券折抵', price: -300, quantity: 1, discount: 90 }
+      ],
+      isValid: true
+    }
+  },
+  products: {
+    C254: { code: 'C254', ntaxFlag: '0', cost: 103, unitCode: '1' }
+  },
+  customerMap: {
+    '0002': { code: '0002', name: '書展', invoiceName: '書展', invcate: '3', einvflag: '0' }
+  },
+  unitMap: { '1': '本' },
+  generateERI: createEriGenerator(),
+  now: new Date('2026-08-29T10:00:00+08:00')
+});
+
+assert.equal(negativePriceResult.ok, true, negativePriceResult.validationErrors.join('\n'));
+assert.equal(negativePriceResult.audit.expectedGross, -270);
+assert.equal(negativePriceResult.audit.exportedGross, -270);
+assert.equal(negativePriceResult.audit.voucherCount, 0);
+
+const negativePriceDetail = negativePriceResult.rows.stkSale2[1];
+assert.equal(negativePriceDetail[PilotExporter.STKSALE2_HEADER.indexOf('QTY')], 1);
+assert.ok(negativePriceDetail[PilotExporter.STKSALE2_HEADER.indexOf('PRICE')] < 0);
+assert.ok(negativePriceDetail[PilotExporter.STKSALE2_HEADER.indexOf('AMT')] < 0);
+assert.equal(negativePriceDetail[PilotExporter.STKSALE2_HEADER.indexOf('INVPRC')], -270);
+assert.equal(negativePriceDetail[PilotExporter.STKSALE2_HEADER.indexOf('INVAMT')], -270);
+assert.equal(
+  negativePriceResult.rows.stkSale1[1][PilotExporter.STKSALE1_HEADER.indexOf('TOTAL')],
+  -270
+);
+
 console.log('PilotExporter zero-amount and refund regression tests passed.');
