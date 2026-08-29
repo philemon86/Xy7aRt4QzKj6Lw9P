@@ -1713,12 +1713,58 @@
     const voucherObjects = [];
     const voucherSerialByMaster = new Map();
 
+    const appendVoucher = (client, record, mapping, slice, allocation) => {
+      if (roundTo(allocation) === 0) return;
+      const voucherSerial = voucherSerialByMaster.get(slice.masterERI) || 0;
+
+      voucherObjects.push({
+        ERI: allocateEri('pay'),
+        SRCERI: slice.masterERI,
+        SERIAL: voucherSerial,
+        CODE: mapping.code,
+        SUBJNO: mapping.subject,
+        OP: 0,
+        AMT: -allocation,
+        REMARK: '',
+        APCODE: '',
+        LASTUPD: ts,
+        _transactionId: client.transactionId,
+        _expectedSrceri: slice.masterERI,
+        _expectedAmount: -allocation,
+        _paymentMethod: record.method
+      });
+
+      voucherSerialByMaster.set(slice.masterERI, voucherSerial + 1);
+    };
+
     preparedClients.forEach(client => {
       const slices = (transactionToMasterSlices.get(client.transactionId) || [])
         .map(slice => ({ ...slice, remaining: Number(slice.grossAmount || 0) }));
 
+      const mappedRecords = client.paymentRecords.filter(record => (
+        PAYMENT_MAPPING[record.method] && Number.isFinite(record.amount)
+      ));
+
       if (!slices.length) {
-        audit.paymentAssociationErrorCount += 1;
+        if (mappedRecords.some(record => roundTo(record.amount) !== 0)) {
+          audit.paymentAssociationErrorCount += 1;
+        }
+        return;
+      }
+
+      // 全額單一非現金付款可逐張 master 直接沖銷。這也涵蓋退換貨中
+      // 同時存在正、負明細的情況：負銷售產生正加減項，正銷售則反向扣回。
+      const sliceTotal = roundTo(slices.reduce((sum, slice) => sum + Number(slice.grossAmount || 0), 0));
+      if (mappedRecords.length === 1 && roundTo(mappedRecords[0].amount) === sliceTotal) {
+        const record = mappedRecords[0];
+        const mapping = PAYMENT_MAPPING[record.method];
+        slices.forEach(slice => appendVoucher(
+          client,
+          record,
+          mapping,
+          slice,
+          roundTo(slice.grossAmount)
+        ));
         return;
       }
 
@@ -1731,39 +1777,21 @@
 
         let remainingPayment = Math.round(Number(record.amount || 0));
 
-        // 將這筆非現金付款分配到此 transaction 的各拆稅 master。
-        // 每張 master 最多只扣該 transaction 在該 master 的銷售額，
-        // 因此不會再出現「主單銷售 1,730，但加減項 -2,200」的負殘額。
+        // 將這筆非現金付款依正負方向分配到各拆稅 master。
+        // 正數為收款、負數為退款；VCHRPLUS 會寫入相反符號。
         for (const slice of slices) {
-          if (remainingPayment <= 0) break;
-          if (slice.remaining <= 0) continue;
+          if (remainingPayment === 0) break;
+          if (slice.remaining === 0) continue;
+          if (Math.sign(slice.remaining) !== Math.sign(remainingPayment)) continue;
 
-          const allocation = Math.min(
-            remainingPayment,
-            Math.round(Number(slice.remaining || 0))
+          const direction = Math.sign(remainingPayment);
+          const allocation = direction * Math.min(
+            Math.abs(remainingPayment),
+            Math.abs(Math.round(Number(slice.remaining || 0)))
           );
-          if (allocation <= 0) continue;
+          if (allocation === 0) continue;
 
-          const voucherSerial = voucherSerialByMaster.get(slice.masterERI) || 0;
-
-          voucherObjects.push({
-            ERI: allocateEri('pay'),
-            SRCERI: slice.masterERI,
-            SERIAL: voucherSerial,
-            CODE: mapping.code,
-            SUBJNO: mapping.subject,
-            OP: 0,
-            AMT: -allocation,
-            REMARK: '',
-            APCODE: '',
-            LASTUPD: ts,
-            _transactionId: client.transactionId,
-            _expectedSrceri: slice.masterERI,
-            _expectedAmount: -allocation,
-            _paymentMethod: record.method
-          });
-
-          voucherSerialByMaster.set(slice.masterERI, voucherSerial + 1);
+          appendVoucher(client, record, mapping, slice, allocation);
           slice.remaining = roundTo(slice.remaining - allocation);
           remainingPayment -= allocation;
         }
@@ -2819,7 +2847,7 @@
         cart = cart.filter(item => item.quantity !== 0);
         const total = calculateCartTotal(cart);
         totalAmountElement.textContent = total;
-        if (cart.length > 0 && total === 0) paidAmountInput.value = 0;
+        if (cart.length > 0 && total <= 0) paidAmountInput.value = total;
         calculateChange();
       };
 
@@ -2989,6 +3017,10 @@ const handleCulturalCoinCheckout = () => {
   const totalAmount = calculateCartTotal(cart);
   if (totalAmount === 0) {
     performCheckout('零元');
+    return;
+  }
+  if (totalAmount < 0) {
+    performCheckout('文化幣');
     return;
   }
 
@@ -3216,12 +3248,9 @@ const handleCulturalCoinCheckout = () => {
         // 直接由購物車資料重算，避免 DOM 尚未同步時把有商品的訂單存成 0 元。
         const totalAmount = calculateCartTotal(cart);
         totalAmountElement.textContent = totalAmount;
-        if (totalAmount < 0) {
-          alert('訂單金額不可小於 0，請檢查商品價格、數量與折扣後再結帳。');
-          POSAudio.error();
-          return;
-        }
-        const finalPaymentMethod = totalAmount === 0 ? '零元' : paymentMethod;
+        const finalPaymentMethod = totalAmount === 0
+          ? '零元'
+          : (totalAmount < 0 ? `${paymentMethod}退款` : paymentMethod);
         const clientId = generateClientId();
         const mERI = ''; // ERI 只在正式 Pilot 匯出時產生
         const invoiceInfo = getInvoiceInfoFromInputs();
@@ -3290,6 +3319,7 @@ const handleCulturalCoinCheckout = () => {
 
         productCodeInput.focus();
         paidAmountInput.value = 1000;
+        calculateChange();
         if (invoiceDonateCarrierInput) invoiceDonateCarrierInput.value = '';
         if (invoiceTaxIdInput) invoiceTaxIdInput.value = '';
         if (invoiceCustomerInput) invoiceCustomerInput.value = '';
@@ -3487,16 +3517,13 @@ const handleCulturalCoinCheckout = () => {
         let stats = { cash: 0, credit: 0, linepay: 0, culture: 0 };
         Object.values(clients).forEach(client => {
           if (!client.isValid) return;
-          const method = client.paymentMethod || '現金';
-          if (method === '信用卡') stats.credit += client.amount;
-          else if (method === 'LINE PAY') stats.linepay += client.amount;
-          else if (method === '現金') stats.cash += client.amount;
-          else if (method.includes('文化幣')) {
-            const coinMatch = method.match(/文化幣.*?\((\d+)\)/);
-            if (coinMatch && coinMatch[1]) stats.culture += parseInt(coinMatch[1]);
-            const cashMatch = method.match(/現金\((\d+)\)/);
-            if (cashMatch && cashMatch[1]) stats.cash += parseInt(cashMatch[1]);
-          }
+          PilotExporter.getPaymentRecords(client).forEach(record => {
+            const amount = Number(record.amount || 0);
+            if (record.method === '信用卡') stats.credit += amount;
+            else if (record.method === 'LINE PAY') stats.linepay += amount;
+            else if (record.method === '現金') stats.cash += amount;
+            else if (record.method === '文化幣') stats.culture += amount;
+          });
         });
         return stats;
       };
@@ -3629,9 +3656,9 @@ const handleCulturalCoinCheckout = () => {
           closePaymentModal();
           return;
         }
-        let finalMethod = methodType;
+        let finalMethod = Number(client.amount) < 0 ? `${methodType}退款` : methodType;
 
-        if (methodType === '文化幣') {
+        if (methodType === '文化幣' && Number(client.amount) > 0) {
           const coinAmt = prompt(`目前總金額 ${client.amount}，請輸入文化幣金額 (剩餘轉為現金)：`, client.amount);
           if (coinAmt && !isNaN(coinAmt)) {
             const c = parseInt(coinAmt);

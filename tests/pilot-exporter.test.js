@@ -109,4 +109,49 @@ assert.equal(
 );
 assert.deepEqual(PilotExporter.getPaymentRecords({ amount: 0, paymentMethod: '現金' }), []);
 
-console.log('PilotExporter zero-total recovery regression test passed.');
+const refundResult = PilotExporter.buildPilotExport({
+  clients: {
+    '20260829-003': {
+      id: '20260829-003',
+      transactionId: '20260829-003',
+      amount: -500,
+      paymentMethod: '信用卡退款',
+      paymentRecords: [{ method: '信用卡', amount: -500 }],
+      invoiceInfo: {},
+      items: [
+        { code: 'C254', name: '杏樹枝9', price: 300, quantity: -2, discount: 100 },
+        { code: 'E001', name: '免稅換貨商品', price: 100, quantity: 1, discount: 100 }
+      ],
+      isValid: true
+    }
+  },
+  products: {
+    C254: { code: 'C254', ntaxFlag: '0', cost: 103, unitCode: '1' },
+    E001: { code: 'E001', ntaxFlag: '1', cost: 40, unitCode: '1' }
+  },
+  customerMap: {
+    '0002': { code: '0002', name: '書展', invoiceName: '書展', invcate: '3', einvflag: '0' }
+  },
+  unitMap: { '1': '本' },
+  generateERI: createEriGenerator(),
+  now: new Date('2026-08-29T10:00:00+08:00')
+});
+
+assert.equal(refundResult.ok, true, refundResult.validationErrors.join('\n'));
+assert.equal(refundResult.audit.expectedGross, -500);
+assert.equal(refundResult.audit.exportedGross, -500);
+assert.equal(refundResult.audit.stkSale1Count, 2);
+assert.equal(refundResult.audit.stkSale2Count, 2);
+assert.equal(refundResult.audit.voucherCount, 2);
+assert.equal(refundResult.audit.paymentAssociationErrorCount, 0);
+assert.equal(refundResult.audit.paymentAmountErrorCount, 0);
+
+const refundVoucherAmounts = refundResult.rows.vchrplus.slice(1)
+  .map(row => row[PilotExporter.VCHRPLUS_HEADER.indexOf('AMT')])
+  .sort((a, b) => a - b);
+assert.deepEqual(refundVoucherAmounts, [-100, 600]);
+assert.ok(refundResult.rows.stkSale1.slice(1).every(row => (
+  row[PilotExporter.STKSALE1_HEADER.indexOf('TOTAL')] === 0
+)));
+
+console.log('PilotExporter zero-amount and refund regression tests passed.');
