@@ -1,0 +1,30 @@
+{
+  "CUSTADDR": {
+    "rows": 69,
+    "encoding": "Big5"
+  },
+  "CUSTOMER": {
+    "rows": 515,
+    "encoding": "Big5"
+  },
+  "CUSTCLAS": {
+    "rows": 5,
+    "encoding": "Big5"
+  },
+  "PRODUCT": {
+    "rows": 2126,
+    "encoding": "Big5"
+  },
+  "PRODUNIT": {
+    "rows": 23,
+    "encoding": "Big5"
+  },
+  "PRODCLAS": {
+    "rows": 35,
+    "encoding": "Big5"
+  },
+  "PRODKIND": {
+    "rows": 1,
+    "encoding": "Big5"
+  }
+}

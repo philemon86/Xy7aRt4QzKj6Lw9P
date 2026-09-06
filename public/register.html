@@ -1,0 +1,4012 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>腓利門 POS V2 收銀台</title><script src="/bridge.js"></script>
+  <!-- SINGLE-FILE-PILOT-ERI-DIRECT-TEST-20260818-CUSTOMERFIX-PLUSFIX-TOTALFIX -->
+  <link rel="icon" href="favicon-cloud.svg" type="image/svg+xml" />
+  <style>
+    /* --- 核心配色：莫蘭迪清透大地色系與圓潤風格 --- */
+    :root {
+      --bg-color: #F4F2F0; /* 更清透的背景色 */
+      --card-bg: #FFFFFF;
+      --primary-btn: #7E7368; /* 莫蘭迪灰棕色 */
+      --primary-btn-hover: #665D54;
+      --danger-btn: #B5867E; /* 莫蘭迪磚紅色 */
+      --danger-btn-hover: #9C726A;
+      --border-color: #E6E2DC;
+      --input-bg: #FAFAF9;
+      --text-color: #3C3833;
+      --text-muted: #8F877F;
+      --transition-smooth: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      --shadow-sm: 0 4px 12px rgba(100, 90, 80, 0.04);
+      --shadow-md: 0 8px 24px rgba(100, 90, 80, 0.08);
+      --radius-card: 20px;
+      --radius-input: 12px;
+      --radius-pill: 999px; /* 膠囊圓角 */
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background-color: var(--bg-color);
+      padding-bottom: 60px;
+      color: var(--text-color);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 網格系統：更嚴謹的版面佈局與留白 */
+    .flex-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+      gap: 24px;
+      width: 100%;
+      max-width: 1280px;
+      margin-top: 30px;
+      padding: 0 24px;
+      box-sizing: border-box;
+    }
+
+    .container-half {
+      background-color: var(--card-bg);
+      padding: 32px;
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-md);
+      box-sizing: border-box;
+      position: relative;
+      border-top: 5px solid var(--primary-btn);
+      transition: var(--transition-smooth);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .container-full {
+      grid-column: 1 / -1; /* 橫跨全寬 */
+      background-color: var(--card-bg);
+      padding: 32px;
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-md);
+      box-sizing: border-box;
+      border-top: 5px solid var(--primary-btn);
+      transition: var(--transition-smooth);
+    }
+
+    .header, .form-group, .table-container, .payment-info, .notes-container, .accounting-container {
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      border-radius: var(--radius-input);
+      background-color: #FFFFFF;
+      margin-bottom: 0;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: none;
+      padding: 0;
+      margin-bottom: 10px;
+      background: transparent;
+    }
+
+    /* 觸控友善的膠囊按鈕設計 */
+    .header button, .form-group button, .btn-group button, .acct-btn, #clear-cart-btn {
+      background-color: var(--primary-btn);
+      color: #FFFFFF;
+      border: none;
+      padding: 12px 24px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      font-size: 15px;
+      transition: var(--transition-smooth);
+      box-shadow: 0 2px 8px rgba(126, 115, 104, 0.2);
+    }
+
+    .header button:hover, .form-group button:hover, #clear-cart-btn:hover {
+      background-color: var(--primary-btn-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(126, 115, 104, 0.25);
+    }
+
+    #clear-all-btn, #clear-cart-btn { background-color: var(--danger-btn); box-shadow: 0 2px 8px rgba(181, 134, 126, 0.2); }
+    #clear-all-btn:hover, #clear-cart-btn:hover { background-color: var(--danger-btn-hover); }
+
+    /* 輸入框優化 (16px 避免 iOS 自動縮放) */
+    .form-group input, .notes-container textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px 16px;
+      font-size: 16px; 
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-input);
+      background-color: var(--input-bg);
+      color: var(--text-color);
+      transition: var(--transition-smooth);
+    }
+
+    .form-group input:focus, .notes-container textarea:focus {
+      outline: none;
+      border-color: var(--primary-btn);
+      box-shadow: 0 0 0 4px rgba(126, 115, 104, 0.1);
+      background-color: #FFFFFF;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .notes-container textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    .total {
+      font-size: 2em;
+      font-weight: 800;
+      color: #FFFFFF;
+      background-color: var(--primary-btn);
+      padding: 24px;
+      border-radius: var(--radius-card);
+      text-align: right;
+      letter-spacing: 1px;
+    }
+
+    .payment-info {
+      border-radius: var(--radius-card);
+      box-shadow: none;
+      border: 1px solid var(--border-color);
+      background-color: var(--input-bg);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .payment-details {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .payment-info > span, .payment-details > span {
+      color: var(--primary-btn);
+      font-weight: bold;
+      font-size: 1.2em;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .payment-info input#paid-amount {
+      max-width: 160px;
+      padding: 12px 16px;
+      font-size: 1.3em;
+      text-align: right;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-input);
+      color: var(--primary-btn);
+      font-weight: 800;
+      transition: var(--transition-smooth);
+    }
+
+    .checkout-buttons-area {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      width: 100%;
+    }
+
+    .checkout-btn {
+      background-color: var(--primary-btn);
+      border: none;
+      border-radius: var(--radius-card);
+      padding: 20px 16px;
+      text-align: left;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+    }
+
+    .checkout-btn:hover {
+      filter: brightness(1.05);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 0 rgba(0,0,0,0.1);
+    }
+
+    .checkout-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+    }
+
+    .checkout-btn .btn-key {
+      font-size: 2em !important;
+      font-weight: 900 !important;
+      color: #FFFFFF !important;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .checkout-btn .btn-label {
+      font-size: 1em !important;
+      color: rgba(255,255,255,0.9) !important;
+    }
+
+    .invoice-input-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      width: 100%;
+    }
+
+    .invoice-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .invoice-customer-field {
+      grid-column: 1 / -1;
+    }
+
+    .invoice-field label {
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .invoice-field input,
+    .invoice-field select {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      padding: 14px 16px;
+      font-size: 16px;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-input);
+      background-color: #FFFFFF;
+    }
+
+    .payment-qr-actions {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .payment-qr-btn {
+      flex: 0 1 210px;
+      border: none;
+      border-radius: var(--radius-pill);
+      padding: 10px 18px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+    }
+
+    .payment-qr-line { background: #06c755; }
+    .payment-qr-culture { background: #d8482f; }
+
+    /* 表格優化 (觸控友善行高與網格線) */
+    .table-container { 
+      overflow-x: auto; 
+      border: none;
+      padding: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 0;
+    }
+
+    th, td {
+      padding: 16px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: middle;
+      color: var(--text-color);
+      font-size: 15px;
+    }
+
+    th {
+      color: var(--text-muted);
+      background-color: transparent;
+      font-weight: 700;
+      border-bottom: 2px solid var(--border-color);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 13px;
+    }
+
+    td input[type="number"] {
+      width: 70px;
+      padding: 10px;
+      font-size: 16px; /* 防縮放 */
+      box-sizing: border-box;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .cart-table-scroll {
+      max-height: 400px;
+      overflow-y: auto;
+      border-radius: var(--radius-input);
+      border: 1px solid var(--border-color);
+      background: #FFFFFF;
+    }
+
+    #cart-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background-color: #FAFAF9;
+    }
+
+    /* 歷史訂單 KPI 區塊 */
+    .history-summary-box {
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-card);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .summary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
+
+    .summary-title { font-weight: 800; color: var(--text-color); font-size: 1.2em; }
+    .summary-actions { font-size: 0.9em; color: var(--text-muted); }
+
+    .summary-kpi-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+    }
+
+    .kpi-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .kpi-label { font-size: 13px; color: var(--text-muted); font-weight: 700; }
+    .kpi-value { font-size: 2.2em; font-weight: 800; color: var(--primary-btn); }
+
+    .summary-payment-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .pay-badge {
+      display: flex;
+      align-items: center;
+      background-color: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-pill);
+      padding: 8px 16px;
+      font-size: 14px;
+    }
+
+    .pay-name { color: var(--text-muted); margin-right: 8px; font-weight: 700; }
+    .pay-val { font-weight: 800; color: var(--text-color); }
+
+    /* 操作列：全寬底部按鈕群 */
+    .action-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      padding: 0;
+    }
+
+    .action-bar .btn {
+      padding: 16px;
+      border-radius: var(--radius-pill);
+      border: none;
+      font-weight: 800;
+      font-size: 16px;
+      color: #FFFFFF;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+    }
+
+    .btn-earth-1 { background-color: #8D8177; }
+    .btn-earth-2 { background-color: #9C9085; }
+    .btn-earth-3 { background-color: #A99E94; }
+    .btn-earth-4 { background-color: #72685F; }
+    .btn-earth-5 { background-color: var(--danger-btn); }
+
+    /* 記帳模式 */
+    .accounting-split-wrapper {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 32px;
+    }
+
+    .accounting-col {
+      background-color: var(--input-bg);
+      border-radius: var(--radius-card);
+      padding: 32px;
+      border: 1px solid var(--border-color);
+    }
+
+    .accounting-col h4 {
+      color: var(--primary-btn);
+      font-size: 1.2em;
+      font-weight: 800;
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px dashed var(--border-color);
+    }
+
+    .money-input-group {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .money-input-group label {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-color);
+    }
+
+    .money-input-group input {
+      width: 140px;
+      padding: 12px;
+      border-radius: var(--radius-input);
+    }
+
+    /* 響應式優化 (平板/手機) */
+    @media (max-width: 900px) {
+      .flex-container { grid-template-columns: 1fr; gap: 16px; padding: 0 16px; }
+      .checkout-buttons-area { grid-template-columns: 1fr 1fr; }
+      .invoice-input-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .action-bar { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+      .checkout-buttons-area { grid-template-columns: 1fr; }
+      .invoice-input-row { grid-template-columns: 1fr; }
+      .invoice-customer-field { grid-column: auto; }
+      .action-bar { grid-template-columns: 1fr; }
+      .total { font-size: 1.5em; padding: 20px; }
+    }
+    
+    .discount-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sync-option {
+      display: none;
+      margin-top: 4px;
+      font-size: 0.75em;
+      color: var(--primary-btn);
+      background-color: #fff8dc;
+      padding: 2px 4px;
+      border-radius: 3px;
+      border: 1px solid var(--border-color);
+      position: absolute;
+      top: 100%;
+      left: 0;
+      z-index: 10;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .discount-wrapper:focus-within .sync-option {
+      display: flex;
+      align-items: center;
+    }
+
+    .manual-locked {
+      border: 2px solid #a94442 !important;
+      background-color: #fff0f0 !important;
+    }
+
+    .class-rule-active {
+      border: 2px solid #28a745 !important;
+      background-color: #f0fff0 !important;
+    }
+
+    .expense-block {
+      margin-top: 24px;
+      padding: 16px 20px;
+      background-color: rgba(176, 125, 117, 0.08);
+      border: 1px solid rgba(176, 125, 117, 0.2);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+    }
+
+    .expense-block label {
+      font-weight: 700;
+      color: var(--danger-btn);
+      margin-right: 12px;
+    }
+
+    .expense-block input {
+      width: 120px;
+      padding: 8px 12px;
+      border: 1.5px solid rgba(176, 125, 117, 0.4);
+      border-radius: 6px;
+      text-align: right;
+      font-size: 1.1em;
+      font-weight: bold;
+      color: var(--danger-btn);
+      background-color: #FFFFFF;
+    }
+
+    .acct-summary {
+      background-color: #FFFFFF;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      margin-top: 24px;
+      border-top: 4px solid var(--primary-btn);
+    }
+
+    .acct-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 1.1em;
+      color: var(--text-color);
+      font-weight: 600;
+    }
+
+    .text-muted {
+      color: var(--text-muted);
+      font-weight: normal;
+    }
+
+    .text-small {
+      font-size: 0.9em;
+      margin-top: -6px;
+      margin-bottom: 16px;
+    }
+
+    .summary-divider {
+      height: 1px;
+      background-color: var(--border-color);
+      margin: 16px 0;
+    }
+
+    .acct-row.highlight {
+      font-size: 1.3em;
+      font-weight: 800;
+      color: var(--primary-btn);
+    }
+
+    .acct-row.diff-row {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border-color);
+      font-size: 1.2em;
+      font-weight: 800;
+      color: var(--danger-btn);
+    }
+
+    .btn-change-pay {
+      background-color: #fff;
+      border: 1px solid var(--primary-btn);
+      color: var(--primary-btn);
+      padding: 2px 6px;
+      font-size: 0.8em;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    .btn-change-pay:hover {
+      background-color: var(--primary-btn);
+      color: white;
+    }
+
+    .void-order {
+      text-decoration: line-through;
+      color: #999 !important;
+      background-color: #f0f0f0;
+    }
+    .void-order span, .void-order a, .void-order button { opacity: 0.6; }
+
+    .btn-action-group button {
+      margin-left: 2px;
+      padding: 2px 5px;
+      font-size: 0.8em;
+    }
+
+    .btn-void { background-color: #666; color: white; border: none; border-radius: 3px; cursor: pointer; }
+    .btn-del { background-color: #a94442; color: white; border: none; border-radius: 3px; cursor: pointer; }
+
+    /* =========================================
+       Modal (彈出視窗) 完整樣式修正
+       ========================================= */
+    
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(60, 56, 51, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background-color: var(--card-bg);
+      padding: 32px;
+      border-radius: var(--radius-card);
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.2);
+      text-align: center;
+      border: 1px solid var(--border-color);
+      box-sizing: border-box;
+    }
+
+    .modal-title {
+      margin-top: 0;
+      color: var(--primary-btn);
+      margin-bottom: 24px;
+      font-weight: 800;
+      font-size: 1.4em;
+    }
+
+    .modal-btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .modal-btn {
+      padding: 16px;
+      border: none;
+      border-radius: var(--radius-pill);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      color: white;
+      transition: var(--transition-smooth);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .modal-btn:hover {
+      filter: brightness(1.08);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    }
+
+    .modal-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* 莫蘭迪色系付款按鈕 */
+    .btn-m-cash { background-color: #82A284; }
+    .btn-m-card { background-color: #7993A6; }
+    .btn-m-line { background-color: #55A884; }
+    .btn-m-culture { background-color: #D18F68; }
+    .btn-m-cancel { background-color: #A39E98; width: 100%; margin-top: 12px; }
+
+    /* 訂單明細內容 */
+    .order-detail-content {
+      width: 100%;
+      max-height: 240px;
+      overflow-y: auto;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-input);
+      padding: 16px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-align: left;
+      white-space: pre-wrap;
+      box-sizing: border-box;
+      margin: 12px 0 24px 0;
+      color: var(--text-color);
+    }
+
+    .order-edit-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .order-edit-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      text-align: left;
+    }
+
+    .order-edit-field label, .order-note-block label {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-align: left;
+    }
+
+    .order-edit-field input, .order-note-block textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-input);
+      padding: 12px 14px;
+      font-size: 15px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      transition: var(--transition-smooth);
+    }
+
+    .order-edit-field input:focus, .order-note-block textarea:focus {
+      outline: none;
+      border-color: var(--primary-btn);
+      box-shadow: 0 0 0 4px rgba(126, 115, 104, 0.1);
+      background: #fff;
+    }
+
+    .order-note-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    
+    .order-note-block textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    #order-detail-modal .modal-content {
+      max-width: 500px;
+    }
+
+    #order-detail-modal .modal-btn-grid {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 0;
+    }
+
+    #order-detail-modal .btn-m-cancel {
+      width: auto;
+      min-width: 160px;
+      margin-top: 0;
+    }
+
+    /* QR Code Modal 優化 */
+    .qr-modal-content {
+      background: var(--card-bg);
+      padding: 32px;
+      border-radius: var(--radius-card);
+      max-width: min(92vw, 560px);
+      max-height: 92vh;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .qr-modal-title {
+      color: var(--primary-btn);
+      font-weight: 800;
+      font-size: 1.4em;
+      margin: 0;
+    }
+
+    .qr-modal-image {
+      display: block;
+      max-width: 100%;
+      max-height: calc(92vh - 120px);
+      border-radius: var(--radius-input);
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+
+    .client-link.has-note::after {
+      content: " *";
+      color: var(--primary-btn);
+      font-weight: 800;
+      margin-left: 2px;
+    }
+    .client-link {
+      color: var(--text-color);
+      text-decoration: none;
+      font-weight: 700;
+      display: inline-block;
+      transition: var(--transition-smooth);
+    }
+    .client-link:hover {
+      color: var(--primary-btn);
+      transform: translateY(-1px);
+      text-shadow: 0 2px 6px rgba(94, 79, 64, 0.2);
+    }
+  </style>
+<link rel="stylesheet" href="/register.css"></head>
+
+<body data-view="checkout"><div id="cloud-status" role="status">正在連接雲端…</div>
+  <input type="file" id="import-file" accept=".json" style="display:none;" />
+
+  <div class="flex-container">
+    <div class="container-half">
+      <div class="header">
+        <div>
+          <span id="title" style="font-size:1.5em;font-weight:bold;color:var(--primary-btn);">腓利門雲POS</span>
+        </div>
+      </div>
+
+      <div class="header" style="justify-content:flex-end;">
+        <span id="current-date" style="margin-right:auto;font-weight:bold;"></span>
+      </div>
+
+      <div class="form-group">
+        <label for="product-code">商品掃描 (輸入代碼/條碼)：</label>
+        <form id="scan-form" onsubmit="return false;" style="display:flex;gap:5px;">
+          <input type="text" id="product-code" placeholder="掃描後按 Enter 自動加入" autofocus autocomplete="off" style="flex:1;text-transform:uppercase;">
+          <button type="submit" class="btn btn-earth-2" style="white-space:nowrap;">加入</button>
+        </form>
+        <div id="product-info" style="color:var(--primary-btn);margin-top:5px;font-weight:bold;height:1.2em;"></div>
+      </div>
+
+      <div class="form-group search-container">
+        <label for="keyword-search">關鍵字搜尋：</label>
+        <input type="text" id="keyword-search" placeholder="名稱 / 代碼 / 條碼">
+        <div id="search-results" class="search-results" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="form-group bulk-input">
+        <label for="bulk-input">批次輸入（每行一筆）：</label>
+        <textarea id="bulk-input" placeholder="格式：\n2*ABC123\nABC123,2\nABC123"></textarea>
+        <div class="bulk-actions" style="display: flex; gap: 8px; margin-top: 8px;">
+          <button id="bulk-add-btn" class="btn btn-earth-2">批次加入</button>
+          <button id="bulk-clear-btn" class="btn btn-earth-5">清除輸入</button>
+          <button id="bulk-backup-btn" class="btn btn-earth-4">回填購物車</button>
+        </div>
+        <div id="bulk-result" class="bulk-result" style="margin-top: 6px; font-size: 0.9em; color: var(--text-muted); min-height: 1.2em;"></div>
+      </div>
+
+      <div id="db-status" style="font-size:0.8em;color:gray;text-align:right;"></div>
+    </div>
+
+    <div class="container-half checkout-panel">
+      <div class="table-container cart-table-shell">
+        <div class="table-title" style="font-weight:bold;color:var(--primary-btn);margin-bottom:5px;">本次結帳明細</div>
+        <div class="cart-table-scroll">
+          <table id="cart-table">
+            <thead>
+              <tr>
+                <th>名稱</th>
+                <th>單價</th>
+                <th>數量</th>
+                <th style="min-width:100px;">折扣 %</th>
+                <th>小計</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="total-row" style="display: flex; gap: 12px; align-items: stretch;">
+        <button id="clear-cart-btn" style="white-space: nowrap;">清除購物車</button>
+        <div class="total" style="flex: 1;">應付金額：<span id="total-amount">0</span> 元</div>
+      </div>
+
+      <div class="payment-info">
+        <div class="payment-details">
+          <span>實付金額：<input type="number" id="paid-amount" value="1000"></span>
+          <span>找錢：<span id="change-amount">0</span> 元</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <label style="display:flex;gap:6px;align-items:center;">
+            <input type="checkbox" id="print-enabled">
+            結帳後列印
+          </label>
+        </div>
+
+        <div class="checkout-buttons-area">
+          <button id="btn-f7" class="checkout-btn"><span class="btn-key">F7</span><span class="btn-label">信用卡</span></button>
+          <button id="btn-f8" class="checkout-btn"><span class="btn-key">F8</span><span class="btn-label">LINE PAY</span></button>
+          <button id="btn-f9" class="checkout-btn"><span class="btn-key">F9</span><span class="btn-label">文化幣</span></button>
+          <button id="btn-f10" class="checkout-btn"><span class="btn-key">F10</span><span class="btn-label">現金</span></button>
+        </div>
+        <div class="invoice-input-row">
+          <div class="invoice-field invoice-customer-field">
+            <label for="invoice-customer">這張統編發票要開哪個教會？</label>
+            <input type="text" id="invoice-customer" list="customer-options" placeholder="輸入教會客戶代號或名稱">
+            <datalist id="customer-options"></datalist>
+          </div>
+          <div class="invoice-field">
+            <label for="invoice-donate-carrier">捐贈 / 載具</label>
+            <input type="text" id="invoice-donate-carrier" placeholder="載具號碼或捐贈碼（可留白）">
+          </div>
+          <div class="invoice-field">
+            <label for="invoice-tax-id">統編</label>
+            <input type="text" id="invoice-tax-id" placeholder="統編八碼">
+          </div>
+        </div>
+        <div class="invoice-hint" style="color: var(--text-muted); font-size: 0.9em;">一般結帳固定使用 0002 書展客戶；只有輸入統編時才需要選擇要開哪個教會。個人載具固定為 305。</div>
+        <div class="payment-qr-actions">
+          <button type="button" id="show-linepay-qr" class="payment-qr-btn payment-qr-line">LINE PAY 收款碼</button>
+          <button type="button" id="show-culture-qr" class="payment-qr-btn payment-qr-culture">文化幣 收款碼</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex-container">
+    <div class="container-half">
+      <div class="history-summary-box">
+        <div class="summary-header">
+          <span class="summary-title">歷史訂單</span>
+          <span class="summary-actions">(作廢 / 刪除 / 修改付款)</span>
+        </div>
+        <div class="summary-kpi-row">
+          <div class="kpi-item">
+            <span class="kpi-label">訂單數</span>
+            <span class="kpi-value" id="total-orders">0</span>
+          </div>
+          <div class="kpi-divider" style="width: 1px; height: 40px; background-color: var(--border-color);"></div>
+          <div class="kpi-item">
+            <span class="kpi-label">平均消費</span>
+            <span class="kpi-value"><span id="average-amount">0</span><span class="unit" style="font-size: 0.5em; font-weight: normal; color: var(--text-muted); margin-left: 4px;">元</span></span>
+          </div>
+        </div>
+        <div class="summary-payment-row">
+          <div class="pay-badge"><span class="pay-name">現金</span><span class="pay-val" id="pay-cash">0</span></div>
+          <div class="pay-badge"><span class="pay-name">刷卡</span><span class="pay-val" id="pay-credit">0</span></div>
+          <div class="pay-badge"><span class="pay-name">LINE</span><span class="pay-val" id="pay-line">0</span></div>
+          <div class="pay-badge"><span class="pay-name">文化</span><span class="pay-val" id="pay-culture">0</span></div>
+        </div>
+      </div>
+      <div class="table-container" style="max-height:400px;overflow-y:auto;">
+        <table id="summary-table">
+          <thead>
+            <tr><th>單號</th><th>金額</th><th>付款</th><th>操作</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="notes-container">
+        <label for="notes" style="display: block; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; font-size: 14px;">備註：</label>
+        <textarea id="notes"></textarea>
+      </div>
+    </div>
+
+    <div class="container-half">
+      <div class="table-title" style="font-weight:bold;color:var(--primary-btn);margin-bottom:5px;"><b>今日銷售總覽</b></div>
+      <div class="table-container" style="max-height:350px;overflow-y:auto;">
+        <table id="overall-summary-table">
+          <thead><tr><th>代碼</th><th>品名</th><th>總量</th><th>總額</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="total bottom-total" style="font-size:1.5em; border-radius: 8px; margin-top: 10px;">營收總計：<span id="overall-total-amount">0</span> 元</div>
+    </div>
+  </div>
+
+  <div class="flex-container">
+    <div class="container-full">
+      <div class="header">
+      <span class="header-title" style="font-size: 1.2em; font-weight: 800; color: var(--primary-btn);">記帳模式</span>
+        <button onclick="clearAccountingInputs()" class="btn btn-earth-4">歸零</button>
+      </div>
+
+      <div class="accounting-container">
+        <div class="accounting-split-wrapper">
+          <div class="accounting-col">
+            <h4>1. 現有現金盤點</h4>
+            <div class="money-input-group"><label>1000 元</label><input type="number" class="acct-count current" data-val="1000" min="0"></div>
+            <div class="money-input-group"><label>500 元</label><input type="number" class="acct-count current" data-val="500" min="0"></div>
+            <div class="money-input-group"><label>100 元</label><input type="number" class="acct-count current" data-val="100" min="0"></div>
+            <div class="money-input-group"><label>50 元</label><input type="number" class="acct-count current" data-val="50" min="0"></div>
+            <div class="money-input-group"><label>10 元</label><input type="number" class="acct-count current" data-val="10" min="0"></div>
+            <div class="money-input-group"><label>5 元</label><input type="number" class="acct-count current" data-val="5" min="0"></div>
+            <div class="money-input-group"><label>1 元</label><input type="number" class="acct-count current" data-val="1" min="0"></div>
+          </div>
+
+          <div class="accounting-col initial-col" style="background-color: var(--input-bg);">
+            <h4>2. 初始金額設定 (11,000)</h4>
+            <div class="money-input-group"><label>1000 元</label><input type="number" class="acct-count initial" data-val="1000" min="0" value="1"></div>
+            <div class="money-input-group"><label>500 元</label><input type="number" class="acct-count initial" data-val="500" min="0" value="10"></div>
+            <div class="money-input-group"><label>100 元</label><input type="number" class="acct-count initial" data-val="100" min="0" value="30"></div>
+            <div class="money-input-group"><label>50 元</label><input type="number" class="acct-count initial" data-val="50" min="0" value="20"></div>
+            <div class="money-input-group"><label>10 元</label><input type="number" class="acct-count initial" data-val="10" min="0" value="64"></div>
+            <div class="money-input-group"><label>5 元</label><input type="number" class="acct-count initial" data-val="5" min="0" value="62"></div>
+            <div class="money-input-group"><label>1 元</label><input type="number" class="acct-count initial" data-val="1" min="0" value="50"></div>
+          </div>
+        </div>
+
+        <div class="expense-block">
+          <label>(-) 額外支出：</label>
+          <input type="number" id="expenses-cash" value="0" min="0">
+        </div>
+
+        <div class="acct-summary">
+          <div class="acct-row">
+            <span>盤點現金總額：</span><span id="calc-drawer-total">0</span>
+          </div>
+          <div class="acct-row text-muted">
+            <span>(-) 初始金額總計：</span><span id="calc-initial">0</span>
+          </div>
+          <div class="acct-row text-muted">
+            <span>(+) 支出費用憑證：</span><span id="calc-expenses">0</span>
+          </div>
+
+          <div class="summary-divider"></div>
+
+          <div class="acct-row highlight">
+            <span>= 實際營業額 (現金)：</span><span id="calc-net-cash">0</span>
+          </div>
+          <div class="acct-row text-small text-muted">
+            <span>(系統記錄現金營收：<span id="sys-cash-total">0</span>)</span>
+          </div>
+          <div class="acct-row diff-row" id="cash-diff-row">
+            <span>差異：</span><span id="cash-diff">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex-container">
+    <div class="container-full">
+      <div class="action-bar">
+        <button id="export-csv-btn" class="btn btn-earth-2">匯總訂單資訊</button>
+        <button id="backup-btn" class="btn btn-earth-3">存檔</button>
+        <button id="restore-btn" class="btn btn-earth-4">讀檔</button>
+        <button id="export-pilot-btn" class="btn btn-earth-1">匯出 Pilot ERI 測試檔</button>
+        <button id="clear-all-btn" class="btn btn-earth-5">清空</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 熱感應列印區 -->
+  <div id="receipt-print" style="display: none;"></div>
+
+  <div id="payment-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="modal-title">選擇新的付款方式</h3>
+      <div class="modal-btn-grid">
+        <button class="modal-btn btn-m-cash" onclick="selectPaymentMethod('現金')">現金</button>
+        <button class="modal-btn btn-m-card" onclick="selectPaymentMethod('信用卡')">信用卡</button>
+        <button class="modal-btn btn-m-line" onclick="selectPaymentMethod('LINE PAY')">LINE PAY</button>
+        <button class="modal-btn btn-m-culture" onclick="selectPaymentMethod('文化幣')">文化幣</button>
+      </div>
+      <button class="modal-btn btn-m-cancel" onclick="closePaymentModal()">取消</button>
+    </div>
+  </div>
+
+  <div id="order-detail-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="modal-title">訂單內容</h3>
+      <pre id="order-detail-content" class="order-detail-content"></pre>
+      <div class="order-edit-grid">
+        <div class="order-edit-field">
+          <label for="order-customer-input">本筆書展教會</label>
+          <input id="order-customer-input" type="text" list="customer-options" placeholder="教會客戶代號或名稱">
+        </div>
+        <div class="order-edit-field">
+          <label for="order-donate-carrier-input">捐贈 / 載具</label>
+          <input id="order-donate-carrier-input" type="text" placeholder="載具號碼或捐贈碼（可留白）">
+        </div>
+        <div class="order-edit-field">
+          <label for="order-tax-id-input">統編</label>
+          <input id="order-tax-id-input" type="text" placeholder="可留白">
+        </div>
+      </div>
+      <div class="order-note-block">
+        <label for="order-note-input">備註</label>
+        <textarea id="order-note-input" rows="3" placeholder="特殊交代（載具與統編請填上方正式欄位）"></textarea>
+      </div>
+      <div class="modal-btn-grid">
+        <button class="modal-btn btn-m-cancel" onclick="closeOrderDetail()">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="qr-image-modal" class="modal-overlay">
+    <div class="qr-modal-content">
+      <div id="qr-modal-title" class="qr-modal-title"></div>
+      <img id="qr-modal-image" class="qr-modal-image" alt="收款碼">
+    </div>
+  </div>
+
+  <script>
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.PilotExporter = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  const STKSALE1_HEADER = [
+    'ERI','CODE','STAFF','CUST','SDATE','CURR','RATE','PROJNO','GWN','ADDR','TAX','AMT','PLUSSUB','TOTAL','QTY','EDITOR','MEMO','REMARK','ARTICLE','TAXCATE','INVCATE','INVDATE','INVNO','BILDATE','RADVDATE','COST','DPTNO','ACCNO','TYPE','SRCERI','SCRUTINY','PRNIMMED','PRNONCE','ACCDESC','ACCGEN','ACNT','INVAMT','COMPNO','REFNO','PRINTX','BILCUST','BANK','INVNAME','CMPID','PAYCASH','NORCV','CONTACT','TEL','EINVFLAG','APCODE','LASTUPD','POSCODE','POSREMARK1','POSREMARK2','STIME'
+  ];
+
+  // 以 PILOT 已驗證 STKSALE2.csv 的正式欄位順序為唯一 schema。
+  const STKSALE2_HEADER = [
+    'ERI','MASTERI','SRCERI','STAFF','CUST','GWN','PROD','SDATE','TYPE','CODE','SERIAL','SPEC','QTY','UNIT','PRICE','AMT','REALQTY','SUBQTY','REMARK','PRODDESC','QTYSTR','CURR','RATE','STDPRC','DISCOUNT','PROJNO','INVNO','INVQTY','SAMPLE','INVRETURN','VPNO','VLIDDATE','REFNO','INVPRC','INVAMT','INVAMT1','GIFT','MFLAG','SUBAMT','APCODE','LASTUPD','POSREMARK1','POSREMARK2'
+  ];
+
+  const VCHRPLUS_HEADER = ['ERI','SRCERI','SERIAL','CODE','SUBJNO','OP','AMT','REMARK','APCODE','LASTUPD'];
+
+  const BOOK_FAIR_CODE = '0002';
+  const PERSONAL_CODE = '305';
+  const DEFAULT_DONATION_CODE = '2995';
+
+  const TAX_PROFILES = {
+    taxable: { key: 'taxable', taxCate: 0 },
+    exempt: { key: 'exempt', taxCate: 1 }
+  };
+
+  // 保留雲 POS 既有會計科目 mapping。
+  const PAYMENT_MAPPING = {
+    '信用卡': { code: '5', subject: '1144.355' },
+    'LINE PAY': { code: '51', subject: '1144.358' },
+    '文化幣': { code: '61', subject: '1144.61' }
+  };
+
+  const roundTo = (value, digits = 2) => {
+    const factor = 10 ** digits;
+    return Math.round((Number(value) + Number.EPSILON) * factor) / factor;
+  };
+
+  const rowFromObject = (header, value) => header.map(column => (
+    value[column] !== undefined ? value[column] : ''
+  ));
+
+  const sameHeader = (actual, expected) => (
+    actual.length === expected.length && actual.every((value, index) => value === expected[index])
+  );
+
+  const duplicateCount = (values) => {
+    const counts = new Map();
+    values.filter(Boolean).forEach(value => counts.set(value, (counts.get(value) || 0) + 1));
+    return [...counts.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+  };
+
+  const paymentMethodName = (rawMethod) => {
+    const original = String(rawMethod || '').trim();
+    const method = original.toUpperCase();
+    if (method.includes('文化幣')) return '文化幣';
+    if (method.includes('LINE')) return 'LINE PAY';
+    if (method.includes('信用卡')) return '信用卡';
+    if (method.includes('現金')) return '現金';
+    return original;
+  };
+
+  function getPaymentRecords(client) {
+    const total = roundTo(client?.amount);
+    // 零元訂單沒有實際收款，不應產生現金或電子支付紀錄。
+    if (total === 0) return [];
+
+    if (Array.isArray(client?.paymentRecords) && client.paymentRecords.length) {
+      return client.paymentRecords.map(record => ({
+        method: paymentMethodName(record.method || record.paymentMethod || record.type),
+        amount: roundTo(record.amount)
+      }));
+    }
+
+    const paymentMethod = String(client?.paymentMethod || '現金').trim();
+    const parts = paymentMethod.split(/\s*\+\s*/).filter(Boolean);
+
+    if (parts.length === 1 && !/\([-+]?\d+(?:\.\d+)?\)/.test(parts[0])) {
+      return [{ method: paymentMethodName(parts[0]), amount: total }];
+    }
+
+    return parts.map(part => {
+      const amountMatch = part.match(/\(([-+]?\d+(?:\.\d+)?)\)/);
+      return {
+        method: paymentMethodName(part),
+        amount: amountMatch ? roundTo(amountMatch[1]) : NaN
+      };
+    });
+  }
+
+  const formatDocumentPrefix = (date) => {
+    const rocYear = date.getFullYear() - 1911;
+    const month = date.getMonth() + 1; // 月份不補 0：8 月 => 8
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${rocYear}BF${month}${day}`;
+  };
+
+  const normalizeCustomerNumber = (value, fallback) => {
+    const raw = String(value ?? '').trim();
+    if (raw === '') return fallback;
+    const number = Number(raw);
+    return Number.isFinite(number) ? number : raw;
+  };
+
+  function buildPilotExport(options) {
+    const {
+      clients = {},
+      products = {},
+      customerMap = {},
+      unitMap = {},
+      generateERI,
+      now = new Date(),
+      whCode = '0000',
+      staffCode = '02'
+    } = options || {};
+
+    if (typeof generateERI !== 'function') throw new Error('缺少 PILOT ERI 產生器');
+
+    const yyyy = now.getFullYear();
+    const MM = String(now.getMonth() + 1).padStart(2, '0');
+    const DD = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mi = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    const date = `${yyyy}/${MM}/${DD}`;
+    const ts = String(yyyy).slice(-2) + MM + DD + hh + mi + ss;
+    const documentPrefix = formatDocumentPrefix(now);
+
+    const usedEriSet = new Set();
+    const eriPatterns = {
+      master: /^0H5.{13}$/,
+      detail: /^0H8.{13}$/,
+      pay: /^01E.{13}$/
+    };
+
+    const allocateEri = (type, preferred = '') => {
+      const candidate = String(preferred || '').trim();
+      if (eriPatterns[type]?.test(candidate) && !usedEriSet.has(candidate)) {
+        usedEriSet.add(candidate);
+        return candidate;
+      }
+      for (let attempt = 0; attempt < 1000; attempt += 1) {
+        const generated = String(generateERI(type) || '').trim();
+        if (eriPatterns[type]?.test(generated) && !usedEriSet.has(generated)) {
+          usedEriSet.add(generated);
+          return generated;
+        }
+      }
+      throw new Error(`無法產生唯一的 ${type} ERI`);
+    };
+
+    const audit = {
+      stkSale1Count: 0,
+      stkSale2Count: 0,
+      voucherCount: 0,
+      first10Codes: [],
+      headerErrors: 0,
+      columnCountErrors: 0,
+      duplicateCodeCount: 0,
+      duplicateEriCount: 0,
+      orphanMasteriCount: 0,
+      masterDetailKeyErrorCount: 0,
+      serialSequenceErrorCount: 0,
+      orphanSrceriCount: 0,
+      taxCateErrorCount: 0,
+      masterAmountErrorCount: 0,
+      detailMasterAmountErrorCount: 0,
+      customerResolverErrorCount: 0,
+      productResolverErrorCount: 0,
+      transactionIdErrorCount: 0,
+      paymentAssociationErrorCount: 0,
+      paymentAmountErrorCount: 0,
+      skippedZeroAmountCount: 0,
+      plusSubErrorCount: 0,
+      voucherSerialSequenceErrorCount: 0,
+      invoiceFieldErrorCount: 0,
+      costErrorCount: 0,
+      taxableGross: 0,
+      exemptGross: 0,
+      exportedGross: 0,
+      expectedGross: 0,
+      unresolvedProductCodes: []
+    };
+
+    const unresolvedProductCodes = new Set();
+    const validClientEntries = Object.entries(clients).filter(([, client]) => client && client.isValid);
+    const seenTransactionIds = new Set();
+    const preparedClients = [];
+    const customerResolverTransactionIds = [];
+
+    validClientEntries.forEach(([storageKey, client]) => {
+      const transactionId = String(client.transactionId || client.id || storageKey || '').trim();
+      if (!transactionId || seenTransactionIds.has(transactionId)) audit.transactionIdErrorCount += 1;
+      if (transactionId) seenTransactionIds.add(transactionId);
+
+      const invoiceInfo = client.invoiceInfo || {};
+      const taxId = String(invoiceInfo.taxId || '').trim();
+      const carrier = String(invoiceInfo.carrier || '').trim();
+      const donationCode = String(invoiceInfo.donationCode || '').trim();
+
+      let invoiceType = 'general';
+      let customerCode = BOOK_FAIR_CODE;
+      let customerResolverFailed = false;
+
+      if (taxId) {
+        invoiceType = 'church';
+        customerCode = String(client.bookFairCustomerCode || '').trim();
+        if (!customerCode || customerCode === BOOK_FAIR_CODE || customerCode === PERSONAL_CODE) {
+          customerResolverFailed = true;
+        }
+      } else if (carrier) {
+        invoiceType = 'carrier';
+        customerCode = PERSONAL_CODE;
+      } else if (donationCode && donationCode !== DEFAULT_DONATION_CODE) {
+        // 2995 併一般書展；其他愛心碼保留為自己的交易組，不被彙總吃掉。
+        invoiceType = 'donation';
+        customerCode = BOOK_FAIR_CODE;
+      }
+
+      const customer = customerMap[customerCode];
+      if (!customerCode || !customer) customerResolverFailed = true;
+      if (customerResolverFailed) {
+        audit.customerResolverErrorCount += 1;
+        customerResolverTransactionIds.push(transactionId || storageKey);
+      }
+
+      const entries = (client.items || []).map(item => {
+        const itemCode = String(item?.code || '').trim();
+        let currentProduct = null;
+
+        // 有 CODE 時只能用 CODE 命中。不能因重複 BARCODE 偷換成另一個正式商品。
+        if (itemCode) currentProduct = products[itemCode] || null;
+        else if (item?.barcode) currentProduct = products[item.barcode] || null;
+
+        if (!currentProduct || !currentProduct.code) {
+          audit.productResolverErrorCount += 1;
+          unresolvedProductCodes.add(itemCode || String(item?.barcode || '').trim() || '(空白)');
+        }
+
+        const ntaxFlag = String(currentProduct?.ntaxFlag ?? '').trim();
+        if (ntaxFlag !== '0' && ntaxFlag !== '1') audit.taxCateErrorCount += 1;
+        const taxProfile = ntaxFlag === '1' ? TAX_PROFILES.exempt : TAX_PROFILES.taxable;
+        const discountRate = item.discount !== undefined ? Number(item.discount) : 100;
+        const soldPrice = Number(item.price || 0) * (discountRate / 100);
+        const quantity = Number(item.quantity || 0);
+
+        return {
+          client,
+          transactionId,
+          item,
+          currentProduct,
+          soldPrice,
+          grossAmount: Math.round(soldPrice * quantity),
+          costAmount: roundTo(Number(currentProduct?.cost || 0) * quantity),
+          taxProfile
+        };
+      });
+
+      const allocatedAmount = entries.reduce((sum, entry) => sum + entry.grossAmount, 0);
+
+      const savedAmount = Number(client.amount);
+      // 舊版在重新開啟含購物車的頁面時沒有重算總額，可能把有商品的訂單存成 0 元。
+      // 明細有非零金額（包含負值退款／折抵）時可恢復；真正的零元商品仍保留為 0 元。
+      const shouldRecoverZeroAmount = Number.isFinite(savedAmount)
+        && roundTo(savedAmount) === 0
+        && roundTo(allocatedAmount) !== 0;
+      const targetAmount = Number.isFinite(savedAmount) && !shouldRecoverZeroAmount
+        ? Math.round(savedAmount)
+        : allocatedAmount;
+
+      // 結帳儲存總額為權威；只把極小的整筆尾差留給最後一筆，避免改掉成交總額。
+      if (entries.length && allocatedAmount !== targetAmount) {
+        entries[entries.length - 1].grossAmount += targetAmount - allocatedAmount;
+      }
+
+      let paymentRecords = getPaymentRecords(client);
+      const savedPaymentTotal = roundTo(paymentRecords.reduce((sum, record) => (
+        sum + (Number.isFinite(record.amount) ? Number(record.amount) : 0)
+      ), 0));
+      if (shouldRecoverZeroAmount && savedPaymentTotal === 0) {
+        paymentRecords = getPaymentRecords({
+          paymentMethod: client.paymentMethod,
+          amount: targetAmount
+        });
+      }
+      if (paymentRecords.some(record => !Number.isFinite(record.amount))) {
+        audit.paymentAmountErrorCount += 1;
+      } else {
+        const paymentTotal = roundTo(paymentRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0));
+        if (paymentTotal !== roundTo(targetAmount)) audit.paymentAmountErrorCount += 1;
+      }
+
+      // 只略過沒有明細的空白舊紀錄。有商品的零元訂單仍須輸出 master/detail，
+      // 才能讓 Pilot 正確記錄銷售數量與庫存異動。
+      if (entries.length === 0 && roundTo(targetAmount) === 0 && roundTo(allocatedAmount) === 0) {
+        audit.skippedZeroAmountCount += 1;
+        return;
+      }
+
+      audit.expectedGross += targetAmount;
+      preparedClients.push({
+        ...client,
+        transactionId,
+        invoiceInfo,
+        invoiceType,
+        accountingCustomer: customer || { code: customerCode, name: '', invoiceName: '', invcate: '', einvflag: '' },
+        exportEntries: entries,
+        exportAmount: targetAmount,
+        paymentRecords
+      });
+    });
+
+    audit.unresolvedProductCodes = [...unresolvedProductCodes];
+
+    const generalClients = preparedClients.filter(client => client.invoiceType === 'general');
+    const separateClients = preparedClients.filter(client => client.invoiceType !== 'general');
+    const groups = [];
+
+    const appendTaxGroups = (sourceClients, customer, invoiceType) => {
+      [TAX_PROFILES.taxable, TAX_PROFILES.exempt].forEach(taxProfile => {
+        const clientsInGroup = sourceClients.filter(client => (
+          client.exportEntries.some(entry => entry.taxProfile.key === taxProfile.key)
+        ));
+        const entries = clientsInGroup.flatMap(client => (
+          client.exportEntries.filter(entry => entry.taxProfile.key === taxProfile.key)
+        ));
+        if (!entries.length) return;
+
+        groups.push({
+          customer,
+          clients: clientsInGroup,
+          entries,
+          invoiceType,
+          taxProfile,
+          masterERI: ''
+        });
+      });
+    };
+
+    if (generalClients.length) {
+      appendTaxGroups(
+        generalClients,
+        customerMap[BOOK_FAIR_CODE] || { code: BOOK_FAIR_CODE, name: '書展', invoiceName: '書展', invcate: '3', einvflag: '0' },
+        'general'
+      );
+    }
+
+    // 保留原 transaction 順序；同交易固定先應稅再免稅。
+    separateClients.forEach(client => appendTaxGroups([client], client.accountingCustomer, client.invoiceType));
+
+    groups.forEach((group, index) => {
+      group.documentCode = `${documentPrefix}-${String(index + 1).padStart(3, '0')}`;
+    });
+
+    const transactionToPrimaryMasterEri = new Map();
+    const transactionToMasterSlices = new Map();
+
+    const masterObjects = [];
+    const detailObjects = [];
+
+    groups.forEach(group => {
+      // 每張主單先取 master ERI，再立即產生該主單所有 detail ERI。
+      group.masterERI = allocateEri('master');
+
+      group.clients.forEach(client => {
+        if (!transactionToPrimaryMasterEri.has(client.transactionId)) {
+          transactionToPrimaryMasterEri.set(client.transactionId, group.masterERI);
+        }
+
+        // 記住「這個交易」在「這張拆稅 master」中實際占多少銷售額。
+        // 後面付款加減項會按這些 slice 分配，避免把整筆非現金付款全塞進第一張 master。
+        const sliceGross = group.entries
+          .filter(entry => entry.transactionId === client.transactionId)
+          .reduce((sum, entry) => sum + Number(entry.grossAmount || 0), 0);
+
+        // 零元交易也要保留 master 關聯；雖然不會產生付款加減項，仍是有效銷售。
+        if (!transactionToMasterSlices.has(client.transactionId)) {
+          transactionToMasterSlices.set(client.transactionId, []);
+        }
+        transactionToMasterSlices.get(client.transactionId).push({
+          masterERI: group.masterERI,
+          grossAmount: roundTo(sliceGross),
+          taxProfile: group.taxProfile.key
+        });
+      });
+
+      const grossTotal = group.entries.reduce((sum, entry) => sum + entry.grossAmount, 0);
+      const totalQty = group.entries.reduce((sum, entry) => sum + Number(entry.item.quantity || 0), 0);
+      const costTotal = roundTo(group.entries.reduce((sum, entry) => sum + entry.costAmount, 0));
+      const isTaxable = group.taxProfile.key === TAX_PROFILES.taxable.key;
+      const netAmount = isTaxable ? Math.round(grossTotal / 1.05) : grossTotal;
+      const taxAmount = grossTotal - netAmount;
+
+      const groupDetails = group.entries.map((entry, serial) => {
+        const { item, currentProduct, soldPrice, grossAmount } = entry;
+        const unitCode = item.unitCode || currentProduct?.unitCode || '';
+        // UNIT / unitMap 沿用網站原有邏輯，不在此次匯出修正中另行推導。
+        const exportUnit = unitMap[unitCode] || item.unit || unitCode || '個';
+
+        return {
+          ERI: allocateEri('detail'),
+          MASTERI: group.masterERI,
+          SRCERI: '',
+          STAFF: '',
+          CUST: group.customer.code,
+          GWN: whCode,
+          PROD: currentProduct?.code || String(item.code || ''),
+          SDATE: date,
+          TYPE: 0,
+          CODE: group.documentCode,
+          SERIAL: serial,
+          SPEC: '',
+          QTY: item.quantity,
+          UNIT: exportUnit,
+          PRICE: isTaxable ? roundTo(soldPrice / 1.05) : roundTo(soldPrice),
+          AMT: isTaxable ? roundTo(grossAmount / 1.05) : grossAmount,
+          REALQTY: item.quantity,
+          SUBQTY: 0,
+          REMARK: '',
+          PRODDESC: '',
+          QTYSTR: exportUnit,
+          CURR: 'NTD',
+          RATE: 1,
+          STDPRC: isTaxable ? roundTo(soldPrice / 1.05) : roundTo(soldPrice),
+          DISCOUNT: 100,
+          PROJNO: '',
+          INVNO: '',
+          INVQTY: item.quantity,
+          SAMPLE: 0,
+          INVRETURN: 0,
+          VPNO: '',
+          VLIDDATE: date,
+          REFNO: '',
+          INVPRC: roundTo(soldPrice),
+          INVAMT: grossAmount,
+          INVAMT1: 0,
+          GIFT: 0,
+          MFLAG: 0,
+          SUBAMT: 0,
+          APCODE: '',
+          LASTUPD: ts,
+          POSREMARK1: '',
+          POSREMARK2: '',
+          _taxProfile: entry.taxProfile.key,
+          _transactionId: entry.transactionId
+        };
+      });
+
+      // 明細含稅轉未稅逐筆會有 rounding 尾差；最後一筆吸收，確保 SUM(detail AMT)=master AMT。
+      const detailNetTotal = roundTo(groupDetails.reduce((sum, detail) => sum + Number(detail.AMT || 0), 0));
+      if (groupDetails.length && detailNetTotal !== roundTo(netAmount)) {
+        const lastDetail = groupDetails[groupDetails.length - 1];
+        lastDetail.AMT = roundTo(Number(lastDetail.AMT || 0) + netAmount - detailNetTotal);
+      }
+      detailObjects.push(...groupDetails);
+
+      const singleClient = group.clients.length === 1 ? group.clients[0] : null;
+      const invoiceInfo = singleClient?.invoiceInfo || {};
+
+      // PILOT「附註」要保存實際輸入內容，不再使用 POS_Import / 雲端載具等泛稱。
+      // 有正式 PILOT 欄位的資料（例如統編）仍走正式欄位，不重複塞進附註。
+      const remarkParts = [];
+      const addRemark = (value) => {
+        const normalized = String(value || '').trim();
+        if (normalized && !remarkParts.includes(normalized)) remarkParts.push(normalized);
+      };
+
+      if (group.invoiceType === 'carrier' && invoiceInfo.carrier) {
+        addRemark(`載具：${String(invoiceInfo.carrier).trim()}`);
+      }
+      if (group.invoiceType === 'donation' && invoiceInfo.donationCode) {
+        addRemark(`捐贈：${String(invoiceInfo.donationCode).trim()}`);
+      }
+
+      // 2995 會併入一般書展；若該彙整組內確實有 2995，附註仍保留這項已記錄資料。
+      if (group.invoiceType === 'general') {
+        const hasDefaultDonation = group.clients.some(client => (
+          String(client?.invoiceInfo?.donationCode || '').trim() === DEFAULT_DONATION_CODE
+        ));
+        if (hasDefaultDonation) addRemark(`捐贈：${DEFAULT_DONATION_CODE}`);
+      }
+
+      // 手動備註也要進 PILOT 附註；彙整單若有多筆備註則去重後合併。
+      group.clients.forEach(client => addRemark(client?.note));
+
+      const masterRemark = remarkParts.join('；');
+      const customer = group.customer || {};
+      const invoiceName = String(customer.invoiceName || customer.name || '').trim();
+
+      const master = {
+        ERI: group.masterERI,
+        CODE: group.documentCode,
+        STAFF: staffCode,
+        CUST: customer.code,
+        SDATE: date,
+        CURR: 'NTD',
+        RATE: 1,
+        PROJNO: '',
+        GWN: whCode,
+        ADDR: '',
+        TAX: taxAmount,
+        AMT: netAmount,
+        PLUSSUB: 0,
+        TOTAL: grossTotal,
+        QTY: totalQty,
+        EDITOR: 'POS',
+        MEMO: '',
+        REMARK: masterRemark,
+        ARTICLE: '',
+        TAXCATE: group.taxProfile.taxCate,
+        INVCATE: normalizeCustomerNumber(customer.invcate, group.invoiceType === 'general' || group.invoiceType === 'donation' ? 3 : 2),
+        INVDATE: date,
+        INVNO: '',
+        BILDATE: date,
+        RADVDATE: date,
+        COST: costTotal,
+        DPTNO: '0000',
+        ACCNO: '',
+        TYPE: 0,
+        SRCERI: '',
+        SCRUTINY: '',
+        PRNIMMED: 0,
+        PRNONCE: 0,
+        ACCDESC: '',
+        ACCGEN: 0,
+        ACNT: '',
+        INVAMT: 0,
+        COMPNO: '0000',
+        REFNO: '',
+        PRINTX: 0,
+        BILCUST: customer.code,
+        BANK: '',
+        INVNAME: invoiceName,
+        CMPID: group.invoiceType === 'church' ? String(invoiceInfo.taxId || '').trim() : '',
+        PAYCASH: 1,
+        NORCV: 0,
+        CONTACT: '',
+        TEL: '',
+        EINVFLAG: normalizeCustomerNumber(customer.einvflag, group.invoiceType === 'general' || group.invoiceType === 'donation' ? 0 : 1),
+        APCODE: '',
+        LASTUPD: ts,
+        POSCODE: '',
+        POSREMARK1: '',
+        POSREMARK2: '',
+        STIME: '',
+        _invoiceType: group.invoiceType,
+        _transactionIds: group.clients.map(client => client.transactionId),
+        _expectedCost: costTotal
+      };
+
+      masterObjects.push(master);
+      audit.exportedGross += grossTotal;
+      audit[isTaxable ? 'taxableGross' : 'exemptGross'] += grossTotal;
+    });
+
+    const voucherObjects = [];
+    const voucherSerialByMaster = new Map();
+
+    const appendVoucher = (client, record, mapping, slice, allocation) => {
+      if (roundTo(allocation) === 0) return;
+      const voucherSerial = voucherSerialByMaster.get(slice.masterERI) || 0;
+
+      voucherObjects.push({
+        ERI: allocateEri('pay'),
+        SRCERI: slice.masterERI,
+        SERIAL: voucherSerial,
+        CODE: mapping.code,
+        SUBJNO: mapping.subject,
+        OP: 0,
+        AMT: -allocation,
+        REMARK: '',
+        APCODE: '',
+        LASTUPD: ts,
+        _transactionId: client.transactionId,
+        _expectedSrceri: slice.masterERI,
+        _expectedAmount: -allocation,
+        _paymentMethod: record.method
+      });
+
+      voucherSerialByMaster.set(slice.masterERI, voucherSerial + 1);
+    };
+
+    preparedClients.forEach(client => {
+      const slices = (transactionToMasterSlices.get(client.transactionId) || [])
+        .map(slice => ({ ...slice, remaining: Number(slice.grossAmount || 0) }));
+
+      const mappedRecords = client.paymentRecords.filter(record => (
+        PAYMENT_MAPPING[record.method] && Number.isFinite(record.amount)
+      ));
+
+      if (!slices.length) {
+        if (mappedRecords.some(record => roundTo(record.amount) !== 0)) {
+          audit.paymentAssociationErrorCount += 1;
+        }
+        return;
+      }
+
+      // 全額單一非現金付款可逐張 master 直接沖銷。這也涵蓋退換貨中
+      // 同時存在正、負明細的情況：負銷售產生正加減項，正銷售則反向扣回。
+      const sliceTotal = roundTo(slices.reduce((sum, slice) => sum + Number(slice.grossAmount || 0), 0));
+      if (mappedRecords.length === 1 && roundTo(mappedRecords[0].amount) === sliceTotal) {
+        const record = mappedRecords[0];
+        const mapping = PAYMENT_MAPPING[record.method];
+        slices.forEach(slice => appendVoucher(
+          client,
+          record,
+          mapping,
+          slice,
+          roundTo(slice.grossAmount)
+        ));
+        return;
+      }
+
+      client.paymentRecords.forEach(record => {
+        const mapping = PAYMENT_MAPPING[record.method];
+
+        // 現金不產 VCHRPLUS；未知付款也不自行發明科目。
+        if (!mapping) return;
+        if (!Number.isFinite(record.amount)) return;
+
+        let remainingPayment = Math.round(Number(record.amount || 0));
+
+        // 將這筆非現金付款依正負方向分配到各拆稅 master。
+        // 正數為收款、負數為退款；VCHRPLUS 會寫入相反符號。
+        for (const slice of slices) {
+          if (remainingPayment === 0) break;
+          if (slice.remaining === 0) continue;
+          if (Math.sign(slice.remaining) !== Math.sign(remainingPayment)) continue;
+
+          const direction = Math.sign(remainingPayment);
+          const allocation = direction * Math.min(
+            Math.abs(remainingPayment),
+            Math.abs(Math.round(Number(slice.remaining || 0)))
+          );
+          if (allocation === 0) continue;
+
+          appendVoucher(client, record, mapping, slice, allocation);
+          slice.remaining = roundTo(slice.remaining - allocation);
+          remainingPayment -= allocation;
+        }
+
+        // 非現金付款若仍有剩餘，代表付款總額大於此交易銷售額或 master 分配有問題。
+        if (remainingPayment !== 0) {
+          audit.paymentAssociationErrorCount += 1;
+        }
+      });
+    });
+
+    // PILOT 實際匯出資料的規則：
+    //   TOTAL = AMT + TAX + PLUSSUB
+    //   PLUSSUB = 該主單所有 VCHRPLUS.AMT 合計
+    //
+    // 例如全額信用卡 450：
+    //   AMT 429 + TAX 21 + PLUSSUB(-450) = TOTAL 0
+    //
+    // 現金不寫 VCHRPLUS，因此現金部分會留在 TOTAL。
+    const voucherSumByMaster = new Map();
+    voucherObjects.forEach(voucher => {
+      const current = Number(voucherSumByMaster.get(voucher.SRCERI) || 0);
+      voucherSumByMaster.set(
+        voucher.SRCERI,
+        roundTo(current + Number(voucher.AMT || 0))
+      );
+    });
+
+    masterObjects.forEach(master => {
+      const plusSub = roundTo(voucherSumByMaster.get(master.ERI) || 0);
+      master.PLUSSUB = plusSub;
+      master.TOTAL = roundTo(
+        Number(master.AMT || 0)
+        + Number(master.TAX || 0)
+        + plusSub
+      );
+      master._expectedPlusSub = plusSub;
+      master._expectedTotal = master.TOTAL;
+    });
+
+    const s1Rows = [STKSALE1_HEADER, ...masterObjects.map(master => rowFromObject(STKSALE1_HEADER, master))];
+    const s2Rows = [STKSALE2_HEADER, ...detailObjects.map(detail => rowFromObject(STKSALE2_HEADER, detail))];
+    const v1Rows = [VCHRPLUS_HEADER, ...voucherObjects.map(voucher => rowFromObject(VCHRPLUS_HEADER, voucher))];
+
+    const masterByEri = new Map(masterObjects.map(master => [master.ERI, master]));
+    const masterEris = new Set(masterByEri.keys());
+
+    audit.stkSale1Count = masterObjects.length;
+    audit.stkSale2Count = detailObjects.length;
+    audit.voucherCount = voucherObjects.length;
+    audit.first10Codes = masterObjects.slice(0, 10).map(master => master.CODE);
+
+    audit.headerErrors = [
+      sameHeader(s1Rows[0], STKSALE1_HEADER),
+      sameHeader(s2Rows[0], STKSALE2_HEADER),
+      sameHeader(v1Rows[0], VCHRPLUS_HEADER)
+    ].filter(ok => !ok).length;
+
+    audit.columnCountErrors = [
+      ...s1Rows.slice(1).map(row => row.length === STKSALE1_HEADER.length),
+      ...s2Rows.slice(1).map(row => row.length === STKSALE2_HEADER.length),
+      ...v1Rows.slice(1).map(row => row.length === VCHRPLUS_HEADER.length)
+    ].filter(ok => !ok).length;
+
+    audit.duplicateCodeCount = duplicateCount(masterObjects.map(master => master.CODE));
+    audit.duplicateEriCount = duplicateCount([
+      ...masterObjects.map(master => master.ERI),
+      ...detailObjects.map(detail => detail.ERI),
+      ...voucherObjects.map(voucher => voucher.ERI)
+    ]);
+    audit.orphanMasteriCount = detailObjects.filter(detail => !masterEris.has(detail.MASTERI)).length;
+
+    audit.masterDetailKeyErrorCount = detailObjects.filter(detail => {
+      const master = masterByEri.get(detail.MASTERI);
+      return !master
+        || String(detail.CODE) !== String(master.CODE)
+        || String(detail.CUST) !== String(master.CUST)
+        || String(detail.SDATE) !== String(master.SDATE)
+        || String(detail.GWN) !== String(master.GWN);
+    }).length;
+
+    audit.serialSequenceErrorCount = masterObjects.reduce((count, master) => {
+      const rows = detailObjects.filter(detail => detail.MASTERI === master.ERI);
+      const invalid = rows.some((detail, index) => Number(detail.SERIAL) !== index);
+      return count + (invalid ? 1 : 0);
+    }, 0);
+
+    audit.orphanSrceriCount = voucherObjects.filter(voucher => !masterEris.has(voucher.SRCERI)).length;
+
+    audit.taxCateErrorCount += detailObjects.filter(detail => {
+      const master = masterByEri.get(detail.MASTERI);
+      const expectedTaxCate = detail._taxProfile === TAX_PROFILES.exempt.key ? 1 : 0;
+      return !master || Number(master.TAXCATE) !== expectedTaxCate;
+    }).length;
+
+    audit.masterAmountErrorCount = masterObjects.filter(master => (
+      roundTo(
+        Number(master.AMT || 0)
+        + Number(master.TAX || 0)
+        + Number(master.PLUSSUB || 0)
+      ) !== roundTo(Number(master.TOTAL || 0))
+    )).length;
+
+    audit.detailMasterAmountErrorCount = masterObjects.filter(master => {
+      const detailAmount = roundTo(detailObjects
+        .filter(detail => detail.MASTERI === master.ERI)
+        .reduce((sum, detail) => sum + Number(detail.AMT || 0), 0));
+      return detailAmount !== roundTo(master.AMT);
+    }).length;
+
+    audit.paymentAssociationErrorCount += voucherObjects.filter(voucher => (
+      voucher.SRCERI !== voucher._expectedSrceri
+      || !(transactionToMasterSlices.get(voucher._transactionId) || [])
+        .some(slice => slice.masterERI === voucher.SRCERI)
+    )).length;
+
+    audit.paymentAmountErrorCount += voucherObjects.filter(voucher => (
+      Number(voucher.AMT) !== Number(voucher._expectedAmount)
+    )).length;
+
+    audit.plusSubErrorCount = masterObjects.filter(master => {
+      const expected = roundTo(voucherObjects
+        .filter(voucher => voucher.SRCERI === master.ERI)
+        .reduce((sum, voucher) => sum + Number(voucher.AMT || 0), 0));
+      return roundTo(Number(master.PLUSSUB || 0)) !== expected;
+    }).length;
+
+    const voucherRowsByMaster = new Map();
+    voucherObjects.forEach(voucher => {
+      if (!voucherRowsByMaster.has(voucher.SRCERI)) voucherRowsByMaster.set(voucher.SRCERI, []);
+      voucherRowsByMaster.get(voucher.SRCERI).push(voucher);
+    });
+    audit.voucherSerialSequenceErrorCount = [...voucherRowsByMaster.values()]
+      .filter(rows => rows.some((voucher, index) => Number(voucher.SERIAL) !== index))
+      .length;
+
+    audit.invoiceFieldErrorCount = masterObjects.filter(master => {
+      if (master._invoiceType === 'carrier') {
+        return master.CUST !== PERSONAL_CODE
+          || master.BILCUST !== PERSONAL_CODE
+          || !String(master.REMARK).includes('載具：')
+          || !!String(master.POSREMARK1 || '')
+          || String(master.CMPID || '') !== '';
+      }
+      if (master._invoiceType === 'church') {
+        return !master.CMPID
+          || master.CUST !== master.BILCUST
+          || !master.INVNAME
+          || String(master.REMARK).includes('統編：')
+          || String(master.POSREMARK1).includes('統編：');
+      }
+      if (master._invoiceType === 'donation') {
+        return master.CUST !== BOOK_FAIR_CODE
+          || master.BILCUST !== BOOK_FAIR_CODE
+          || !String(master.REMARK).includes('捐贈：')
+          || !!String(master.POSREMARK1 || '');
+      }
+      return master.CUST !== BOOK_FAIR_CODE
+        || master.BILCUST !== BOOK_FAIR_CODE
+        || !!String(master.POSREMARK1 || '');
+    }).length;
+
+    audit.costErrorCount = masterObjects.filter(master => (
+      roundTo(master.COST) !== roundTo(master._expectedCost)
+    )).length;
+
+    const validationLabels = {
+      headerErrors: 'CSV header 不符正式 PILOT schema',
+      columnCountErrors: 'CSV 欄數錯誤',
+      duplicateCodeCount: 'STKSALE1 CODE 重複',
+      duplicateEriCount: 'ERI 重複',
+      orphanMasteriCount: 'STKSALE2 MASTERI 找不到 master',
+      masterDetailKeyErrorCount: 'STKSALE1/STKSALE2 的 CODE、CUST、SDATE、GWN 不一致',
+      serialSequenceErrorCount: 'STKSALE2 SERIAL 不是由 0 連續編號',
+      orphanSrceriCount: 'VCHRPLUS SRCERI 找不到 master',
+      taxCateErrorCount: '商品稅別或 TAXCATE 錯誤',
+      masterAmountErrorCount: 'STKSALE1 AMT + TAX + PLUSSUB != TOTAL',
+      detailMasterAmountErrorCount: 'STKSALE2 與 master AMT 不平',
+      customerResolverErrorCount: '客戶 resolver 錯誤（統編交易須有本場書展教會快照）',
+      productResolverErrorCount: 'PRODUCT 正式資料找不到商品',
+      transactionIdErrorCount: 'transactionId 缺漏或重複',
+      paymentAssociationErrorCount: '付款與 transaction primary master 關聯錯誤',
+      paymentAmountErrorCount: '付款金額無效或因拆單不一致',
+      plusSubErrorCount: 'STKSALE1.PLUSSUB 與 VCHRPLUS 加減項合計不一致',
+      voucherSerialSequenceErrorCount: 'VCHRPLUS SERIAL 未依每個 SRCERI 從 0 連續',
+      invoiceFieldErrorCount: '載具／統編／抬頭欄位錯誤',
+      costErrorCount: 'COST 與 PRODUCT.CCOST × QTY 不符'
+    };
+
+    const validationErrors = Object.entries(validationLabels)
+      .filter(([key]) => Number(audit[key]) > 0)
+      .map(([key, label]) => {
+        const transactionHint = key === 'customerResolverErrorCount' && customerResolverTransactionIds.length
+          ? `（交易 ${customerResolverTransactionIds.slice(0, 10).join('、')}）`
+          : '';
+        const productHint = key === 'productResolverErrorCount' && audit.unresolvedProductCodes.length
+          ? `（${audit.unresolvedProductCodes.slice(0, 10).join('、')}）`
+          : '';
+        return `${label}：${audit[key]}${transactionHint}${productHint}`;
+      });
+
+    if (roundTo(audit.exportedGross) !== roundTo(audit.expectedGross)) {
+      validationErrors.push(`匯出總額不符：${audit.exportedGross} / ${audit.expectedGross}`);
+    }
+
+    return {
+      ok: validationErrors.length === 0,
+      validationErrors,
+      audit,
+      rows: {
+        stkSale1: s1Rows,
+        stkSale2: s2Rows,
+        vchrplus: v1Rows
+      },
+      transactionToPrimaryMasterEri: Object.fromEntries(transactionToPrimaryMasterEri),
+      usedEriCount: usedEriSet.size
+    };
+  }
+
+  return {
+    STKSALE1_HEADER,
+    STKSALE2_HEADER,
+    VCHRPLUS_HEADER,
+    buildPilotExport,
+    formatDocumentPrefix,
+    getPaymentRecords
+  };
+});
+</script>
+  <script>
+    // =========================
+    // 0) 小工具：安全字串/數字
+    // =========================
+    const stripQuotes = (s) => {
+      if (s === null || s === undefined) return "";
+      s = String(s).trim();
+      if (s.startsWith('"') && s.endsWith('"')) return s.slice(1, -1);
+      return s;
+    };
+    const toNum = (s, def = 0) => {
+      s = stripQuotes(s);
+      if (s === "") return def;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : def;
+    };
+
+    // ===========================================
+    // 1) 真正 CSV parser（支援引號/逗號/空欄）
+    // ===========================================
+    function parseCSV(text) {
+      // 回傳：Array<Array<string>>
+      const rows = [];
+      let row = [];
+      let cur = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+
+        if (inQuotes) {
+          if (ch === '"') {
+            // 雙引號跳脫 ""
+            if (text[i + 1] === '"') {
+              cur += '"';
+              i++;
+            } else {
+              inQuotes = false;
+            }
+          } else {
+            cur += ch;
+          }
+        } else {
+          if (ch === '"') {
+            inQuotes = true;
+          } else if (ch === ',') {
+            row.push(cur);
+            cur = "";
+          } else if (ch === '\n') {
+            row.push(cur);
+            rows.push(row);
+            row = [];
+            cur = "";
+          } else if (ch === '\r') {
+            // ignore
+          } else {
+            cur += ch;
+          }
+        }
+      }
+      // 最後一格
+      if (cur.length > 0 || row.length > 0) {
+        row.push(cur);
+        rows.push(row);
+      }
+      // 去掉全空列
+      return rows.filter(r => r.some(c => String(c).trim() !== ""));
+    }
+
+    // =====================================================
+    // 2) 讀檔：UTF-8 失敗就 fallback Big5（解亂碼）
+    // =====================================================
+    async function fetchTextSmart(url) {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`Fetch failed: ${url}`);
+
+      const buf = await res.arrayBuffer();
+
+      // 先試 UTF-8
+      let txt = new TextDecoder("utf-8", { fatal: false }).decode(buf);
+      const badCount = (txt.match(/\uFFFD/g) || []).length;
+
+      // 亂碼太多就改 Big5（繁中常見）
+      if (badCount > 5) {
+        try {
+          txt = new TextDecoder("big5", { fatal: false }).decode(buf);
+        } catch (e) {
+          // 有些瀏覽器若不支援 big5，就只能靠你把 CSV 轉 UTF-8
+        }
+      }
+      return txt;
+    }
+
+    // --- 內建會計系統商品對照表 (可留著，備用) ---
+    const ACCOUNTING_MAPPING = {}; // 方案A直接讀系統檔，這裡先清空避免干擾
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      let cloud; try { cloud=await window.makeCloud(); } catch(error) { document.body.textContent=error.message; return; }
+      const localStorage=cloud.storage;
+
+      const PilotExporter = window.PilotExporter;
+      if (!PilotExporter) throw new Error('PilotExporter inline bootstrap failed');
+      // --- DOM ---
+      const currentDateElement = document.getElementById('current-date');
+      const keywordSearchInput = document.getElementById('keyword-search');
+      const searchResultsElement = document.getElementById('search-results');
+      const productCodeInput = document.getElementById('product-code');
+      const scanForm = document.getElementById('scan-form');
+      const bulkInput = document.getElementById('bulk-input');
+      const bulkAddBtn = document.getElementById('bulk-add-btn');
+      const bulkClearBtn = document.getElementById('bulk-clear-btn');
+      const bulkBackupBtn = document.getElementById('bulk-backup-btn');
+      const bulkResult = document.getElementById('bulk-result');
+      const paidAmountInput = document.getElementById('paid-amount');
+      const productInfoElement = document.getElementById('product-info');
+      const dbStatusElement = document.getElementById('db-status');
+      const cartTableBody = document.querySelector('#cart-table tbody');
+      const totalAmountElement = document.getElementById('total-amount');
+      const changeAmountElement = document.getElementById('change-amount');
+      const summaryTableBody = document.querySelector('#summary-table tbody');
+      const overallSummaryTableBody = document.querySelector('#overall-summary-table tbody');
+      const overallTotalAmountElement = document.getElementById('overall-total-amount');
+      const receiptPrint = document.getElementById('receipt-print');
+
+      const btnF7 = document.getElementById('btn-f7');
+      const btnF8 = document.getElementById('btn-f8');
+      const btnF9 = document.getElementById('btn-f9');
+      const btnF10 = document.getElementById('btn-f10');
+      const checkoutBtns = [btnF7, btnF8, btnF9, btnF10];
+
+      const exportCsvBtn = document.getElementById('export-csv-btn');
+      const exportPilotBtn = document.getElementById('export-pilot-btn');
+      const clearAllBtn = document.getElementById('clear-all-btn');
+      const clearCartBtn = document.getElementById('clear-cart-btn');
+      const backupBtn = document.getElementById('backup-btn');
+      const restoreBtn = document.getElementById('restore-btn');
+      const importFileInput = document.getElementById('import-file');
+
+      const totalOrdersElement = document.getElementById('total-orders');
+      const averageAmountElement = document.getElementById('average-amount');
+      const payCashElement = document.getElementById('pay-cash');
+      const payCreditElement = document.getElementById('pay-credit');
+      const payLineElement = document.getElementById('pay-line');
+      const payCultureElement = document.getElementById('pay-culture');
+      const notesElement = document.getElementById('notes');
+      const printEnabledInput = document.getElementById('print-enabled');
+      const invoiceCustomerInput = document.getElementById('invoice-customer');
+      const invoiceCustomerField = invoiceCustomerInput?.closest('.invoice-customer-field');
+      const customerOptions = document.getElementById('customer-options');
+      const invoiceDonateCarrierInput = document.getElementById('invoice-donate-carrier');
+      const invoiceTaxIdInput = document.getElementById('invoice-tax-id');
+      const showLinepayQrBtn = document.getElementById('show-linepay-qr');
+      const showCultureQrBtn = document.getElementById('show-culture-qr');
+
+      // 記帳模式
+      const expensesCashInput = document.getElementById('expenses-cash');
+      const calcDrawerTotalEl = document.getElementById('calc-drawer-total');
+      const calcInitialEl = document.getElementById('calc-initial');
+      const calcExpensesEl = document.getElementById('calc-expenses');
+      const calcNetCashEl = document.getElementById('calc-net-cash');
+      const sysCashTotalEl = document.getElementById('sys-cash-total');
+      const cashDiffRow = document.getElementById('cash-diff-row');
+      const cashDiffEl = document.getElementById('cash-diff');
+
+      // --- 狀態 ---
+      let cart = JSON.parse(localStorage.getItem('cart')) || [];
+      let products = {}; // key: CODE 或 BARCODE
+      let customerMap = {};
+      let discountRates = {};
+      // 單品固定折扣（不走分類/聯合折扣）
+      const SPECIAL_DISCOUNT_MAP = {
+        "W960I01": 100,
+        "W960I02": 100,
+        "W960I05": 100,
+        "W960I06": 100,
+        "W960I201": 100,
+        "W960I202": 100,
+        "W960I203": 100,
+        "W960I204": 100,
+        "W960I205": 100,
+        "W960I206": 100,
+        "W960I209": 100,
+        "W960I210": 100,
+        "W960I211": 100,
+        "W960I212": 100,
+        "FBZ03-01": 100,
+        "FBZ03-02": 100,
+        "MAX001": 100,
+        "MAX002": 100,
+        "OCQ001": 100,
+        "OCQ002": 100,
+        "OCQ003": 100,
+        "OCQ004": 100,
+        "PG37": 90,
+        "PG39-1": 90,
+        "PG39-2": 90,
+        "PG39-3": 90,
+        "CM029": 100,
+        "CM033": 100,
+        "CM058": 100,
+        "CM125": 100,
+        "CUP04B": 100,
+        "CUP04GR": 100,
+        "CUP04P": 100,
+        "CUP04PU": 100,
+        "CUP04W": 100,
+        "CUP05B": 100,
+        "CUP05GR": 100,
+        "CUP05P": 100,
+        "CUP05PU": 100,
+        "CUP05W": 100,
+        "CUP06": 100,
+        "ESV/CN67ATI": 100,
+        "FQ6001": 100,
+        "BC101": 100,
+        "BC109": 100,
+        "1501": 100,
+        "8173": 100,
+        "C136": 60,
+        "C167": 60,
+        "C170": 60,
+        "C173": 60,
+        "C177": 60,
+        "C178": 60,
+        "C180": 60,
+        "C181": 60,
+        "C190": 60,
+        "C222": 70,
+        "C050": 100,
+        "CM17": 100,
+        "12001": 100,
+        "15013": 100,
+        "15014": 100,
+        "C002": 79,
+        "C291": 79,
+        "C292": 79,
+        "C293": 79,
+        "C294": 79,
+        "C295": 79,
+        "C136": 79,
+        "C296": 100,
+        "CBT7915": 79.9,
+        "FG035-01": 100,
+        "FG035-02": 100,
+        "FG035-03": 100,
+        "FG035-04": 100,
+        "PRAY001": 100,
+        "PRAY002": 100,
+        "PRAY003": 100
+      };
+      let clients = JSON.parse(localStorage.getItem('clients')) || {};
+      let overallSummary = JSON.parse(localStorage.getItem('overallSummary')) || {};
+      let clientCounter = JSON.parse(localStorage.getItem('clientCounter')) || 1;
+      let hasShownEmptyCartAlert = false;
+      let sessionRules = JSON.parse(localStorage.getItem('sessionRules')) || {};
+      let priceOverrides = JSON.parse(localStorage.getItem('priceOverrides')) || {};
+      let idleTimer = null;
+      const IDLE_TIMEOUT_MS = 30000;
+
+      // 方案A資料表
+      let unitMap = {};   // PRODUNIT CODE -> CNAME
+      let clasMap = {};   // PRODCLAS CODE -> NAME
+      let kindMap = {};   // PRODKIND CODE -> NAME
+
+      // Modal
+      let editingClientId = null;
+      const paymentModal = document.getElementById('payment-modal');
+      const orderDetailModal = document.getElementById('order-detail-modal');
+      const orderDetailContent = document.getElementById('order-detail-content');
+      const orderCustomerInput = document.getElementById('order-customer-input');
+      const orderDonateCarrierInput = document.getElementById('order-donate-carrier-input');
+      const orderTaxIdInput = document.getElementById('order-tax-id-input');
+      const orderNoteInput = document.getElementById('order-note-input');
+      const qrImageModal = document.getElementById('qr-image-modal');
+      const qrModalTitle = document.getElementById('qr-modal-title');
+      const qrModalImage = document.getElementById('qr-modal-image');
+      let detailClientId = null;
+
+      // --- 音效 ---
+      const POSAudio = {
+        ctx: new (window.AudioContext || window.webkitAudioContext)(),
+        playTone: function(freq, type, duration, startTime = 0) {
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime + startTime);
+          gain.gain.setValueAtTime(0.1, this.ctx.currentTime + startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + startTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(this.ctx.currentTime + startTime);
+          osc.stop(this.ctx.currentTime + startTime + duration);
+        },
+        beep: function() { this.playTone(880, 'sine', 0.1); },
+        error: function() { this.playTone(150, 'sawtooth', 0.3); },
+        success: function() {
+          this.playTone(523.25, 'triangle', 0.1, 0);
+          this.playTone(659.25, 'triangle', 0.1, 0.05);
+          this.playTone(783.99, 'triangle', 0.2, 0.1);
+        }
+      };
+
+      // --- Pilot ERI：直接匯入測試版 ---
+      // master / detail / pay 共用同一條持久化 Base36 流水。
+      const PILOT_ERI_COUNTER_KEY = 'pilotEriGlobalCounterV2';
+      const PILOT_ERI_MOD = 36 ** 6;
+
+      function nextPilotEriSuffix() { return cloud.nextEri(); }
+      function generateERI(type) {
+        const prefix = { 'master': '0H5', 'detail': '0H8', 'pay': '01E' }[type];
+        if (!prefix) throw new Error(`未知 ERI type：${type}`);
+        const eri = prefix + '0010LU0' + nextPilotEriSuffix();
+        if (eri.length !== 16) throw new Error(`ERI 長度錯誤：${eri}`);
+        return eri;
+      }
+
+      window.__PILOT_ERI_TEST__ = {
+        version: '2026-08-18-direct-sequence-v1-customerfix',
+        counterKey: PILOT_ERI_COUNTER_KEY,
+        fingerprint: '0010LU0'
+      };
+
+      // --- 日期 ---
+      const currentDate = new Date().toISOString().split('T')[0].replace(/-/g,'/');
+      currentDateElement.textContent = `日期：${currentDate}`;
+
+      // --- notes ---
+      notesElement.value = localStorage.getItem('notes') || '';
+      notesElement.addEventListener('input', () => localStorage.setItem('notes', notesElement.value));
+
+      // --- 記帳 ---
+      expensesCashInput.value = localStorage.getItem('acctExpenses') || '0';
+      document.querySelectorAll('.acct-count').forEach(input => {
+        const key = `acct_${input.classList.contains('current')?'cur':'init'}_${input.dataset.val}`;
+        const saved = localStorage.getItem(key);
+        if (saved !== null) input.value = saved;
+        input.addEventListener('input', () => {
+          updateAccountingCalc();
+          localStorage.setItem(key, input.value);
+        });
+      });
+      expensesCashInput.addEventListener('input', () => {
+        updateAccountingCalc();
+        localStorage.setItem('acctExpenses', expensesCashInput.value);
+      });
+
+      const generateClientId = () => {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth()+1).padStart(2,'0');
+        const day = String(d.getDate()).padStart(2,'0');
+        return `${y}${m}${day}-${crypto.randomUUID()}`;
+      };
+
+      const BOOK_FAIR_CUSTOMER = { code: '0002', name: '書展' };
+      const PERSONAL_CUSTOMER = { code: '305', name: '零售' };
+      const formatCustomerOption = (customer) => `${customer.code}｜${customer.name}`;
+      const isCarrierValue = (rawValue) => {
+        const value = String(rawValue || '').trim();
+        return value !== '' && !/^\d+$/.test(value);
+      };
+      const getPersonalCustomer = () => customerMap[PERSONAL_CUSTOMER.code] || PERSONAL_CUSTOMER;
+      const resolveAccountingCustomer = (rawValue) => {
+        const value = String(rawValue || '').trim();
+        if (!value) return null;
+        const possibleCode = value.split(/[｜|\s]/)[0];
+        if (customerMap[possibleCode]) return customerMap[possibleCode];
+        return Object.values(customerMap).find(customer => customer.name === value) || null;
+      };
+      const isBookFairChurchCustomer = (customer) => (
+        customer && customer.code !== BOOK_FAIR_CUSTOMER.code && customer.code !== PERSONAL_CUSTOMER.code
+      );
+      const getSelectedBookFairCustomer = () => {
+        const customer = resolveAccountingCustomer(invoiceCustomerInput?.value);
+        return isBookFairChurchCustomer(customer) ? customer : null;
+      };
+      const syncInvoiceCustomerVisibility = () => {
+        const hasTaxId = String(invoiceTaxIdInput?.value || '').trim() !== '';
+        if (invoiceCustomerField) invoiceCustomerField.style.display = hasTaxId ? 'flex' : 'none';
+
+        // 沒有統編就是一般 0002，不保留上一張統編發票的教會。
+        if (!hasTaxId && invoiceCustomerInput) {
+          invoiceCustomerInput.value = '';
+        }
+      };
+
+      const persistSelectedCustomer = () => {
+        const raw = String(invoiceCustomerInput?.value || '').trim();
+
+        // 一般結帳不需要教會，空白完全合法。
+        if (!raw) return true;
+
+        const customer = resolveAccountingCustomer(raw);
+        if (!isBookFairChurchCustomer(customer)) {
+          alert('找不到這個教會客戶，請從 CUSTOMER.csv 的教會清單選擇。');
+          invoiceCustomerInput.value = '';
+          return false;
+        }
+
+        invoiceCustomerInput.value = formatCustomerOption(customer);
+        return true;
+      };
+
+      const applyCarrierCustomerRule = (carrierInput, taxIdInput) => {
+        if (!isCarrierValue(carrierInput?.value)) return;
+        if (taxIdInput) taxIdInput.value = '';
+      };
+
+      const clearCarrierWhenTaxIdEntered = (taxIdInput, carrierInput) => {
+        if ((taxIdInput?.value || '').trim() && carrierInput) carrierInput.value = '';
+      };
+
+      invoiceCustomerInput?.addEventListener('change', persistSelectedCustomer);
+      invoiceCustomerInput?.addEventListener('blur', persistSelectedCustomer);
+      invoiceDonateCarrierInput?.addEventListener('input', () => {
+        applyCarrierCustomerRule(invoiceDonateCarrierInput, invoiceTaxIdInput);
+      });
+      invoiceTaxIdInput?.addEventListener('input', () => {
+        clearCarrierWhenTaxIdEntered(invoiceTaxIdInput, invoiceDonateCarrierInput);
+        syncInvoiceCustomerVisibility();
+
+        const taxId = String(invoiceTaxIdInput.value || '').trim();
+        if (/^\d{8}$/.test(taxId) && !getSelectedBookFairCustomer()) {
+          setTimeout(() => invoiceCustomerInput?.focus(), 0);
+        }
+      });
+      orderDonateCarrierInput?.addEventListener('input', () => {
+        applyCarrierCustomerRule(orderDonateCarrierInput, orderTaxIdInput);
+      });
+      orderTaxIdInput?.addEventListener('input', () => {
+        clearCarrierWhenTaxIdEntered(orderTaxIdInput, orderDonateCarrierInput);
+      });
+
+      // 你原本折扣表保留
+      const loadDiscountRates = () => {
+        discountRates = {
+          "POS": 100, "02-2": 100, "09-2": 90, "09-5": 100, "09-4": 100, "09-1": 100,
+          "09-3": 90, "06-1": 100, "07-1": 90, "07-2": 90, "07-3": 90, "07-4": 90,
+          "07-5": 90, "07-6": 90, "07-7": 90, "06-2": 100, "02-1": 90, "08-2": 90,
+          "08-5": 90, "08-3": 90, "08-4": 90, "08-1": 90, "12": 100, "03-2": 100,
+          "02-3": 80, "03-4": 100, "04-2": 100, "11": 100, "03-1": 100, "04-1": 100,
+          "01": 90, "05-2": 90, "05-1": 100, "03-3": 100
+        };
+      };
+
+      // ==========================
+      // ✅ 方案A：讀系統四大檔
+      // ==========================
+      const loadMasterData = async () => {
+        const data=cloud.catalog;unitMap=data.units;clasMap=data.classes;kindMap=data.kinds;customerMap=Object.fromEntries(data.customers.map(c=>[c.code,c]));
+        customerOptions.replaceChildren(...data.customers.map(c=>{const option=document.createElement('option');option.value=formatCustomerOption(c);return option;}));
+        products={};for(const source of data.products){const p={...source};if(cloud.event.pricing==='website'&&p.websitePrice!==null&&p.websitePrice!==undefined){p.price=p.websitePrice;p.defaultDiscount=100;p.websiteBase=true;}products[p.code]=p;if(p.barcode)products[p.barcode]=p;if(p.webBarcode&&!products[p.webBarcode])products[p.webBarcode]=p;}
+        dbStatusElement.textContent=data.products.length+' 件商品 · '+(cloud.event.pricing==='website'?'官網售價':'原書展折扣');
+        invoiceCustomerInput.value=cloud.event.tenant?formatCustomerOption(customerMap[cloud.event.tenant.toUpperCase()]):'';syncInvoiceCustomerVisibility();
+      };
+      const getSpecialDiscount = (item) => {
+        if (!item || item.websiteBase) return undefined;
+        if (SPECIAL_DISCOUNT_MAP[item.code] !== undefined) return SPECIAL_DISCOUNT_MAP[item.code];
+        if (item.barcode && SPECIAL_DISCOUNT_MAP[item.barcode] !== undefined) return SPECIAL_DISCOUNT_MAP[item.barcode];
+        return undefined;
+      };
+
+      const calculateItemDiscount = (item) => {
+        if(item.websiteBase && !item.isManual && sessionRules[item.class]===undefined)return 100;
+        const special = getSpecialDiscount(item);
+        if (special !== undefined) return special;
+        if (item.isManual) return item.discount;
+        if (item.class && sessionRules[item.class] !== undefined) return sessionRules[item.class];
+        return item.defaultDiscount || 100;
+      };
+
+      const resetIdleTimer = () => {
+        if (idleTimer) clearTimeout(idleTimer);
+        checkoutBtns.forEach(btn => btn.classList.remove('btn-alert'));
+        if (cart.length > 0) {
+          idleTimer = setTimeout(() => {
+            checkoutBtns.forEach(btn => btn.classList.add('btn-alert'));
+          }, IDLE_TIMEOUT_MS);
+        }
+      };
+
+      const saveCart = () => localStorage.setItem('cart', JSON.stringify(cart));
+      const saveSummary = () => {
+        localStorage.setItem('clients', JSON.stringify(clients));
+        localStorage.setItem('overallSummary', JSON.stringify(overallSummary));
+        localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
+      };
+
+      const addProductToCart = (codeOrBarcode) => {
+        resetIdleTimer();
+
+        const product = products[codeOrBarcode];
+        if (!product) { alert('找不到商品'); POSAudio.error(); return; }
+
+        const realCode = product.code;
+
+        const existingItem = cart.find(it => it.code === realCode);
+        if (existingItem) {
+          existingItem.quantity += 1;
+          if (!existingItem.isManual) existingItem.discount = calculateItemDiscount(existingItem);
+        } else {
+          const newItem = {
+            ...product,
+            quantity: 1,
+            isManual: false,
+            discount: 0,
+          };
+
+          if (priceOverrides[realCode] !== undefined) newItem.price = priceOverrides[realCode];
+          newItem.discount = calculateItemDiscount(newItem);
+          if (getSpecialDiscount(newItem) !== undefined) {
+            newItem.isManual = true; // 鎖定折扣，避免被分類/聯合折扣覆蓋
+          }
+
+          cart.push(newItem);
+        }
+
+        POSAudio.beep();
+        updateCartDisplay();
+        calculateTotal();
+        saveCart();
+        productCodeInput.value = '';
+        productCodeInput.focus();
+      };
+
+      const addProductWithQuantity = (codeOrBarcode, quantity) => {
+        resetIdleTimer();
+        const qty = parseInt(quantity, 10);
+        if (isNaN(qty) || qty === 0) return false;
+
+        const product = products[codeOrBarcode];
+        if (!product) return false;
+
+        const realCode = product.code;
+        const existingItem = cart.find(it => it.code === realCode);
+        if (existingItem) {
+          existingItem.quantity += qty;
+          if (!existingItem.isManual) existingItem.discount = calculateItemDiscount(existingItem);
+        } else {
+          const newItem = {
+            ...product,
+            quantity: qty,
+            isManual: false,
+            discount: 0,
+          };
+          if (priceOverrides[realCode] !== undefined) newItem.price = priceOverrides[realCode];
+          newItem.discount = calculateItemDiscount(newItem);
+          if (getSpecialDiscount(newItem) !== undefined) {
+            newItem.isManual = true;
+          }
+          cart.push(newItem);
+        }
+        return true;
+      };
+
+      const updateCartDisplay = () => {
+        cartTableBody.innerHTML = '';
+        cart.forEach(item => {
+          const row = document.createElement('tr');
+          let inputClass = 'discount-input';
+          let statusTitle = "預設折扣";
+
+          if (item.isManual) {
+            inputClass += ' manual-locked';
+            statusTitle = "單品已鎖定";
+          } else if (item.class && sessionRules[item.class] !== undefined) {
+            inputClass += ' class-rule-active';
+            statusTitle = `套用分類規則 (${item.class})`;
+          }
+
+          const priceStyle = priceOverrides[item.code] !== undefined ? 'border:2px solid #8A6739;background-color:#fff8dc;' : '';
+
+          row.innerHTML = `
+            <td>${item.name}<br><small style="color:#888;">${item.code}</small></td>
+            <td><input type="number" value="${item.price}" step="0.1" min="-9999999" title="可輸入負值作為禮券、折抵或退換貨" style="width:60px;${priceStyle}" class="price-input" data-code="${item.code}"></td>
+            <td><input type="number" value="${item.quantity}" min="-1000" class="quantity-input" data-code="${item.code}"></td>
+            <td>
+              <div class="discount-wrapper" title="${statusTitle}">
+                <input type="number" value="${item.discount}" step="0.1" min="0" max="100" class="${inputClass}" data-code="${item.code}">
+                <label class="sync-option">
+                  <input type="checkbox" class="sync-check" data-class="${item.class}" data-code="${item.code}">
+                  同步修改 [${item.class || '無'}]
+                </label>
+              </div>
+            </td>
+            <td>${Math.round(item.price * item.quantity * (item.discount / 100))}</td>
+          `;
+          cartTableBody.appendChild(row);
+        });
+
+        attachCartEventListeners();
+        resetIdleTimer();
+      };
+
+      const attachCartEventListeners = () => {
+        const debounce = (func, delay) => {
+          let timeout;
+          return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+          };
+        };
+
+        document.querySelectorAll('.quantity-input').forEach(input => {
+          input.addEventListener('input', debounce((e) => {
+            resetIdleTimer();
+            const code = e.target.dataset.code;
+            const newQuantity = parseInt(e.target.value);
+            if (!isNaN(newQuantity)) {
+              const item = cart.find(it => it.code === code);
+              if (item) {
+                item.quantity = newQuantity;
+                calculateTotal();
+                updateCartDisplay();
+                saveCart();
+              }
+            }
+          }, 500));
+        });
+
+        document.querySelectorAll('.price-input').forEach(input => {
+          input.addEventListener('input', debounce((e) => {
+            resetIdleTimer();
+            const code = e.target.dataset.code;
+            const newPrice = parseFloat(e.target.value);
+            if (!isNaN(newPrice)) {
+              const item = cart.find(it => it.code === code);
+              if (item) {
+                item.price = newPrice;
+                priceOverrides[code] = newPrice;
+                localStorage.setItem('priceOverrides', JSON.stringify(priceOverrides));
+                calculateTotal();
+                updateCartDisplay();
+                saveCart();
+              }
+            }
+          }, 500));
+        });
+
+        document.querySelectorAll('.discount-input').forEach(input => {
+          input.addEventListener('input', (e) => {
+            resetIdleTimer();
+            const code = e.target.dataset.code;
+            const newDiscount = parseFloat(e.target.value);
+            if (!isNaN(newDiscount) && newDiscount >= 0) {
+              const item = cart.find(it => it.code === code);
+              if (item) {
+                item.discount = newDiscount;
+                item.isManual = true;
+                e.target.classList.add('manual-locked');
+                e.target.classList.remove('class-rule-active');
+                calculateTotal();
+              }
+            }
+          });
+
+          input.addEventListener('change', () => {
+            saveCart();
+            updateCartDisplay();
+          });
+        });
+
+        document.querySelectorAll('.sync-check').forEach(checkbox => {
+          checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+              const targetClass = e.target.dataset.class;
+              const targetCode = e.target.dataset.code;
+              const triggerItem = cart.find(i => i.code === targetCode);
+
+              if (triggerItem && targetClass) {
+                const newRuleValue = triggerItem.discount;
+                sessionRules[targetClass] = newRuleValue;
+                localStorage.setItem('sessionRules', JSON.stringify(sessionRules));
+
+                cart.forEach(item => {
+                  if (item.class === targetClass) {
+                    item.isManual = false;
+                    item.discount = newRuleValue;
+                  }
+                });
+
+                alert(`已設定分類 [${targetClass}] 全部為 ${newRuleValue} 折`);
+                calculateTotal();
+                updateCartDisplay();
+                saveCart();
+              }
+            }
+          });
+        });
+      };
+
+      const calculateCartTotal = (items = cart) => {
+        let total = 0;
+        (items || []).forEach(item => {
+          const discount = item.discount !== undefined ? Number(item.discount) : 100;
+          total += Number(item.price || 0) * Number(item.quantity || 0) * (discount / 100);
+        });
+        return Math.round(total);
+      };
+
+      const calculateTotal = () => {
+        cart = cart.filter(item => item.quantity !== 0);
+        const total = calculateCartTotal(cart);
+        totalAmountElement.textContent = total;
+        if (cart.length > 0 && total <= 0) paidAmountInput.value = total;
+        calculateChange();
+      };
+
+      const repairStoredZeroAmountClients = () => {
+        let repairedCount = 0;
+
+        Object.values(clients).forEach(client => {
+          if (!client || !Array.isArray(client.items)) return;
+
+          const itemTotal = calculateCartTotal(client.items);
+          const savedAmount = Number(client.amount);
+          if (itemTotal === 0 || (Number.isFinite(savedAmount) && savedAmount !== 0)) return;
+
+          client.amount = itemTotal;
+          const records = Array.isArray(client.paymentRecords) ? client.paymentRecords : [];
+          const paymentTotal = records.reduce((sum, record) => (
+            sum + (Number.isFinite(Number(record?.amount)) ? Number(record.amount) : 0)
+          ), 0);
+
+          if (!records.length || Math.round(paymentTotal) === 0) {
+            client.paymentRecords = PilotExporter.getPaymentRecords({
+              paymentMethod: client.paymentMethod || '現金',
+              amount: itemTotal
+            });
+          }
+          repairedCount += 1;
+        });
+
+        if (repairedCount > 0) saveSummary();
+        return repairedCount;
+      };
+
+      const calculateChange = () => {
+        const totalAmount = parseFloat(totalAmountElement.textContent);
+        const paidAmount = parseFloat(paidAmountInput.value);
+        const change = paidAmount - totalAmount;
+        changeAmountElement.textContent = isNaN(change) ? "0" : Math.round(change);
+      };
+      paidAmountInput.addEventListener('input', calculateChange);
+
+      const getInvoiceInfoFromInputs = () => {
+        const rawDonateCarrier = (invoiceDonateCarrierInput?.value || '').trim();
+        const rawTaxId = (invoiceTaxIdInput?.value || '').trim();
+        const hasTaxId = rawTaxId !== '';
+        const hasCarrier = rawDonateCarrier !== '' && !/^\d+$/.test(rawDonateCarrier);
+        const hasDonation = rawDonateCarrier !== '' && /^\d+$/.test(rawDonateCarrier);
+
+        if (hasTaxId) {
+          return {
+            donationCode: '',
+            carrier: '',
+            taxId: rawTaxId
+          };
+        }
+
+        if (hasCarrier) {
+          return {
+            donationCode: '',
+            carrier: rawDonateCarrier,
+            taxId: ''
+          };
+        }
+
+        if (hasDonation) {
+          return {
+            donationCode: rawDonateCarrier,
+            carrier: '',
+            taxId: ''
+          };
+        }
+
+        return {
+          donationCode: '',
+          carrier: '',
+          taxId: ''
+        };
+      };
+
+      const formatInvoiceInfoLines = (invoiceInfo) => {
+        if (!invoiceInfo) return [];
+        const lines = [];
+        if (invoiceInfo.donationCode) lines.push(`捐贈：${invoiceInfo.donationCode}`);
+        if (invoiceInfo.carrier) lines.push(`載具：${invoiceInfo.carrier}`);
+        if (invoiceInfo.taxId) lines.push(`統編：${invoiceInfo.taxId}`);
+        return lines;
+      };
+
+      const formatInvoiceInfoInline = (invoiceInfo) => {
+        const lines = formatInvoiceInfoLines(invoiceInfo);
+        return lines.length ? lines.join(' / ') : '';
+      };
+
+      const getInvoiceInfoFromOrderModal = () => {
+        const rawDonateCarrier = (orderDonateCarrierInput?.value || '').trim();
+        const rawTaxId = (orderTaxIdInput?.value || '').trim();
+        const hasTaxId = rawTaxId !== '';
+        const hasCarrier = rawDonateCarrier !== '' && !/^\d+$/.test(rawDonateCarrier);
+        const hasDonation = rawDonateCarrier !== '' && /^\d+$/.test(rawDonateCarrier);
+
+        if (hasTaxId) {
+          return {
+            donationCode: '',
+            carrier: '',
+            taxId: rawTaxId
+          };
+        }
+
+        if (hasCarrier) {
+          return {
+            donationCode: '',
+            carrier: rawDonateCarrier,
+            taxId: ''
+          };
+        }
+
+        if (hasDonation) {
+          return {
+            donationCode: rawDonateCarrier,
+            carrier: '',
+            taxId: ''
+          };
+        }
+
+        return {
+          donationCode: '',
+          carrier: '',
+          taxId: ''
+        };
+      };
+
+      const openQrImageModal = (title, imageSrc) => {
+        qrModalTitle.textContent = title;
+        qrModalImage.src = imageSrc;
+        qrModalImage.alt = title;
+        qrImageModal.style.display = 'flex';
+      };
+
+      const closeQrImageModal = () => {
+        qrImageModal.style.display = 'none';
+        qrModalImage.src = '';
+      };
+
+      const triggerButtonAnimation = (btnElement) => {
+        if (!btnElement) return;
+        btnElement.classList.add('animate-click');
+        setTimeout(() => btnElement.classList.remove('animate-click'), 500);
+      };
+
+      // 列印開關（預設關）
+      let printEnabled = false;
+      if (printEnabledInput) {
+        printEnabledInput.checked = false;
+        printEnabledInput.addEventListener('change', () => {
+          printEnabled = printEnabledInput.checked;
+          localStorage.setItem('printEnabled', printEnabled ? 'true' : 'false');
+        });
+      }
+
+const handleCulturalCoinCheckout = () => {
+  if (cart.length === 0) {
+    if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
+    return;
+  }
+  hasShownEmptyCartAlert = false;
+
+  // ✅ 直接由購物車重算，避免 DOM 尚未同步。
+  const totalAmount = calculateCartTotal(cart);
+  if (totalAmount === 0) {
+    performCheckout('零元');
+    return;
+  }
+  if (totalAmount < 0) {
+    performCheckout('文化幣');
+    return;
+  }
+
+  let coinAmountStr = prompt(`訂單總額為 ${totalAmount} 元。\n請輸入文化幣支付金額：`, totalAmount);
+  if (coinAmountStr === null) return;
+
+  let coinAmount = parseInt(coinAmountStr, 10);
+  if (isNaN(coinAmount) || coinAmount < 0) { alert("請輸入有效的金額！"); POSAudio.error(); return; }
+  if (coinAmount > totalAmount) { alert("文化幣金額不能大於訂單總額！"); POSAudio.error(); coinAmount = totalAmount; }
+
+  const cashAmount = totalAmount - coinAmount;
+
+  let methodStr = "";
+  if (cashAmount > 0 && coinAmount > 0) methodStr = `文化幣(${coinAmount}) + 現金(${cashAmount})`;
+  else if (coinAmount > 0 && cashAmount === 0) methodStr = `文化幣全額(${coinAmount})`;
+  else methodStr = `現金(${totalAmount})`;
+
+  triggerButtonAnimation(btnF9);
+  performCheckout(methodStr, true);
+};
+
+      const formatMoney = (n) => Math.round(n).toString();
+      const renderReceipt = (client) => {
+        if (!client) return;
+        const now = new Date();
+        const dt = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const itemsHtml = (client.items || []).map(it => {
+          const unit = it.unit || "";
+          const sub = it.price * it.quantity * (it.discount / 100);
+          return `
+            <div class="receipt-item">
+              <div class="item-name">${it.name || it.code}</div>
+              <div class="item-details">
+                <span>${it.quantity}${unit} x ${formatMoney(it.price)}</span>
+                <span>小計：${formatMoney(sub)}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const paid = Number(paidAmountInput.value || 0);
+        const total = Number(client.amount || 0);
+        const change = Math.max(0, Math.round(paid - total));
+        const invoiceLines = formatInvoiceInfoLines(client.invoiceInfo);
+        const accountingCustomer = client.accountingCustomer || BOOK_FAIR_CUSTOMER;
+
+        const recBooks = Object.values(products || {}).filter(p => p && p.class === "02-1" && p.name);
+        const pick = recBooks.length ? recBooks[Math.floor(Math.random() * recBooks.length)] : null;
+        const recTitle = pick ? pick.name : "對觀福音書";
+
+        receiptPrint.innerHTML = `
+          <div class="receipt-title">腓利門書房</div>
+
+          <div class="receipt-meta">日期：${dt}</div>
+          <div class="receipt-meta">單號：${client.id}</div>
+          <div class="receipt-meta">付款：${client.paymentMethod || '現金'}</div>
+          <div class="receipt-meta">Pilot 客戶：${formatCustomerOption(accountingCustomer)}</div>
+          ${invoiceLines.map(line => `<div class="receipt-meta">${line}</div>`).join('')}
+
+          <div class="receipt-sep"></div>
+
+          ${itemsHtml}
+
+          <div class="receipt-sep"></div>
+
+          <div class="receipt-totals">
+            <div class="total-row">
+              <span>合計：</span><span>${formatMoney(total)}</span>
+            </div>
+            <div class="total-row">
+              <span>實收：</span><span>${formatMoney(paid)}</span>
+            </div>
+            <div class="total-row highlight">
+              <span>找零：</span><span>${formatMoney(change)}</span>
+            </div>
+          </div>
+
+          <div class="receipt-footer">
+            <div class="receipt-reco-top">✦ 閱讀這一本 ✦</div>
+            <div class="receipt-reco-title">［${recTitle}］</div>
+            <div class="receipt-reco-bottom">使我的靈魂甦醒</div>
+          </div>
+        `;
+      };
+
+      const printReceipt = (client) => {
+        if (!printEnabled) return;
+        renderReceipt(client);
+
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Receipt</title>
+  <style>
+    @page {
+      size: 46mm auto;
+      margin: 0;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      color: #000;
+      background: #fff;
+      line-height: 1.4;
+    }
+    .receipt {
+      width: 44mm;
+      margin: 0 auto;
+      padding-right: 3mm;
+      box-sizing: border-box;
+      word-wrap: break-word;
+    }
+    .receipt-title {
+      text-align: center;
+      font-weight: 900;
+      font-size: 22px;
+      margin: 8px 0 12px 0;
+      letter-spacing: 1px;
+    }
+    .receipt-meta {
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+    .receipt-sep {
+      border-top: 1px dashed #000;
+      margin: 8px 0;
+    }
+    .receipt-item {
+      margin: 6px 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .item-name {
+      font-weight: bold;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+    .item-details {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+    .receipt-totals {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin-top: 4px;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      width: 65%;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+    .total-row.highlight {
+      font-weight: bold;
+      font-size: 14px;
+      border-top: 1px solid #000;
+      padding-top: 2px;
+    }
+    .receipt-footer {
+      margin-top: 15px;
+      margin-bottom: 10px;
+      text-align: center;
+      border: 1.5px solid #000;
+      border-radius: 4px;
+      padding: 6px;
+    }
+    .receipt-reco-top,
+    .receipt-reco-bottom {
+      font-size: 10px;
+      font-weight: bold;
+    }
+    .receipt-reco-title {
+      font-size: 10px;
+      font-weight: 900;
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt">${receiptPrint.innerHTML}</div>
+</body>
+</html>`;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        iframe.onload = () => {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+          setTimeout(() => document.body.removeChild(iframe), 1000);
+        };
+      };
+
+
+      let checkoutBusy=false;
+      const performCheckout = async (paymentMethod, isComposite = false) => {
+        if(checkoutBusy)return;
+        if (cart.length === 0) {
+          if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
+          return;
+        }
+        hasShownEmptyCartAlert = false;
+
+        if (!isComposite) {
+          if (paymentMethod === '信用卡') triggerButtonAnimation(btnF7);
+          if (paymentMethod === 'LINE PAY') triggerButtonAnimation(btnF8);
+          if (paymentMethod === '現金') triggerButtonAnimation(btnF10);
+        }
+
+        // 直接由購物車資料重算，避免 DOM 尚未同步時把有商品的訂單存成 0 元。
+        const totalAmount = calculateCartTotal(cart);
+        totalAmountElement.textContent = totalAmount;
+        const finalPaymentMethod = totalAmount === 0
+          ? '零元'
+          : (totalAmount < 0 ? `${paymentMethod}退款` : paymentMethod);
+        const clientId = generateClientId();
+        const mERI = ''; // ERI 只在正式 Pilot 匯出時產生
+        const invoiceInfo = getInvoiceInfoFromInputs();
+
+        // 一般書展直接用 0002；載具用 305。
+        // 只有這筆有統編時，才要求選擇要開哪個教會。
+        let bookFairCustomer = null;
+        if (invoiceInfo.taxId) {
+          bookFairCustomer = getSelectedBookFairCustomer();
+          if (!bookFairCustomer) {
+            alert('這筆有輸入統編，請選擇「要開哪個教會」後再結帳。');
+            invoiceCustomerInput?.focus();
+            return;
+          }
+        }
+
+        const accountingCustomer = invoiceInfo.carrier
+          ? getPersonalCustomer()
+          : (invoiceInfo.taxId ? bookFairCustomer : BOOK_FAIR_CUSTOMER);
+
+        POSAudio.success();
+
+        clients[clientId] = {
+          id: clientId,
+          transactionId: clientId,
+          createdAt: new Date().toISOString(),
+          eri: mERI,
+          amount: totalAmount,
+          paymentMethod: finalPaymentMethod,
+          paymentRecords: PilotExporter.getPaymentRecords({ paymentMethod: finalPaymentMethod, amount: totalAmount }),
+          invoiceInfo,
+          accountingCustomer,
+          bookFairCustomerCode: bookFairCustomer?.code || '',
+          items: cart.map(i => ({ ...i })),
+          isValid: true,
+          ts: new Date().getTime().toString().slice(-12)
+        };
+
+        checkoutBusy=true;checkoutBtns.forEach(b=>b.disabled=true);
+        try { localStorage.setItem('cart','[]'); saveSummary(); await cloud.flush(); POSAudio.success(); } catch(error) { const cover=document.createElement('div');cover.className='retry-cover';const p=document.createElement('p');p.textContent='結帳等待雲端確認。請勿重新收款。'+error.message;const btn=document.createElement('button');btn.textContent='重試儲存';btn.onclick=async()=>{btn.disabled=true;try{await cloud.flush();location.reload();}catch(e){p.textContent=e.message;btn.disabled=false;}};cover.append(p,btn);document.body.append(cover);return; } finally {checkoutBusy=false;checkoutBtns.forEach(b=>b.disabled=false);}
+        cart.forEach(item => {
+          if (!overallSummary[item.code]) overallSummary[item.code] = { code: item.code, name: item.name, totalQuantity: 0, totalAmount: 0 };
+          overallSummary[item.code].totalQuantity += item.quantity;
+          overallSummary[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);
+        });
+
+        priceOverrides = {};
+        localStorage.setItem('priceOverrides', JSON.stringify(priceOverrides));
+
+        cart = [];
+        updateCartDisplay();
+        calculateTotal();
+        updateSummaryTable();
+        saveSummary();
+
+        // 熱感應列印（使用系統印表機）
+        printReceipt(clients[clientId]);
+
+        // 每 20 筆訂單自動存檔 + 匯出會計檔
+        const validCount = Object.values(clients).filter(c => c && c.isValid).length;
+        if (validCount > 0 && validCount % 20 === 0) {
+          doBackup();
+          exportPilot();
+        }
+
+        clientCounter++;
+        localStorage.setItem('clientCounter', JSON.stringify(clientCounter));
+        localStorage.removeItem('cart');
+
+        productCodeInput.focus();
+        paidAmountInput.value = 1000;
+        calculateChange();
+        if (invoiceDonateCarrierInput) invoiceDonateCarrierInput.value = '';
+        if (invoiceTaxIdInput) invoiceTaxIdInput.value = '';
+        if (invoiceCustomerInput) invoiceCustomerInput.value = '';
+        localStorage.removeItem('bookFairCustomerCode');
+        syncInvoiceCustomerVisibility();
+      };
+
+      btnF7.addEventListener('click', () => performCheckout('信用卡'));
+      btnF8.addEventListener('click', () => performCheckout('LINE PAY'));
+      btnF9.addEventListener('click', () => handleCulturalCoinCheckout());
+      btnF10.addEventListener('click', () => performCheckout('現金'));
+      showLinepayQrBtn.addEventListener('click', () => openQrImageModal('LINE PAY 收款碼', 'LINEPAY.jpg'));
+      showCultureQrBtn.addEventListener('click', () => openQrImageModal('文化幣 收款碼', '文化幣.jpg'));
+      qrModalImage.addEventListener('click', closeQrImageModal);
+      qrImageModal.addEventListener('click', (e) => {
+        if (e.target === qrImageModal) closeQrImageModal();
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (cart.length > 0) {
+          switch (e.key) {
+            case 'F10': e.preventDefault(); performCheckout('現金'); break;
+            case 'F9':  e.preventDefault(); handleCulturalCoinCheckout(); break;
+            case 'F8':  e.preventDefault(); performCheckout('LINE PAY'); break;
+            case 'F7':  e.preventDefault(); performCheckout('信用卡'); break;
+          }
+        }
+      });
+
+      // 支援 2*CODE
+      const parseProductInput = (input) => {
+        const starLeft = input.match(/^(\d+)\*([\w\-\/]+)$/);
+        if (starLeft) return { quantity: parseInt(starLeft[1], 10), code: starLeft[2] };
+        const starRight = input.match(/^([\w\-\/]+)\*(\d+)$/);
+        if (starRight) return { quantity: parseInt(starRight[2], 10), code: starRight[1] };
+        return null;
+      };
+
+      scanForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const raw = productCodeInput.value.trim().toUpperCase();
+        if (!raw) return;
+
+        const parsed = parseProductInput(raw);
+        if (parsed) {
+          // 先加一次，再把數量改成 parsed.quantity
+          const p = products[parsed.code];
+          if (!p) { alert('找不到商品'); POSAudio.error(); productCodeInput.select(); return; }
+
+          addProductToCart(p.code);
+          // 修改最後那個 item 的 quantity
+          const item = cart.find(it => it.code === p.code);
+          if (item) item.quantity = parsed.quantity;
+          updateCartDisplay();
+          calculateTotal();
+          saveCart();
+
+          productInfoElement.textContent = `已加入: ${p.name}`;
+          productCodeInput.value = '';
+          return;
+        }
+
+        if (products[raw]) {
+          addProductToCart(raw);
+          productInfoElement.textContent = `已加入: ${products[raw].name}`;
+        } else {
+          alert('找不到商品');
+          POSAudio.error();
+          productCodeInput.select();
+        }
+      });
+
+      const parseBulkLine = (line) => {
+        const raw = line.trim().toUpperCase();
+        if (!raw) return null;
+        let qty = 1;
+        let code = raw;
+        const starLeft = raw.match(/^(\d+)\*([\w\-\/]+)$/);
+        const starRight = raw.match(/^([\w\-\/]+)\*(\d+)$/);
+        const comma = raw.match(/^([\w\-\/]+)\s*,\s*(\d+)$/);
+        if (starLeft) { qty = parseInt(starLeft[1], 10); code = starLeft[2]; }
+        else if (starRight) { code = starRight[1]; qty = parseInt(starRight[2], 10); }
+        else if (comma) { code = comma[1]; qty = parseInt(comma[2], 10); }
+        return { code, qty };
+      };
+
+      bulkAddBtn.addEventListener('click', () => {
+        const lines = (bulkInput.value || '').split(/\r?\n/);
+        let success = 0;
+        let failed = [];
+        lines.forEach(line => {
+          const parsed = parseBulkLine(line);
+          if (!parsed) return;
+          const ok = addProductWithQuantity(parsed.code, parsed.qty);
+          if (ok) success += 1;
+          else failed.push(parsed.code);
+        });
+        if (success > 0) {
+          updateCartDisplay();
+          calculateTotal();
+          saveCart();
+          productCodeInput.focus();
+        }
+        if (bulkResult) {
+          if (failed.length > 0) {
+            bulkResult.textContent = `已加入 ${success} 筆，失敗：${failed.join(', ')}`;
+          } else {
+            bulkResult.textContent = `已加入 ${success} 筆`;
+          }
+        }
+      });
+
+      bulkClearBtn.addEventListener('click', () => {
+        bulkInput.value = '';
+        if (bulkResult) bulkResult.textContent = '';
+        bulkInput.focus();
+      });
+
+      bulkBackupBtn.addEventListener('click', () => {
+        if (cart.length === 0) return;
+        if (!confirm('要把目前購物車回填到批次輸入，並清空購物車嗎？')) return;
+        const lines = cart.map(item => `${item.code}*${item.quantity}`);
+        bulkInput.value = lines.join('\n');
+        cart = [];
+        updateCartDisplay();
+        calculateTotal();
+        localStorage.removeItem('cart');
+        if (bulkResult) bulkResult.textContent = '已回填並清空購物車';
+        bulkInput.focus();
+      });
+
+      productCodeInput.addEventListener('input', (e) => {
+        e.target.value = e.target.value.toUpperCase();
+        const v = e.target.value.trim();
+        const p = products[v];
+        if (p) productInfoElement.textContent = `${p.name} ${Math.round(p.price)}元`;
+        else productInfoElement.textContent = '';
+      });
+
+      let keywordShowMore = false;
+      const renderKeywordResults = (list) => {
+        searchResultsElement.innerHTML = '';
+        const unique = Array.from(new Set(list));
+        const maxCount = keywordShowMore ? 10 : 3;
+        const display = unique.slice(0, maxCount);
+
+        display.forEach(p => {
+          const div = document.createElement('div');
+          div.className = 'search-row';
+          const textSpan = document.createElement('div');
+          textSpan.className = 'search-text';
+          const stockStr = (p.qty !== undefined) ? `庫存:${p.qty}` : '';
+          textSpan.textContent = `${p.code} ｜ ${p.name} ｜ ${Math.round(p.price)}元 ${stockStr}`;
+          const btn = document.createElement('button');
+          btn.textContent = '加入';
+          btn.className = 'search-add-btn';
+          btn.addEventListener('click', () => {
+            addProductToCart(p.code);
+            productInfoElement.textContent = `${p.name}`;
+            searchResultsElement.innerHTML = '';
+            keywordSearchInput.value = '';
+            keywordShowMore = false;
+          });
+          div.appendChild(textSpan);
+          div.appendChild(btn);
+          searchResultsElement.appendChild(div);
+        });
+
+        if (unique.length > 3) {
+          const moreBtn = document.createElement('button');
+          moreBtn.textContent = keywordShowMore ? '收合' : `看更多 (${Math.min(10, unique.length)})`;
+          moreBtn.style.marginTop = "6px";
+          moreBtn.addEventListener('click', () => {
+            keywordShowMore = !keywordShowMore;
+            renderKeywordResults(list);
+          });
+          searchResultsElement.appendChild(moreBtn);
+        }
+      };
+
+      keywordSearchInput.addEventListener('input', (e) => {
+        const keywords = e.target.value.trim().toLowerCase().split(' ').filter(Boolean);
+        const matched = Object.values(products).filter(p =>
+          keywords.every(k =>
+            (p.name || "").toLowerCase().includes(k) ||
+            (p.code || "").toLowerCase().includes(k) ||
+            (p.barcode || "").includes(k)
+          )
+        );
+        keywordShowMore = false;
+        renderKeywordResults(matched);
+      });
+
+      const calculatePaymentStats = () => {
+        let stats = { cash: 0, credit: 0, linepay: 0, culture: 0 };
+        Object.values(clients).forEach(client => {
+          if (!client.isValid) return;
+          PilotExporter.getPaymentRecords(client).forEach(record => {
+            const amount = Number(record.amount || 0);
+            if (record.method === '信用卡') stats.credit += amount;
+            else if (record.method === 'LINE PAY') stats.linepay += amount;
+            else if (record.method === '現金') stats.cash += amount;
+            else if (record.method === '文化幣') stats.culture += amount;
+          });
+        });
+        return stats;
+      };
+
+      const updateSummaryTable = () => {
+        summaryTableBody.innerHTML = '';
+        overallSummaryTableBody.innerHTML = '';
+
+        let tempOverall = {};
+        let tempSysCash = 0;
+
+        Object.values(clients).sort((a,b) => b.id.localeCompare(a.id)).forEach(client => {
+          const row = document.createElement('tr');
+          const method = client.paymentMethod || '現金';
+
+          if (!client.isValid) {
+            row.classList.add('void-order');
+          } else {
+            if (method.includes("現金")) {
+              if (method.includes("文化幣")) {
+                const cashMatch = method.match(/現金\((\d+)\)/);
+                if (cashMatch && cashMatch[1]) tempSysCash += parseInt(cashMatch[1]);
+              } else {
+                tempSysCash += client.amount;
+              }
+            }
+
+            client.items.forEach(item => {
+              if (!tempOverall[item.code]) tempOverall[item.code] = { code: item.code, name: item.name, totalQuantity: 0, totalAmount: 0 };
+              tempOverall[item.code].totalQuantity += item.quantity;
+              tempOverall[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);
+            });
+          }
+
+          const noteClass = (client.note || formatInvoiceInfoInline(client.invoiceInfo)) ? 'client-link has-note' : 'client-link';
+          row.innerHTML = `
+            <td><a href="#" class="${noteClass}" data-client-id="${client.id}">${client.id}</a> ${!client.isValid ? '(已作廢)' : ''}</td>
+            <td>${Math.round(client.amount)}</td>
+            <td><button class="btn-change-pay" data-client-id="${client.id}">${method}</button></td>
+            <td class="btn-action-group">
+              ${client.isValid ? `<button class="btn-void" data-client-id="${client.id}">作廢</button>` : `<button class="btn-void" data-client-id="${client.id}">復原</button>`}
+              <button class="btn-del" data-client-id="${client.id}">刪除</button>
+            </td>
+          `;
+          summaryTableBody.appendChild(row);
+        });
+
+        overallSummary = tempOverall;
+
+        const sorted = Object.values(overallSummary).sort((a,b) => a.code.localeCompare(b.code));
+        sorted.forEach(item => {
+          const row = document.createElement('tr');
+          row.innerHTML = `<td>${item.code}</td><td>${item.name}</td><td>${item.totalQuantity}</td><td>${Math.round(item.totalAmount)}</td>`;
+          overallSummaryTableBody.appendChild(row);
+        });
+
+        const overallTotal = sorted.reduce((s, it) => s + it.totalAmount, 0);
+        overallTotalAmountElement.textContent = Math.round(overallTotal);
+
+        const validOrders = Object.values(clients).filter(c => c.isValid).length;
+        totalOrdersElement.textContent = validOrders;
+        averageAmountElement.textContent = validOrders > 0 ? Math.round(overallTotal / validOrders) : 0;
+
+        const stats = calculatePaymentStats();
+        if (payCashElement) payCashElement.textContent = stats.cash;
+        if (payCreditElement) payCreditElement.textContent = stats.credit;
+        if (payLineElement) payLineElement.textContent = stats.linepay;
+        if (payCultureElement) payCultureElement.textContent = stats.culture;
+
+        sysCashTotalEl.textContent = stats.cash;
+        updateAccountingCalc();
+        attachHistoryEvents();
+      };
+
+      const attachHistoryEvents = () => {
+        document.querySelectorAll('.btn-change-pay').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const clientId = e.target.dataset.clientId;
+            const client = clients[clientId];
+            if (!client.isValid) return alert("已作廢訂單無法修改");
+            openPaymentModal(clientId);
+          });
+        });
+
+        document.querySelectorAll('.btn-void').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const clientId = e.target.dataset.clientId;
+            clients[clientId].isValid = !clients[clientId].isValid;
+            saveSummary();
+            updateSummaryTable();
+          });
+        });
+
+        document.querySelectorAll('.btn-del').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const clientId = e.target.dataset.clientId;
+            if (confirm('確定刪除此筆訂單？雲端修訂紀錄會保留。')) {
+              delete clients[clientId];
+              saveSummary();
+              updateSummaryTable();
+            }
+          });
+        });
+
+        document.querySelectorAll('.client-link').forEach(link => {
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const clientId = e.target.dataset.clientId;
+            showClientDetails(clientId);
+          });
+        });
+      };
+
+      window.openPaymentModal = (clientId) => {
+        editingClientId = clientId;
+        paymentModal.style.display = 'flex';
+      };
+      window.closePaymentModal = () => {
+        editingClientId = null;
+        paymentModal.style.display = 'none';
+      };
+      window.selectPaymentMethod = (methodType) => {
+        if (!editingClientId) return;
+        const client = clients[editingClientId];
+        if (Number(client.amount) === 0) {
+          clients[editingClientId].paymentMethod = '零元';
+          clients[editingClientId].paymentRecords = [];
+          saveSummary();
+          updateSummaryTable();
+          closePaymentModal();
+          return;
+        }
+        let finalMethod = Number(client.amount) < 0 ? `${methodType}退款` : methodType;
+
+        if (methodType === '文化幣' && Number(client.amount) > 0) {
+          const coinAmt = prompt(`目前總金額 ${client.amount}，請輸入文化幣金額 (剩餘轉為現金)：`, client.amount);
+          if (coinAmt && !isNaN(coinAmt)) {
+            const c = parseInt(coinAmt);
+            if (c < 0 || c > client.amount) { alert("金額輸入錯誤"); return; }
+            const cash = client.amount - c;
+            finalMethod = `文化幣(${c}) + 現金(${cash})`;
+          } else { return; }
+        }
+
+        clients[editingClientId].paymentMethod = finalMethod;
+        clients[editingClientId].paymentRecords = PilotExporter.getPaymentRecords({
+          paymentMethod: finalMethod,
+          amount: clients[editingClientId].amount
+        });
+        saveSummary();
+        updateSummaryTable();
+        closePaymentModal();
+      };
+
+      const showClientDetails = (clientId) => {
+        const client = clients[clientId];
+        if (!client) return;
+        const method = client.paymentMethod || '現金';
+        const items = client.items.map(item => `${item.code} ｜ ${item.name} x ${item.quantity} (${Math.round(item.price * item.quantity)})`).join('\n');
+        const invoiceLines = formatInvoiceInfoLines(client.invoiceInfo);
+        const accountingCustomer = client.accountingCustomer || BOOK_FAIR_CUSTOMER;
+        const bookFairCustomer = customerMap[client.bookFairCustomerCode] || null;
+        const header = [
+          `訂單：${clientId} ${!client.isValid ? '(已作廢)' : ''}`,
+          `付款方式：${method}`,
+          `Pilot 客戶：${formatCustomerOption(accountingCustomer)}`,
+          `本場書展教會：${bookFairCustomer ? formatCustomerOption(bookFairCustomer) : '未保存'}`,
+          ...invoiceLines
+        ].join('\n');
+        orderDetailContent.textContent = `${header}\n\n購買商品：\n${items}`;
+        orderDonateCarrierInput.value = client.invoiceInfo?.carrier || client.invoiceInfo?.donationCode || '';
+        orderTaxIdInput.value = client.invoiceInfo?.taxId || '';
+        orderCustomerInput.value = bookFairCustomer ? formatCustomerOption(bookFairCustomer) : '';
+        orderNoteInput.value = client.note || '';
+        detailClientId = clientId;
+        orderDetailModal.style.display = 'flex';
+      };
+
+      window.closeOrderDetail = () => {
+        if (detailClientId && clients[detailClientId]) {
+          const invoiceInfo = getInvoiceInfoFromOrderModal();
+          const bookFairCustomer = resolveAccountingCustomer(orderCustomerInput.value);
+
+          // 只有「統編發票」才強制要求本場書展教會。
+          // 載具單（305）與一般書展單（0002）不應因未保存教會而跳警告。
+          if (invoiceInfo.taxId) {
+            if (!isBookFairChurchCustomer(bookFairCustomer)) {
+              alert('找不到有效的本場書展教會；統編交易在補齊前無法正式匯出。');
+            } else {
+              clients[detailClientId].bookFairCustomerCode = bookFairCustomer.code;
+            }
+          } else if (isBookFairChurchCustomer(bookFairCustomer)) {
+            // 若舊單有補選教會則保存，但不是載具／一般單的匯出必要條件。
+            clients[detailClientId].bookFairCustomerCode = bookFairCustomer.code;
+          }
+
+          const accountingCustomer = invoiceInfo.carrier
+            ? getPersonalCustomer()
+            : (invoiceInfo.taxId && isBookFairChurchCustomer(bookFairCustomer)
+              ? bookFairCustomer
+              : BOOK_FAIR_CUSTOMER);
+          clients[detailClientId].accountingCustomer = accountingCustomer;
+          clients[detailClientId].transactionId = clients[detailClientId].transactionId
+            || clients[detailClientId].id
+            || detailClientId;
+          clients[detailClientId].invoiceInfo = invoiceInfo;
+          clients[detailClientId].note = orderNoteInput.value.trim();
+          saveSummary();
+          updateSummaryTable();
+        }
+        detailClientId = null;
+        orderDetailModal.style.display = 'none';
+      };
+
+      window.clearAccountingInputs = () => {
+        document.querySelectorAll('.acct-count.current').forEach(input => {
+          input.value = '';
+          localStorage.removeItem(`acct_cur_${input.dataset.val}`);
+        });
+        updateAccountingCalc();
+      };
+
+      const updateAccountingCalc = () => {
+        let drawerTotal = 0;
+        let initialTotal = 0;
+
+        document.querySelectorAll('.acct-count.current').forEach(input => {
+          const val = parseInt(input.dataset.val);
+          const count = parseInt(input.value) || 0;
+          drawerTotal += val * count;
+        });
+
+        document.querySelectorAll('.acct-count.initial').forEach(input => {
+          const val = parseInt(input.dataset.val);
+          const count = parseInt(input.value) || 0;
+          initialTotal += val * count;
+        });
+
+        const expenses = parseInt(expensesCashInput.value) || 0;
+        const netCash = drawerTotal - initialTotal + expenses;
+
+        calcDrawerTotalEl.textContent = drawerTotal;
+        calcInitialEl.textContent = initialTotal;
+        calcExpensesEl.textContent = expenses;
+        calcNetCashEl.textContent = netCash;
+
+        const sysCash = parseInt(sysCashTotalEl.textContent) || 0;
+        const diff = netCash - sysCash;
+
+        cashDiffEl.textContent = diff;
+        if (diff === 0) {
+          cashDiffEl.style.color = 'green';
+          cashDiffRow.style.backgroundColor = '#e8f5e9';
+        } else {
+          cashDiffEl.style.color = 'red';
+          cashDiffRow.style.backgroundColor = '#ffebee';
+        }
+      };
+
+      const isiPadLikeDevice = () => {
+        const ua = navigator.userAgent || '';
+        const isIOS = /iPad|iPhone|iPod/i.test(ua);
+        const isTouchMac = /Macintosh/i.test(ua) && navigator.maxTouchPoints > 1;
+        return isIOS || isTouchMac;
+      };
+
+      const canShareFiles = (files) => {
+        return !!(
+          navigator.share &&
+          typeof navigator.canShare === 'function' &&
+          navigator.canShare({ files })
+        );
+      };
+
+      const triggerBrowserDownload = (blob, filename) => {
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      };
+
+      const exportFiles = async (files, fallbackMessage) => {
+        if (isiPadLikeDevice() && canShareFiles(files)) {
+          try {
+            await navigator.share({ files, title: '匯出檔案' });
+            return true;
+          } catch (error) {
+            if (error && error.name === 'AbortError') return false;
+          }
+        }
+
+        files.forEach(file => triggerBrowserDownload(file, file.name));
+        if (files.length > 1 && isiPadLikeDevice() && fallbackMessage) {
+          alert(fallbackMessage);
+        }
+        return true;
+      };
+      // ===== 備份 / 還原 / 清空 =====
+      async function doBackup() {
+        const backupData = { cart, clients, overallSummary, clientCounter, sessionRules, priceOverrides, bookFairCustomerCode: getSelectedBookFairCustomer()?.code || '', notes: notesElement.value, timestamp: new Date().toISOString() };
+        const dataStr = JSON.stringify(backupData, null, 2);
+        const filename = `pos_backup_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`;
+        const file = new File([dataStr], filename, { type: 'application/json' });
+        await exportFiles(
+          [file],
+          'iPad 若沒有直接下載，請在分享面板選擇「儲存到檔案」。'
+        );
+      }
+
+      backupBtn.addEventListener('click', doBackup);
+
+      restoreBtn.addEventListener('click', () => {
+        if (confirm('注意：還原將覆蓋目前訂單資料。')) importFileInput.click();
+      });
+
+      importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          try {
+            const data = JSON.parse(event.target.result);
+            if (data.clients) {
+              for(const client of Object.values(data.clients)){client.items=(client.items||[]).map(i=>({...i,price:Number(i.price||0),quantity:Number(i.quantity||0),discount:i.discount===undefined?100:Number(i.discount)}));if(Number(client.amount)===0&&calculateCartTotal(client.items)!==0)client.amount=calculateCartTotal(client.items);client.amount=Number(client.amount);client.paymentRecords=PilotExporter.getPaymentRecords(client);}
+
+              localStorage.setItem('cart', JSON.stringify(data.cart || []));
+              localStorage.setItem('clients', JSON.stringify(data.clients || {}));
+              localStorage.setItem('overallSummary', JSON.stringify(data.overallSummary || {}));
+              localStorage.setItem('clientCounter', JSON.stringify(data.clientCounter || 1));
+              localStorage.setItem('sessionRules', JSON.stringify(data.sessionRules || {}));
+              localStorage.setItem('priceOverrides', JSON.stringify(data.priceOverrides || {}));
+              const restoredBookFairCustomerCode = data.bookFairCustomerCode || data.selectedAccountingCustomerCode || '';
+              if (restoredBookFairCustomerCode) localStorage.setItem('bookFairCustomerCode', restoredBookFairCustomerCode);
+              else localStorage.removeItem('bookFairCustomerCode');
+              localStorage.setItem('notes', data.notes || '');
+              await cloud.flush();
+              alert('還原成功！');
+              location.reload();
+            }
+          } catch (err) { alert('備份檔案格式錯誤'); }
+        };
+        reader.readAsText(file);
+        importFileInput.value = '';
+      });
+
+      document.getElementById('clear-all-btn').onclick = async () => {
+        if (confirm('確定要清空本場工作資料？雲端修訂紀錄會保留。')) {
+          const pilotEriCounter = localStorage.getItem(PILOT_ERI_COUNTER_KEY);
+          localStorage.clear();
+          if (pilotEriCounter !== null) {
+            localStorage.setItem(PILOT_ERI_COUNTER_KEY, pilotEriCounter);
+          }
+          await cloud.flush();
+          alert('本場資料已清空。雲端修訂紀錄仍保留。');
+          location.reload();
+        }
+      };
+
+      clearCartBtn.addEventListener('click', () => {
+        if (cart.length === 0) return;
+        if (confirm('確定要清除購物車？')) {
+          cart = [];
+          updateCartDisplay();
+          calculateTotal();
+          localStorage.removeItem('cart');
+          productCodeInput.focus();
+        }
+      });
+
+// ===== 你原本匯出 CSV（保留）=====
+exportCsvBtn.addEventListener('click', async () => {
+  try {
+    updateSummaryTable();
+    const notes = localStorage.getItem('notes') || '無備註';
+    const stats = calculatePaymentStats();
+    const overallTotalAmount = Object.values(overallSummary).reduce((sum, item) => sum + item.totalAmount, 0);
+
+    const buildOrderMetaText = (client) => {
+      const invoiceText = formatInvoiceInfoInline(client.invoiceInfo);
+      const noteText = (client.note || '').trim();
+      if (invoiceText && noteText) return `${invoiceText} / 備註：${noteText}`;
+      if (invoiceText) return invoiceText;
+      if (noteText) return `備註：${noteText}`;
+      return '';
+    };
+
+    const summaryRows = [
+      ['訂單編號', 'Pilot 客戶代號', 'Pilot 客戶名稱', '消費金額', '付款方式', '捐贈', '載具', '統編', '狀態', '備註', '訂單資料'],
+      ...Object.values(clients).map(client => ([
+        `${client.id}`,
+        client.accountingCustomer?.code || BOOK_FAIR_CUSTOMER.code,
+        client.accountingCustomer?.name || BOOK_FAIR_CUSTOMER.name,
+        Math.round(client.amount),
+        client.paymentMethod || '現金',
+        client.invoiceInfo?.donationCode || '',
+        client.invoiceInfo?.carrier || '',
+        client.invoiceInfo?.taxId || '',
+        client.isValid ? '有效' : '已作廢',
+        client.note || '',
+        buildOrderMetaText(client)
+      ])),
+      [],
+      ['商品代碼', '名稱', '總數量', '總金額'],
+      ...Object.values(overallSummary).map(item => [
+        item.code,
+        item.name,
+        item.totalQuantity,
+        Math.round(item.totalAmount)
+      ]),
+      [],
+      ['總金額', Math.round(overallTotalAmount)],
+      ['現金總收', stats.cash],
+      ['信用卡總收', stats.credit],
+      ['LINE PAY總收', stats.linepay],
+      ['文化幣總收', stats.culture],
+      [],
+      ['備註', notes],
+      [],
+      ['盤點記錄'],
+      ['盤點現金總額', calcDrawerTotalEl.textContent],
+      ['初始備用金', calcInitialEl.textContent],
+      ['支出憑證', calcExpensesEl.textContent],
+      ['實際現金營收', calcNetCashEl.textContent],
+      ['差異金額', cashDiffEl.textContent]
+    ];
+
+    const detailsRows = [
+      ['詳細內容：'],
+      ['訂單編號', 'Pilot 客戶代號', 'Pilot 客戶名稱', '付款方式', '捐贈', '載具', '統編', '商品名稱', '數量', '單價', '折扣', '小計', '狀態', '備註', '訂單資料'],
+      ...Object.values(clients).flatMap(client =>
+        (client.items || []).map(item => {
+          return [
+            `${client.id}`,
+            client.accountingCustomer?.code || BOOK_FAIR_CUSTOMER.code,
+            client.accountingCustomer?.name || BOOK_FAIR_CUSTOMER.name,
+            client.paymentMethod || '現金',
+            client.invoiceInfo?.donationCode || '',
+            client.invoiceInfo?.carrier || '',
+            client.invoiceInfo?.taxId || '',
+            item.name,
+            item.quantity,
+            Math.round(item.price),
+            `${item.discount}%`,
+            Math.round(item.price * item.quantity * (item.discount / 100)),
+            client.isValid ? '有效' : '已作廢',
+            client.note || '',
+            buildOrderMetaText(client)
+          ];
+        })
+      )
+    ];
+
+    const mustQuote = (s) => /[",\r\n]/.test(String(s));
+    const esc = (v) => {
+      if (v === null || v === undefined) return "";
+      const s = String(v).replace(/"/g, '""');
+      return mustQuote(s) ? `"${s}"` : s;
+    };
+
+    const csvContent = [...summaryRows, ...detailsRows]
+      .map(row => row.map(esc).join(","))
+      .join("\r\n");
+
+    const filename = `sales_report_POS_${new Date().toISOString().split('T')[0]}.csv`;
+    const file = new File([`\ufeff${csvContent}`], filename, { type: "text/csv;charset=utf-8;" });
+    await exportFiles(
+      [file],
+      'iPad 若沒有直接下載，請在分享面板選擇「儲存到檔案」。'
+    );
+
+  } catch (error) {
+    alert('CSV匯出錯誤');
+  }
+});
+
+// ==========================================================
+// ✅ Pilot 匯出：固定正式 schema、建立 transaction 關聯並在下載前 hard validation
+// ==========================================================
+const buildPilotExportFile = (rows, filename) => {
+  const csvContent = rows
+    .map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\r\n');
+  const encodeBig5 = (() => {
+    let map = null;
+    const buildMap = () => {
+      const result = new Map();
+      for (let i = 0; i < 0x80; i += 1) result.set(String.fromCharCode(i), [i]);
+      const decoder = new TextDecoder('big5');
+      const trails = [];
+      for (let trail = 0x40; trail <= 0x7E; trail += 1) trails.push(trail);
+      for (let trail = 0xA1; trail <= 0xFE; trail += 1) trails.push(trail);
+      for (let lead = 0x81; lead <= 0xFE; lead += 1) {
+        trails.forEach(trail => {
+          const character = decoder.decode(new Uint8Array([lead, trail]));
+          if (character && character !== '\uFFFD' && !result.has(character)) {
+            result.set(character, [lead, trail]);
+          }
+        });
+      }
+      return result;
+    };
+    return (value) => {
+      if (!map) map = buildMap();
+      const output = [];
+      for (const character of value) {
+        const bytes = map.get(character);
+        if (!bytes) output.push(0x3F);
+        else output.push(...bytes);
+      }
+      return new Uint8Array(output);
+    };
+  })();
+  const blob = new Blob([encodeBig5(csvContent)], { type: 'text/csv;charset=big5' });
+  return new File([blob], filename, { type: blob.type });
+};
+
+async function exportPilot(options = {}) {
+  await cloud.flush(); await cloud.reserve(1024+Object.values(clients).reduce((s,c)=>s+(c.items||[]).length*12,0));
+  try {
+    const result = PilotExporter.buildPilotExport({
+      clients,
+      products,
+      customerMap,
+      unitMap,
+      generateERI,
+      now: options.now instanceof Date ? options.now : new Date()
+    });
+    window.lastPilotDryRun = result;
+
+    if (!result.ok) {
+      const message = `Pilot 正式匯出已阻止：\n${result.validationErrors.join('\n')}`;
+      console.error(message, result.audit);
+      dbStatusElement.textContent = `❌ ${result.validationErrors.join('；')}`;
+      dbStatusElement.style.color = 'red';
+      alert(message);
+      return result;
+    }
+
+    if (options.dryRun === true) return result;
+    const files = [
+      buildPilotExportFile(result.rows.stkSale1, 'STKSALE1.csv'),
+      buildPilotExportFile(result.rows.stkSale2, 'STKSALE2.csv'),
+      buildPilotExportFile(result.rows.vchrplus, 'VCHRPLUS_SALE1.csv')
+    ];
+    await exportFiles(
+      files,
+      'iPad 對多個 CSV 下載支援有限。若跳出分享面板，請選擇「儲存到檔案」；若仍被阻擋，請改用桌機匯出 Pilot 會計檔。'
+    );
+    const audit = result.audit;
+    const plusSubTotal = (result.rows.vchrplus || []).slice(1)
+      .reduce((sum, row) => sum + Number(row[6] || 0), 0);
+    const totalIndex = PilotExporter.STKSALE1_HEADER.indexOf('TOTAL');
+    const remainingCashTotal = (result.rows.stkSale1 || []).slice(1)
+      .reduce((sum, row) => sum + Number(row[totalIndex] || 0), 0);
+    dbStatusElement.textContent = `✅ Pilot 匯出驗證完成：STKSALE1 ${audit.stkSale1Count} 筆、STKSALE2 ${audit.stkSale2Count} 筆、VCHRPLUS ${audit.voucherCount} 筆；非現金加減項 ${plusSubTotal} 元、PILOT剩餘TOTAL ${remainingCashTotal} 元；應稅 ${audit.taxableGross} 元、免稅 ${audit.exemptGross} 元、銷售合計 ${audit.exportedGross} 元`;
+    dbStatusElement.style.color = 'green';
+    return result;
+  } catch (error) {
+    console.error(error);
+    const message = `Pilot 匯出失敗：${error.message || error}`;
+    dbStatusElement.textContent = `❌ ${message}`;
+    dbStatusElement.style.color = 'red';
+    alert(message);
+    return null;
+  }
+}
+
+window.runPilotDryRun = (now) => exportPilot({
+  dryRun: true,
+  now: now ? new Date(now) : new Date()
+});
+exportPilotBtn.onclick = () => exportPilot();
+
+// ===== 啟動 =====
+loadDiscountRates();
+repairStoredZeroAmountClients();
+
+// ✅ 先載入系統四檔，再渲染
+loadMasterData().then(() => {
+  const groups=[...document.querySelectorAll('body > .flex-container')];groups.forEach((el,i)=>el.dataset.section=['checkout','history','accounting','exports'][i]);
+  document.querySelector('#title').textContent='掃描與搜尋';
+  const bulk=document.querySelector('.bulk-input');const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent='批次輸入商品';details.append(summary);bulk.parentNode.insertBefore(details,bulk);details.append(bulk);
+  window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==parent)return;if(e.data.type==='scan'){const code=String(e.data.code).toUpperCase();if(products[code]){addProductToCart(code);productInfoElement.textContent='已加入：'+products[code].name;}else productInfoElement.textContent='找不到商品：'+code;}if(e.data.type==='close'){cloud.close(e.data.day,e.data.counts,e.data.expenses,e.data.notes).then(()=>parent.postMessage({type:'closed'},location.origin)).catch(error=>alert(error.message));}});
+  if(cloud.event.status!=='open'){document.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=true);document.querySelectorAll('#export-csv-btn,#export-pilot-btn,#backup-btn').forEach(el=>el.disabled=false);}
+  cloud.onUpdate=()=>{clients=JSON.parse(localStorage.getItem('clients'));updateSummaryTable();};
+  const resize=new ResizeObserver(()=>parent.postMessage({type:'height',height:document.body.scrollHeight+24},location.origin));resize.observe(document.body);
+  parent.postMessage({type:'register-ready'},location.origin);
+
+  syncInvoiceCustomerVisibility();
+  updateCartDisplay();
+  updateSummaryTable();
+  calculateTotal();
+});
+
+    });
+  </script>
+</body>
+</html>
