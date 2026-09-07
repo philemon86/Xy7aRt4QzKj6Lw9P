@@ -2,6 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 let html = fs.readFileSync(path.join(root, 'legacy/index.html'), 'utf8');
+const read = (name) => fs.readFileSync(path.join(root, name), 'utf8');
+const core = read('lib/pos-core.mjs').replace(/^export /gm, '');
+fs.writeFileSync(
+  path.join(root, 'public/pos-core.js'),
+  `window.POSCore=(()=>{${core}\nreturn {resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate};})();\n`,
+);
 const start = html.indexOf('(function (root, factory)');
 const end = html.indexOf('</script>', start);
 fs.mkdirSync(path.join(root, 'legacy'), { recursive: true });
@@ -11,11 +17,11 @@ fs.writeFileSync(
 );
 html = html.replace(
   '<title>腓利門雲POS</title>',
-  '<title>腓利門 POS V2 收銀台</title><link rel="stylesheet" href="/register.css"><script src="/bridge.js"></script>',
+  '<title>腓利門 POS V2 收銀台</title><link rel="stylesheet" href="/checkout.css"><script src="/bridge.js"></script><script src="/pos-core.js"></script>',
 );
 html = html
-  .replace('<link rel="stylesheet" href="/register.css">', '')
-  .replace('</head>', '<link rel="stylesheet" href="/register.css"></head>');
+  .replace('<link rel="stylesheet" href="/checkout.css">', '')
+  .replace('</head>', '<link rel="stylesheet" href="/checkout.css"></head>');
 html = html.replace(
   "document.addEventListener('DOMContentLoaded', () => {",
   "document.addEventListener('DOMContentLoaded', async () => {\n      let cloud; try { cloud=await window.makeCloud(); } catch(error) { document.body.textContent=error.message; return; }\n      const localStorage=cloud.storage;\n",
@@ -27,27 +33,63 @@ html =
   `      const loadMasterData = async () => {
         const data=cloud.catalog;unitMap=data.units;clasMap=data.classes;kindMap=data.kinds;customerMap=Object.fromEntries(data.customers.map(c=>[c.code,c]));
         customerOptions.replaceChildren(...data.customers.map(c=>{const option=document.createElement('option');option.value=formatCustomerOption(c);return option;}));
-        products={};for(const source of data.products){const p={...source};if(cloud.event.pricing==='website'&&p.websitePrice!==null&&p.websitePrice!==undefined){p.price=p.websitePrice;p.defaultDiscount=100;p.websiteBase=true;}products[p.code]=p;if(p.barcode)products[p.barcode]=p;if(p.webBarcode&&!products[p.webBarcode])products[p.webBarcode]=p;}
-        dbStatusElement.textContent=data.products.length+' 件商品 · '+(cloud.event.pricing==='website'?'官網售價':'原書展折扣');
+        products={};for(const source of data.products){const p=POSCore.resolveProductPricing(source);products[p.code]=p;if(p.barcode)products[p.barcode]=p;if(p.webBarcode&&!products[p.webBarcode])products[p.webBarcode]=p;}
+        dbStatusElement.textContent=data.products.length+' 件商品 · 價格已快取';
         invoiceCustomerInput.value=cloud.event.tenant?formatCustomerOption(customerMap[cloud.event.tenant.toUpperCase()]):'';syncInvoiceCustomerVisibility();
       };
 ` +
   html.slice(loadEnd);
 html = html.replace(
   '        const special = getSpecialDiscount(item);',
-  '        if(item.websiteBase && !item.isManual && sessionRules[item.class]===undefined)return 100;\n        const special = getSpecialDiscount(item);',
+  "        if(item.isManual)return item.discount;\n        if(item.priceSource==='website-sale')return item.defaultDiscount;\n        const special = getSpecialDiscount(item);",
 );
 html = html.replace(
   '        if (!item) return undefined;',
-  '        if (!item || item.websiteBase) return undefined;',
+  "        if (!item || item.websiteBase) return undefined;\n        if(item.priceSource==='legacy-special')return item.defaultDiscount;",
 );
+// Preset specials remain automatic; manual edits always take precedence.
+html = html.replace(
+  /          if \(getSpecialDiscount\(newItem\) !== undefined\) \{[\s\S]*?\n          \}/g,
+  '',
+);
+const cartStart = html.indexOf('      const updateCartDisplay = () => {');
+const cartEnd = html.indexOf('      const calculateCartTotal', cartStart);
+html =
+  html.slice(0, cartStart) +
+  read('scripts/register-cart.js') +
+  '\n' +
+  html.slice(cartEnd);
+const scanStart = html.indexOf("      scanForm.addEventListener('submit'");
+const scanEnd = html.indexOf('      const parseBulkLine', scanStart);
+html = html.slice(0, scanStart) + html.slice(scanEnd);
+const searchStart = html.indexOf(
+  "      productCodeInput.addEventListener('input'",
+);
+const searchEnd = html.indexOf(
+  '      const calculatePaymentStats',
+  searchStart,
+);
+html =
+  html.slice(0, searchStart) +
+  read('scripts/register-search.js') +
+  '\n' +
+  html.slice(searchEnd);
+html = html.replace(
+  "      document.addEventListener('keydown', (e) => {",
+  "      document.addEventListener('keydown', (e) => {\n        if(document.querySelector('dialog[open]') || document.body.dataset.view!=='checkout')return;",
+);
+html = html.replace(
+  '        sysCashTotalEl.textContent = stats.cash;',
+  "        sysCashTotalEl.textContent = stats.cash;\n        parent.postMessage({type:'cash-total',amount:stats.cash},location.origin);",
+);
+html = html.replace('今日銷售總覽', '本場銷售總覽');
 html = html.replace(
   "return `${y}${m}${day}-${String(clientCounter).padStart(3,'0')}`;",
   'return `${y}${m}${day}-${crypto.randomUUID()}`;',
 );
 html = html.replace(
   '      const performCheckout = (paymentMethod, isComposite = false) => {',
-  '      let checkoutBusy=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy)return;',
+  "      let checkoutBusy=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy || cloud.event.status!=='open')return;",
 );
 html = html.replace(
   '        POSAudio.success();\n\n        clients[clientId] = {',
@@ -116,11 +158,30 @@ html = html.replace(
   'loadMasterData().then(() => {',
   `loadMasterData().then(() => {
   const groups=[...document.querySelectorAll('body > .flex-container')];groups.forEach((el,i)=>el.dataset.section=['checkout','history','accounting','exports'][i]);
-  document.querySelector('#title').textContent='掃描與搜尋';
+  document.body.dataset.audience=cloud.event.tenant?'church':'bookstore';
+  document.querySelector('#title').textContent='加入商品';
+  document.querySelector('#current-date').closest('.header').hidden=true;
+  document.querySelector('label[for="product-code"]').textContent='掃條碼，或輸入名稱、代碼';
+  productCodeInput.placeholder='條碼 / 名稱 / 商品代碼';productCodeInput.style.textTransform='none';productCodeInput.setAttribute('aria-controls','search-results');productCodeInput.setAttribute('aria-label','掃描條碼或搜尋商品');productCodeInput.setAttribute('enterkeyhint','search');
+  scanForm.querySelector('button').textContent='加入 / 搜尋';
+  cloud.unlockAudio=()=>POSAudio.ctx.resume().catch(()=>{});
+  const cameraButton=document.createElement('button');cameraButton.type='button';cameraButton.className='scan-camera-btn';cameraButton.textContent='相機';cameraButton.onclick=()=>{cloud.unlockAudio();parent.postMessage({type:'open-camera'},location.origin);};scanForm.append(cameraButton);
+  productInfoElement.removeAttribute('style');productInfoElement.setAttribute('role','status');productInfoElement.textContent='掃描後按 Enter 加入，支援連續掃描。';
+  scanForm.parentNode.append(searchResultsElement);document.querySelector('.search-container').hidden=true;
+  const favoritesSection=document.createElement('section');favoritesSection.className='favorites-section';favoritesSection.innerHTML='<div class="favorites-heading"><h2>常用商品</h2><span>本場雲端保存</span></div><div id="favorite-products"></div>';
+  scanForm.closest('.container-half').insertBefore(favoritesSection,document.querySelector('.bulk-input'));
+  readFavorites();renderFavorites();
+  document.querySelector('.cart-table-shell .table-title').innerHTML='<span>本次結帳</span><small id="cart-count"></small>';
+  document.querySelector('#cart-table thead').innerHTML='<tr><th>商品 / 單價</th><th>數量</th><th>小計</th><th></th></tr>';
+  const cartHint=document.createElement('p');cartHint.className='cart-help';cartHint.textContent='點編輯或連點商品兩下，調整單價、數量與折扣。';document.querySelector('.cart-table-shell').append(cartHint);
+  const invoice=document.querySelector('.invoice-input-row');const invoiceDetails=document.createElement('details');invoiceDetails.className='invoice-details';const invoiceSummary=document.createElement('summary');invoiceSummary.textContent='發票資訊 · 載具 / 捐贈 / 統編';invoiceDetails.append(invoiceSummary);invoice.parentNode.insertBefore(invoiceDetails,invoice);invoiceDetails.append(invoice,document.querySelector('.invoice-hint'));
+  const printOption=document.querySelector('#print-enabled').closest('div');document.querySelector('.payment-qr-actions').append(printOption);
+  document.querySelector('.invoice-hint').textContent='一般結帳可留白；輸入統編時請選擇發票教會。';
+  document.querySelector('.payment-info').append(document.querySelector('.checkout-buttons-area'));
   const bulk=document.querySelector('.bulk-input');const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent='批次輸入商品';details.append(summary);bulk.parentNode.insertBefore(details,bulk);details.append(bulk);
-  window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==parent)return;if(e.data.type==='scan'){const code=String(e.data.code).toUpperCase();if(products[code]){addProductToCart(code);productInfoElement.textContent='已加入：'+products[code].name;}else productInfoElement.textContent='找不到商品：'+code;}if(e.data.type==='close'){cloud.close(e.data.day,e.data.counts,e.data.expenses,e.data.notes).then(()=>parent.postMessage({type:'closed'},location.origin)).catch(error=>alert(error.message));}});
+  window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==parent)return;if(e.data.type==='scan')addScannedProduct(e.data.code,true);});
   if(cloud.event.status!=='open'){document.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=true);document.querySelectorAll('#export-csv-btn,#export-pilot-btn,#backup-btn').forEach(el=>el.disabled=false);}
-  cloud.onUpdate=()=>{clients=JSON.parse(localStorage.getItem('clients'));updateSummaryTable();};
+  cloud.onUpdate=()=>{clients=JSON.parse(localStorage.getItem('clients'));updateSummaryTable();readFavorites();renderFavorites();renderSearch();};
   const resize=new ResizeObserver(()=>parent.postMessage({type:'height',height:document.body.scrollHeight+24},location.origin));resize.observe(document.body);
   parent.postMessage({type:'register-ready'},location.origin);
 `,

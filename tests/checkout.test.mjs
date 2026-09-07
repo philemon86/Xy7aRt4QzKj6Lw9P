@@ -54,6 +54,7 @@ function make({ amount = 899, quantity = 1, fail = false } = {}) {
       mem.clients = JSON.stringify(context.clients);
     },
     cloud: {
+      event: { status: 'open' },
       flush: async () => {
         if (fail) throw Error('offline');
         saved = JSON.parse(mem.clients);

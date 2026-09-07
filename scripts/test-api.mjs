@@ -184,6 +184,38 @@ ok(
   backup.data.audit.length >= 3 && backup.data.closings.length === 1,
   'Persistent audit and closing included in backup',
 );
+const favoriteCodes = JSON.stringify(['C296', 'C291']);
+await call(
+  'events/' + a + '/sync',
+  {
+    changes: [{ key: 'shared:favorites', before: null, after: favoriteCodes }],
+  },
+  church,
+);
+ok(
+  (await call('events/' + a)).data.state['shared:favorites'] ===
+    favoriteCodes &&
+    !(await call('events/' + b)).data.state['shared:favorites'],
+  'Favorites persist across sessions and remain scoped to the fair',
+);
+const voucher = {
+  ...order('voucher'),
+  items: [{ code: 'R', name: '折抵', price: -50, quantity: 1, discount: 100 }],
+  amount: -50,
+  paymentMethod: '現金退款',
+  paymentRecords: [{ method: '現金', amount: -50 }],
+};
+ok(
+  (
+    await call(
+      'events/' + a + '/sync',
+      { changes: [{ key: 'order:voucher', before: null, after: voucher }] },
+      church,
+    )
+  ).status === 200 &&
+    (await call('events/' + a)).data.state['order:voucher'].amount === -50,
+  'Negative unit-price adjustment persists with exact refund amount',
+);
 await call('events/' + a + '/archive', {});
 ok(
   (await call('events/' + a + '/sync', { changes: [] }, church)).status === 409,

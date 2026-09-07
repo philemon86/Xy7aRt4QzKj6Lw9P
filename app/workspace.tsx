@@ -53,11 +53,13 @@ import {
   RefreshCw,
   Download,
   Archive,
-  Wallet,
+  Calculator as CalculatorIcon,
   Check,
   ShieldCheck,
 } from 'lucide-react';
 import Camera from './camera';
+import Calculator from './calculator';
+import { stats } from '@/lib/state.mjs';
 const money = (v: number) =>
   new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 }).format(v || 0);
 const today = () =>
@@ -106,12 +108,12 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     [active, setActive] = useState<any>(null),
     [view, setView] = useState('checkout'),
     [state, setState] = useState<any>({}),
-    [closings, setClosings] = useState<any[]>([]);
+    [currentCash, setCurrentCash] = useState(0),
+    [scanFeedback, setScanFeedback] = useState<any>(null);
   const [newEvent, setNewEvent] = useState(false),
     [eventName, setEventName] = useState(''),
     [eventDate, setEventDate] = useState(''),
-    [eventTenant, setEventTenant] = useState(''),
-    [pricing, setPricing] = useState('website');
+    [eventTenant, setEventTenant] = useState('');
   const [churchCode, setChurchCode] = useState(''),
     [churchPassword, setChurchPassword] = useState(''),
     [churches, setChurches] = useState<any[]>([]),
@@ -121,13 +123,12 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     [cloudStatus, setCloudStatus] = useState('雲端資料'),
     [cloudError, setCloudError] = useState(false),
     [sync, setSync] = useState<any>(null),
-    [syncing, setSyncing] = useState(false),
-    [day, setDay] = useState(''),
-    [closeDialog, setCloseDialog] = useState(false),
-    [counted, setCounted] = useState('0'),
-    [initial, setInitial] = useState('11000'),
-    [expenses, setExpenses] = useState('0'),
-    [closeNotes, setCloseNotes] = useState('');
+    [syncing, setSyncing] = useState(false);
+  const audience =
+    active?.tenant || me?.role === 'church' || tenant ? 'church' : 'bookstore';
+  useEffect(() => {
+    document.documentElement.dataset.audience = audience;
+  }, [audience]);
   const frame = useRef<HTMLIFrameElement>(null),
     viewRef = useRef(view),
     activeRef = useRef(active),
@@ -161,7 +162,6 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
   }
   useEffect(() => {
     setEventDate(today());
-    setDay(today());
     load()
       .catch(() => {})
       .finally(() => setLoaded(true));
@@ -180,6 +180,13 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       if (m.type === 'height' && frame.current)
         frame.current.style.height =
           Math.max(460, Number(m.height) || 0) + 'px';
+      if (m.type === 'scan-result') setScanFeedback(m);
+      if (m.type === 'cash-total' && Number.isFinite(m.amount))
+        setCurrentCash(m.amount);
+      if (m.type === 'open-camera' && activeRef.current?.status === 'open') {
+        setScanFeedback(null);
+        setCamera(true);
+      }
       if (m.type === 'cloud-status') {
         setCloudStatus(m.text);
         setCloudError(m.error);
@@ -210,12 +217,9 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     }
   };
   async function openEvent(e: any) {
-    const [record, closing] = await Promise.all([
-      api('events/' + e.id),
-      api('events/' + e.id + '/close'),
-    ]);
+    const record = await api('events/' + e.id);
     setState(record.state);
-    setClosings(closing);
+    setCurrentCash(stats(record.state).payments['現金'] || 0);
     setActive(e);
     setView('checkout');
   }
@@ -241,7 +245,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       name: eventName,
       date: eventDate,
       tenant: eventTenant.split('｜')[0].trim(),
-      pricing,
+      pricing: 'website',
     });
     setNewEvent(false);
     setEventName('');
@@ -323,20 +327,6 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           .reduce((s: number, i: any) => s + i.quantity, 0),
       0,
     );
-  const daySales = sales.filter(
-    (o) =>
-      (o.createdAt
-        ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(
-            new Date(o.createdAt),
-          )
-        : String(o.id)
-            .slice(0, 8)
-            .replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')) === day,
-  );
-  const dayCash = daySales
-    .flatMap((o) => o.paymentRecords || [])
-    .filter((p) => p.method === '現金')
-    .reduce((s, p) => s + p.amount, 0);
   if (!loaded)
     return (
       <main className="loading">
@@ -346,7 +336,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     );
   if (!me)
     return (
-      <main className="login">
+      <main className="login" data-audience={audience}>
         <div className="login-brand">
           <BookOpen size={36} />
           <span>
@@ -403,7 +393,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       </main>
     );
   return (
-    <SidebarProvider>
+    <SidebarProvider data-audience={audience}>
       <Sidebar className="pos-sidebar">
         <SidebarHeader>
           <div className="brand">
@@ -473,7 +463,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           </Button>
         </SidebarFooter>
       </Sidebar>
-      <main className="workspace">
+      <main className={active ? 'workspace workspace-active' : 'workspace'}>
         <header className="topbar">
           <div>
             <SidebarTrigger />
@@ -521,10 +511,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   <h1>{active.name}</h1>
                   <p>
                     {active.date} <span className="dot">·</span>{' '}
-                    {active.pricing === 'website'
-                      ? '採用官網售價'
-                      : '採用原書展折扣'}{' '}
-                    <span className="dot">·</span>{' '}
+                    自動套用商品價格 <span className="dot">·</span>{' '}
                     {active.status === 'open' ? '進行中' : '已封存'}
                   </p>
                 </div>
@@ -554,6 +541,10 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                     className="primary"
                     onClick={() => {
                       tab('checkout');
+                      setScanFeedback(null);
+                      (
+                        frame.current?.contentWindow as any
+                      )?.POSCloud?.unlockAudio?.();
                       setCamera(true);
                     }}
                     disabled={active.status !== 'open'}
@@ -573,8 +564,8 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   <TabsTrigger value="stock">
                     <Package /> 商品數量
                   </TabsTrigger>
-                  <TabsTrigger value="accounting">
-                    <Wallet /> 日結
+                  <TabsTrigger value="calculator">
+                    <CalculatorIcon /> 計算機
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -584,7 +575,11 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 src={'/register.html?event=' + active.id}
                 allow="camera"
                 className="register-frame"
-                style={{ display: view === 'stock' ? 'none' : 'block' }}
+                style={{
+                  display: ['stock', 'calculator'].includes(view)
+                    ? 'none'
+                    : 'block',
+                }}
               />
               {view === 'stock' && (
                 <div className="stock-layout">
@@ -671,66 +666,35 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   </section>
                 </div>
               )}
-              {view === 'accounting' && (
-                <section className="panel closing-panel">
-                  <div className="panel-heading">
-                    <div>
-                      <h2>保存日結紀錄</h2>
-                      <p className="muted">
-                        每次日結保存當下的交易與盤點，歷史紀錄持續保留。
-                      </p>
-                    </div>
-                    <Button
-                      className="primary"
-                      onClick={() => setCloseDialog(true)}
-                      disabled={active.status !== 'open'}
-                    >
-                      <Plus /> 建立日結
-                    </Button>
-                  </div>
-                  {closings.map((c) => {
-                    const snap = JSON.parse(c.snapshot);
-                    return (
-                      <div className="closing-row" key={c.id}>
-                        <div>
-                          <b>{c.day}</b>
-                          <small>
-                            {new Date(c.created).toLocaleString('zh-TW')} 保存
-                          </small>
-                        </div>
-                        <span>{snap.totals.orders} 筆交易</span>
-                        <strong>NT$ {money(snap.totals.revenue)}</strong>
-                        <Button
-                          variant="outline"
-                          onClick={() =>
-                            download(
-                              { ...c, snapshot: snap },
-                              '日結-' + c.day + '.json',
-                            )
-                          }
-                        >
-                          <Download /> 下載
-                        </Button>
-                      </div>
-                    );
-                  })}
-                  {!closings.length && (
-                    <p className="muted">本場尚無日結紀錄。</p>
-                  )}
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      run(async () =>
-                        download(
-                          await api('events/' + active.id + '/backup'),
-                          '書展完整備份-' + active.date + '.json',
-                        ),
-                      )
-                    }
-                  >
-                    <Download /> 下載本場完整備份與修訂紀錄
-                  </Button>
-                </section>
+              {view === 'calculator' && (
+                <Calculator
+                  key={active.id}
+                  cash={currentCash}
+                  refreshCash={async () => {
+                    await flushFrame();
+                    const fresh = await api('events/' + active.id);
+                    setState(fresh.state);
+                    const cash = stats(fresh.state).payments['現金'] || 0;
+                    setCurrentCash(cash);
+                    return cash;
+                  }}
+                />
+              )}
+              {view === 'history' && (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    run(async () => {
+                      await flushFrame();
+                      download(
+                        await api('events/' + active.id + '/backup'),
+                        '書展完整備份-' + active.date + '.json',
+                      );
+                    })
+                  }
+                >
+                  <Download /> 下載本場完整備份與修訂紀錄
+                </Button>
               )}
             </>
           ) : section === 'events' ? (
@@ -1066,7 +1030,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           <DialogHeader>
             <DialogTitle>新增書展</DialogTitle>
             <DialogDescription>
-              每場書展都有獨立的交易、數量與日結紀錄。
+              每場書展都有獨立的交易、商品數量與常用商品。
             </DialogDescription>
           </DialogHeader>
           <form
@@ -1108,23 +1072,12 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 </datalist>
               </>
             )}
-            <label>預設價格</label>
-            <Select
-              value={pricing}
-              onValueChange={(v) => setPricing(v || 'website')}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="website">
-                  官網售價（不再重複折扣）
-                </SelectItem>
-                <SelectItem value="legacy">原書展定價與折扣</SelectItem>
-              </SelectContent>
-            </Select>
+            <p className="pricing-policy">
+              價格依序採用：官網特價 → 原書展指定特價 →
+              官網一般售價。未比對官網時沿用原書展價格。
+            </p>
             <p className="muted">
-              可在結帳時調整價格與折扣。商品數量可以稍後建立。
+              結帳時仍可修改單價、數量與折扣。商品數量可以稍後建立。
             </p>
             <Button type="submit" className="primary wide" disabled={busy}>
               建立並開啟書展 <ArrowUpRight />
@@ -1132,84 +1085,9 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           </form>
         </DialogContent>
       </Dialog>
-      <Dialog open={closeDialog} onOpenChange={setCloseDialog}>
-        <DialogContent className="event-dialog">
-          <DialogTitle>保存日結</DialogTitle>
-          <DialogDescription>
-            以臺灣時間計算當日交易，保存後仍保留所有訂單。
-          </DialogDescription>
-          <label>日結日期</label>
-          <Input
-            type="date"
-            value={day}
-            onChange={(e) => setDay(e.target.value)}
-          />
-          <div className="close-inputs">
-            <label>
-              盤點現金
-              <Input
-                type="number"
-                min="0"
-                value={counted}
-                onChange={(e) => setCounted(e.target.value)}
-              />
-            </label>
-            <label>
-              初始現金
-              <Input
-                type="number"
-                min="0"
-                value={initial}
-                onChange={(e) => setInitial(e.target.value)}
-              />
-            </label>
-            <label>
-              額外支出
-              <Input
-                type="number"
-                min="0"
-                value={expenses}
-                onChange={(e) => setExpenses(e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="close-total">
-            系統現金 NT$ {money(dayCash)}
-            <br />
-            現金差異 NT${' '}
-            {money(+counted - Number(initial) + Number(expenses) - dayCash)}
-          </div>
-          <label>
-            日結備註
-            <Input
-              value={closeNotes}
-              onChange={(e) => setCloseNotes(e.target.value)}
-            />
-          </label>
-          <Button
-            className="primary"
-            disabled={busy}
-            onClick={() =>
-              run(async () => {
-                await flushFrame();
-                await api('events/' + active.id + '/close', {
-                  day,
-                  counts: { drawer: +counted, initial: +initial },
-                  expenses: +expenses,
-                  notes: closeNotes,
-                });
-                setClosings(await api('events/' + active.id + '/close'));
-                setCloseDialog(false);
-                setNotice('日結紀錄已保存');
-              })
-            }
-          >
-            確認保存日結
-          </Button>
-        </DialogContent>
-      </Dialog>
       {camera && (
         <Camera
+          feedback={scanFeedback}
           onClose={() => setCamera(false)}
           onScan={(code) =>
             frame.current?.contentWindow?.postMessage(

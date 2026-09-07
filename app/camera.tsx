@@ -7,38 +7,44 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ScanBarcode, Flashlight } from 'lucide-react';
+import { ScanBarcode, Flashlight, CheckCircle2, SearchX } from 'lucide-react';
+import { createScanGate } from '@/lib/pos-core.mjs';
 export default function Camera({
   onScan,
   onClose,
+  feedback,
 }: {
   onScan: (code: string) => void;
   onClose: () => void;
+  feedback: { ok: boolean; text: string; code: string; at: number } | null;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const [message, setMessage] = useState('正在開啟相機…');
   const [torch, setTorch] = useState(false);
   const track = useRef<MediaStreamTrack | null>(null);
   const scan = useRef(onScan);
+  const [flash, setFlash] = useState(false);
+  const [added, setAdded] = useState(0);
   scan.current = onScan;
+  useEffect(() => {
+    if (!feedback) return;
+    setMessage(feedback.text);
+    setFlash(true);
+    if (feedback.ok) setAdded((n) => n + 1);
+    navigator.vibrate?.(feedback.ok ? 40 : [60, 40, 60]);
+    const timer = setTimeout(() => setFlash(false), 1000);
+    return () => clearTimeout(timer);
+  }, [feedback]);
   useEffect(() => {
     let stopped = false,
       controls: any,
       stream: MediaStream;
-    let last = '',
-      lastSeen = 0;
+    const scanGate = createScanGate();
     let timer: ReturnType<typeof setTimeout>;
     const accept = (code: string) => {
-      const now = Date.now();
-      if (code === last && now - lastSeen < 1000) {
-        lastSeen = now;
-        return;
-      }
-      last = code;
-      lastSeen = now;
+      if (!scanGate(code)) return;
       scan.current(code);
-      setMessage('已掃描 ' + code);
-      navigator.vibrate?.(40);
+      setMessage('正在比對 ' + code);
     };
     (async () => {
       try {
@@ -140,8 +146,29 @@ export default function Camera({
           <ScanBarcode /> 連續掃描
         </DialogTitle>
         <DialogDescription>整個畫面都能辨識，無須對準細線。</DialogDescription>
-        <video ref={video} playsInline muted className="camera-video" />
-        <p role="status">{message}</p>
+        <div
+          className="camera-viewport"
+          data-result={flash ? (feedback?.ok ? 'success' : 'error') : ''}
+        >
+          <video ref={video} playsInline muted className="camera-video" />
+          {flash && feedback && (
+            <div key={feedback.at} className="camera-feedback">
+              {feedback.ok ? <CheckCircle2 /> : <SearchX />}
+              <b>
+                {feedback.ok
+                  ? '已加入商品'
+                  : feedback.text.startsWith('查無商品')
+                    ? '查無商品'
+                    : '暫時無法加入'}
+              </b>
+              <span>{feedback.code}</span>
+            </div>
+          )}
+          <span className="camera-count">已加入 {added} 次</span>
+        </div>
+        <p className="camera-status" role="status">
+          {message}
+        </p>
         <Button
           variant="outline"
           onClick={async () => {
