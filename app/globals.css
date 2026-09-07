@@ -1436,3 +1436,314 @@ html[data-audience='church'] {
     animation: none;
   }
 }
+.event-switcher {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 12px;
+  max-width: 580px;
+}
+.event-switcher > label {
+  white-space: nowrap;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.event-switcher > [data-slot='select-trigger'] {
+  flex: 1;
+  min-width: 0;
+}
+.register-loading {
+  color: var(--muted-foreground);
+  padding: 18px 0;
+  font-size: 14px;
+}
+.stock-readonly {
+  margin-top: 22px;
+}
+.stock-readonly .panel > p {
+  margin-bottom: 18px;
+}
+.shipment-filters {
+  display: grid;
+  grid-template-columns: 1fr 170px 1.2fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.shipment-filters label {
+  margin: 0;
+}
+.shipment-filters input,
+.shipment-filters [data-slot='select-trigger'] {
+  margin-top: 8px;
+  width: 100%;
+}
+.shipment-list {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.shipment-list article {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px;
+  border-bottom: 1px solid var(--border);
+}
+.shipment-list article:last-child {
+  border-bottom: 0;
+}
+.shipment-list article > svg {
+  color: var(--pos-brand);
+  flex-shrink: 0;
+}
+.shipment-main {
+  min-width: 0;
+  flex: 1;
+}
+.shipment-main button {
+  text-align: left;
+  min-height: 32px;
+  font-size: 17px;
+  color: var(--pos-brand);
+}
+.shipment-main p {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  margin: 4px 0;
+}
+.shipment-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 450px;
+}
+.shipment-total {
+  text-align: right;
+  white-space: nowrap;
+}
+.shipment-total strong {
+  font-variant-numeric: tabular-nums;
+}
+.shipment-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.order-editor-dialog {
+  max-width: 780px !important;
+  width: calc(100% - 32px) !important;
+  padding: 28px !important;
+  max-height: 94dvh;
+  overflow: auto;
+}
+.order-editor-dialog [data-slot='dialog-title'] {
+  font-size: 22px;
+}
+.order-editor-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  margin: 8px 0;
+}
+.order-editor-dialog fieldset {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+}
+.order-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.order-search-row > svg {
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+.order-search-results {
+  max-height: 240px;
+  overflow: auto;
+  padding: 8px 0;
+}
+.order-search-results > button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.order-search-results > button:hover {
+  background: var(--secondary);
+}
+.order-search-results b {
+  font-size: 14px;
+}
+.order-edit-items {
+  margin-top: 20px;
+}
+.order-edit-item {
+  border-top: 1px solid var(--border);
+  padding: 18px 0;
+}
+.order-item-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.order-item-heading > span {
+  flex: 1;
+  min-width: 0;
+}
+.order-item-heading b {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.order-item-heading small {
+  margin-top: 5px;
+}
+.order-item-heading [data-slot='button'] {
+  padding-inline: 10px;
+}
+.order-item-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 100px;
+  align-items: end;
+  gap: 12px;
+}
+.order-item-fields label {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+.order-item-fields input {
+  margin-top: 6px;
+}
+.order-item-fields > span {
+  padding-bottom: 8px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.order-item-fields strong {
+  display: block;
+  font-size: 18px;
+  color: var(--foreground);
+  margin-top: 8px;
+}
+.order-payment-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.order-payment-row > label {
+  margin-bottom: 0;
+}
+.order-payment-row input {
+  margin-top: 8px;
+}
+.order-change-note {
+  margin: 16px 0 4px;
+  font-size: 13px;
+}
+.order-editor-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  background: white;
+}
+.order-editor-footer > span {
+  margin-right: auto;
+  font-size: 13px;
+}
+.order-editor-footer strong {
+  display: block;
+  color: var(--pos-brand);
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 750px) {
+  .event-switcher {
+    display: block;
+  }
+  .event-switcher > label {
+    margin-bottom: 6px;
+  }
+  .event-switcher > [data-slot='select-trigger'] {
+    width: 100%;
+  }
+  .shipment-filters {
+    grid-template-columns: 1fr 150px;
+    gap: 12px;
+  }
+  .shipment-filters > label:last-child {
+    grid-column: 1/-1;
+  }
+  .shipment-list article {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 18px 14px;
+  }
+  .shipment-list article > svg {
+    display: none;
+  }
+  .shipment-main {
+    grid-column: 1/-1;
+  }
+  .shipment-total {
+    text-align: left;
+  }
+  .shipment-actions {
+    flex-direction: row;
+    gap: 4px;
+  }
+  .shipment-actions [data-slot='button'] {
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+  .order-editor-dialog {
+    padding: 18px !important;
+    width: calc(100% - 20px) !important;
+  }
+  .order-editor-dialog [data-slot='dialog-title'] {
+    font-size: 18px;
+    padding-right: 20px;
+  }
+  .order-item-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .order-item-fields > span {
+    grid-column: 1/-1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0;
+  }
+  .order-item-fields strong {
+    margin: 0;
+  }
+  .order-item-heading [data-slot='button'] {
+    padding-inline: 6px;
+    font-size: 12px;
+  }
+  .order-editor-footer {
+    flex-wrap: wrap;
+  }
+  .order-editor-footer > span {
+    width: 100%;
+  }
+  .order-editor-footer strong {
+    float: right;
+  }
+  .order-editor-footer [data-slot='button'] {
+    flex: 1;
+  }
+}

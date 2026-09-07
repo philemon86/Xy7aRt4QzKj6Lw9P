@@ -1,4 +1,10 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import {
+  sqliteTable,
+  text,
+  integer,
+  primaryKey,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 export const events = sqliteTable('events', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -50,3 +56,21 @@ export const shop = sqliteTable('shop', {
   code: text('code').primaryKey(),
   data: text('data').notNull(),
 });
+export const orderNumbers = sqliteTable(
+  'order_numbers',
+  {
+    event: text('event').notNull(),
+    orderId: text('order_id').notNull(),
+    scope: text('scope').notNull(),
+    day: text('day').notNull(),
+    sequence: integer('sequence').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.event, table.orderId] }),
+    uniqueIndex('idx_order_numbers_scope_day_sequence').on(
+      table.scope,
+      table.day,
+      table.sequence,
+    ),
+  ],
+);

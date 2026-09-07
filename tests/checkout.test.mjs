@@ -18,6 +18,7 @@ function make({ amount = 899, quantity = 1, fail = false } = {}) {
     input = () => ({ value: '', focus: no });
   const buttons = [];
   const context = {
+    isBookstore: true,
     cart: [
       { code: 'C296', name: '見證集', price: amount, quantity, discount: 100 },
     ],

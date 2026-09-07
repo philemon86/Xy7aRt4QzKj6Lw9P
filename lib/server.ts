@@ -3,6 +3,7 @@ import catalog from '../data/catalog.json';
 import initialShop from '../data/shop-cache.json';
 import { mergeChanges, validateOrder, stats } from './state.mjs';
 import { parseShop } from './shop.mjs';
+import { formatOrderNumber, orderDay, validateRoleChange } from './orders.mjs';
 type Session = { role: string; tenant: string; token: string };
 const db = () => env.DB;
 const enc = new TextEncoder();
@@ -84,6 +85,76 @@ async function event(id: string, s: Session) {
     throw error('找不到書展', 404);
   return e;
 }
+function userInfo(s: Session) {
+  return {
+    role: s.role,
+    tenant: s.tenant,
+    name:
+      s.role === 'admin'
+        ? '腓利門書房'
+        : catalog.customers.find((c) => c.code.toLowerCase() === s.tenant)
+            ?.name,
+  };
+}
+async function listEvents(s: Session) {
+  const rows = await (
+    s.role === 'admin'
+      ? db().prepare('SELECT * FROM events ORDER BY date DESC,updated DESC')
+      : db()
+          .prepare(
+            'SELECT * FROM events WHERE tenant=? ORDER BY date DESC,updated DESC',
+          )
+          .bind(s.tenant)
+  ).all<any>();
+  return rows.results.map(({ state, ...meta }) => ({
+    ...meta,
+    ...stats(JSON.parse(state)),
+  }));
+}
+async function numbersFor(e: any, state: Record<string, any>) {
+  const existing = await db()
+    .prepare('SELECT order_id,day,sequence FROM order_numbers WHERE event=?')
+    .bind(e.id)
+    .all<any>();
+  const known = new Set(existing.results.map((r) => r.order_id));
+  const missing = Object.entries(state)
+    .filter(([k, v]) => k.startsWith('order:') && v && !known.has(v.id))
+    .map(([, v]) => v)
+    .sort((a, b) =>
+      String(a.createdAt || a.id).localeCompare(String(b.createdAt || b.id)),
+    );
+  // Each INSERT allocates from the same tenant/day index in one atomic SQLite statement.
+  // The mapping survives deletes and retries, including a lost HTTP response.
+  for (let offset = 0; offset < missing.length; offset += 80) {
+    await db().batch(
+      missing.slice(offset, offset + 80).map((order) => {
+        const day = orderDay(order),
+          scope = e.tenant || 'mon';
+        return db()
+          .prepare(
+            'INSERT INTO order_numbers(event,order_id,scope,day,sequence) SELECT ?,?,?,?,COALESCE(MAX(sequence),0)+1 FROM order_numbers WHERE scope=? AND day=? ON CONFLICT(event,order_id) DO NOTHING',
+          )
+          .bind(e.id, order.id, scope, day, scope, day);
+      }),
+    );
+  }
+  const rows = missing.length
+    ? (
+        await db()
+          .prepare(
+            'SELECT order_id,day,sequence FROM order_numbers WHERE event=?',
+          )
+          .bind(e.id)
+          .all<any>()
+      ).results
+    : existing.results;
+  return Object.fromEntries(
+    rows.map((r) => [
+      r.order_id,
+      formatOrderNumber(e.tenant, r.day, r.sequence),
+    ]),
+  );
+}
 async function getCatalog(s: Session) {
   const rows = await db().prepare('SELECT code,data FROM shop').all<any>();
   const web = {
@@ -163,6 +234,53 @@ export async function handle(req: Request, parts: string[]) {
     });
   }
   const s = await session(req);
+  if (route === 'bootstrap') {
+    const [events, catalog] = await Promise.all([listEvents(s), getCatalog(s)]);
+    return json({ me: userInfo(s), events, catalog });
+  }
+  if (route === 'shipments') {
+    isAdmin(s);
+    const tenant = new URL(req.url).searchParams.get('tenant');
+    const rows = await (
+      tenant && tenant !== 'all'
+        ? db()
+            .prepare('SELECT * FROM events WHERE tenant=? ORDER BY date DESC')
+            .bind(tenant === 'mon' ? '' : tenant.toLowerCase())
+        : db().prepare('SELECT * FROM events ORDER BY date DESC')
+    ).all<any>();
+    const shipments = [];
+    for (const e of rows.results) {
+      const state = JSON.parse(e.state),
+        numbers = await numbersFor(e, state);
+      for (const [key, o] of Object.entries(state) as any)
+        if (key.startsWith('order:'))
+          shipments.push({
+            id: o.id,
+            event: e.id,
+            eventName: e.name,
+            tenant: e.tenant,
+            number: numbers[o.id],
+            createdAt: o.createdAt,
+            day: orderDay(o),
+            amount: o.amount,
+            paymentMethod: o.paymentMethod,
+            isValid: o.isValid,
+            summary: o.items
+              .map((i: any) => i.name)
+              .slice(0, 3)
+              .join('、'),
+            quantity: o.items.reduce((n: number, i: any) => n + i.quantity, 0),
+          });
+    }
+    return json(
+      shipments.sort(
+        (a, b) =>
+          String(b.createdAt || b.day).localeCompare(
+            String(a.createdAt || a.day),
+          ) || b.number.localeCompare(a.number),
+      ),
+    );
+  }
   if (route === 'me')
     return json({
       role: s.role,
@@ -209,21 +327,7 @@ export async function handle(req: Request, parts: string[]) {
   }
   if (route === 'events' && !id) {
     if (req.method === 'GET') {
-      const result = await (
-        s.role === 'admin'
-          ? db().prepare('SELECT * FROM events ORDER BY date DESC,updated DESC')
-          : db()
-              .prepare(
-                'SELECT * FROM events WHERE tenant=? ORDER BY date DESC,updated DESC',
-              )
-              .bind(s.tenant)
-      ).all<any>();
-      return json(
-        result.results.map((e) => {
-          const { state, ...meta } = e;
-          return { ...meta, ...stats(JSON.parse(state)) };
-        }),
-      );
+      return json(await listEvents(s));
     }
     const tenant =
       s.role === 'admin' ? String(b.tenant || '').toLowerCase() : s.tenant;
@@ -258,16 +362,29 @@ export async function handle(req: Request, parts: string[]) {
   }
   if (route === 'events' && id) {
     const e = await event(id, s);
-    if (req.method === 'GET' && !action)
-      return json({ ...e, state: JSON.parse(e.state) });
+    if (req.method === 'GET' && !action) {
+      const state = JSON.parse(e.state);
+      return json({
+        ...e,
+        state,
+        numbers: await numbersFor(e, state),
+        permissions: {
+          manageStock: s.role === 'admin',
+          export: s.role === 'admin',
+          role: s.role,
+        },
+      });
+    }
     if (action === 'sync') {
       if (e.status !== 'open')
         throw error('此書展已封存，請由書房重新開啟', 409);
       if (!Array.isArray(b.changes) || b.changes.length > 1000)
         throw error('更新格式錯誤');
+      const originalState = JSON.parse(e.state);
       for (const p of b.changes) {
         if (!/^(order:|draft:|stock:|shared:)/.test(p.key))
           throw error('無效欄位');
+        validateRoleChange(s.role, s.tenant, p, originalState[p.key]);
         if (p.key.startsWith('order:') && p.after != null) {
           validateOrder(p.after);
           if (p.key !== 'order:' + p.after.id) throw error('訂單編號不符');
@@ -306,12 +423,17 @@ export async function handle(req: Request, parts: string[]) {
           )
           .run();
         if (r.meta.changes)
-          return json({ revision: current.revision + 1, state: next });
+          return json({
+            revision: current.revision + 1,
+            state: next,
+            numbers: await numbersFor(current, next),
+          });
       }
       throw error('資料忙碌，請重試', 409);
     }
     if (action === 'archive') {
       isAdmin(s);
+      if (req.method !== 'POST') throw error('請使用 POST', 405);
       await db()
         .prepare('UPDATE events SET status=?,updated=? WHERE id=?')
         .bind(b.open ? 'open' : 'archived', new Date().toISOString(), id)
@@ -319,6 +441,7 @@ export async function handle(req: Request, parts: string[]) {
       return json({ ok: true });
     }
     if (action === 'close') {
+      isAdmin(s);
       if (req.method === 'GET')
         return json(
           (
@@ -370,10 +493,12 @@ export async function handle(req: Request, parts: string[]) {
         .run();
       return json({ ok: true, snapshot: snap });
     }
-    if (action === 'backup')
+    if (action === 'backup') {
+      isAdmin(s);
       return json({
         version: 2,
         event: e,
+        numbers: await numbersFor(e, JSON.parse(e.state)),
         closings: (
           await db()
             .prepare('SELECT * FROM closings WHERE event=?')
@@ -387,7 +512,9 @@ export async function handle(req: Request, parts: string[]) {
             .all()
         ).results,
       });
+    }
     if (action === 'eri') {
+      isAdmin(s);
       if (!Number.isSafeInteger(b.count) || b.count < 1 || b.count > 100000)
         throw error('ERI 申請數量不合法');
       const count = Math.max(100, b.count);

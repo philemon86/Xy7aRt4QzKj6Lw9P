@@ -980,7 +980,7 @@
       <div class="history-summary-box">
         <div class="summary-header">
           <span class="summary-title">歷史訂單</span>
-          <span class="summary-actions">(作廢 / 刪除 / 修改付款)</span>
+          <span class="summary-actions">(刪除 / 修改內容)</span>
         </div>
         <div class="summary-kpi-row">
           <div class="kpi-item">
@@ -2118,8 +2118,10 @@
     const ACCOUNTING_MAPPING = {}; // 方案A直接讀系統檔，這裡先清空避免干擾
 
     document.addEventListener('DOMContentLoaded', async () => {
-      let cloud; try { cloud=await window.makeCloud(); } catch(error) { document.body.textContent=error.message; return; }
+      let cloud; try { cloud=await window.makeCloud(); } catch(error) { document.body.textContent=error.message; parent.postMessage({type:'register-error'},location.origin); return; }
       const localStorage=cloud.storage;
+      const isBookstore=cloud.me.role==='admin';
+      const displayOrderNumber=order=>cloud.numbers[order?.id] || '正在編號';
 
       const PilotExporter = window.PilotExporter;
       if (!PilotExporter) throw new Error('PilotExporter inline bootstrap failed');
@@ -2978,11 +2980,12 @@ const handleCulturalCoinCheckout = () => {
   if (coinAmount > totalAmount) { alert("文化幣金額不能大於訂單總額！"); POSAudio.error(); coinAmount = totalAmount; }
 
   const cashAmount = totalAmount - coinAmount;
+  const remainderMethod=isBookstore?'現金':'LINE PAY';
 
   let methodStr = "";
-  if (cashAmount > 0 && coinAmount > 0) methodStr = `文化幣(${coinAmount}) + 現金(${cashAmount})`;
+  if (cashAmount > 0 && coinAmount > 0) methodStr = `文化幣(${coinAmount}) + ${remainderMethod}(${cashAmount})`;
   else if (coinAmount > 0 && cashAmount === 0) methodStr = `文化幣全額(${coinAmount})`;
-  else methodStr = `現金(${totalAmount})`;
+  else methodStr = `${remainderMethod}(${totalAmount})`;
 
   triggerButtonAnimation(btnF9);
   performCheckout(methodStr, true);
@@ -3021,7 +3024,7 @@ const handleCulturalCoinCheckout = () => {
           <div class="receipt-title">腓利門書房</div>
 
           <div class="receipt-meta">日期：${dt}</div>
-          <div class="receipt-meta">單號：${client.id}</div>
+          <div class="receipt-meta">出貨單號：${displayOrderNumber(client)}</div>
           <div class="receipt-meta">付款：${client.paymentMethod || '現金'}</div>
           <div class="receipt-meta">Pilot 客戶：${formatCustomerOption(accountingCustomer)}</div>
           ${invoiceLines.map(line => `<div class="receipt-meta">${line}</div>`).join('')}
@@ -3181,6 +3184,7 @@ const handleCulturalCoinCheckout = () => {
       let checkoutBusy=false;
       const performCheckout = async (paymentMethod, isComposite = false) => {
         if(checkoutBusy || cloud.event.status!=='open')return;
+        if(!isBookstore && /信用卡|現金/.test(paymentMethod)){alert('教會僅開放文化幣與 LINE PAY');return;}
         if (cart.length === 0) {
           if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
           return;
@@ -3259,7 +3263,7 @@ const handleCulturalCoinCheckout = () => {
 
         // 每 20 筆訂單自動存檔 + 匯出會計檔
         const validCount = Object.values(clients).filter(c => c && c.isValid).length;
-        if (validCount > 0 && validCount % 20 === 0) {
+        if (isBookstore && validCount > 0 && validCount % 20 === 0) {
           doBackup();
           exportPilot();
         }
@@ -3599,7 +3603,7 @@ scanForm.addEventListener('submit', (e) => {
         let tempOverall = {};
         let tempSysCash = 0;
 
-        Object.values(clients).sort((a,b) => b.id.localeCompare(a.id)).forEach(client => {
+        Object.values(clients).sort((a,b) => String(b.createdAt||b.id).localeCompare(String(a.createdAt||a.id))).forEach(client => {
           const row = document.createElement('tr');
           const method = client.paymentMethod || '現金';
 
@@ -3624,11 +3628,11 @@ scanForm.addEventListener('submit', (e) => {
 
           const noteClass = (client.note || formatInvoiceInfoInline(client.invoiceInfo)) ? 'client-link has-note' : 'client-link';
           row.innerHTML = `
-            <td><a href="#" class="${noteClass}" data-client-id="${client.id}">${client.id}</a> ${!client.isValid ? '(已作廢)' : ''}</td>
+            <td><a href="#" class="${noteClass}" data-client-id="${client.id}">${displayOrderNumber(client)}</a> ${!client.isValid ? '(已作廢)' : ''}</td>
             <td>${Math.round(client.amount)}</td>
-            <td><button class="btn-change-pay" data-client-id="${client.id}">${method}</button></td>
+            <td>${method}</td>
             <td class="btn-action-group">
-              ${client.isValid ? `<button class="btn-void" data-client-id="${client.id}">作廢</button>` : `<button class="btn-void" data-client-id="${client.id}">復原</button>`}
+              <button class="btn-edit-order" data-client-id="${client.id}">修改</button>
               <button class="btn-del" data-client-id="${client.id}">刪除</button>
             </td>
           `;
@@ -3663,44 +3667,47 @@ scanForm.addEventListener('submit', (e) => {
         attachHistoryEvents();
       };
 
-      const attachHistoryEvents = () => {
-        document.querySelectorAll('.btn-change-pay').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            const clientId = e.target.dataset.clientId;
-            const client = clients[clientId];
-            if (!client.isValid) return alert("已作廢訂單無法修改");
-            openPaymentModal(clientId);
-          });
-        });
-
-        document.querySelectorAll('.btn-void').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            const clientId = e.target.dataset.clientId;
-            clients[clientId].isValid = !clients[clientId].isValid;
-            saveSummary();
-            updateSummaryTable();
-          });
-        });
-
-        document.querySelectorAll('.btn-del').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            const clientId = e.target.dataset.clientId;
-            if (confirm('確定刪除此筆訂單？雲端修訂紀錄會保留。')) {
-              delete clients[clientId];
-              saveSummary();
-              updateSummaryTable();
-            }
-          });
-        });
-
-        document.querySelectorAll('.client-link').forEach(link => {
-          link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const clientId = e.target.dataset.clientId;
-            showClientDetails(clientId);
-          });
-        });
-      };
+const attachHistoryEvents = () => {
+  document.querySelectorAll('.btn-edit-order').forEach((button) => {
+    button.disabled = cloud.event.status !== 'open';
+    button.onclick = () =>
+      parent.postMessage(
+        { type: 'edit-order', id: button.dataset.clientId },
+        location.origin,
+      );
+  });
+  document.querySelectorAll('.btn-del').forEach((button) => {
+    button.disabled = cloud.event.status !== 'open';
+    button.onclick = async () => {
+      const id = button.dataset.clientId;
+      if (
+        !confirm(
+          '刪除出貨單 ' +
+            displayOrderNumber(clients[id]) +
+            '？原內容仍保留於書房的修訂紀錄。',
+        )
+      )
+        return;
+      button.disabled = true;
+      try {
+        await cloud.flush();
+        delete clients[id];
+        saveSummary();
+        await cloud.flush();
+        updateSummaryTable();
+      } catch (error) {
+        alert('刪除尚未完成：' + error.message);
+        button.disabled = false;
+      }
+    };
+  });
+  document.querySelectorAll('.client-link').forEach((link) => {
+    link.onclick = (e) => {
+      e.preventDefault();
+      showClientDetails(link.dataset.clientId);
+    };
+  });
+};
 
       window.openPaymentModal = (clientId) => {
         editingClientId = clientId;
@@ -3752,7 +3759,7 @@ scanForm.addEventListener('submit', (e) => {
         const accountingCustomer = client.accountingCustomer || BOOK_FAIR_CUSTOMER;
         const bookFairCustomer = customerMap[client.bookFairCustomerCode] || null;
         const header = [
-          `訂單：${clientId} ${!client.isValid ? '(已作廢)' : ''}`,
+          `出貨單：${displayOrderNumber(client)} ${!client.isValid ? '(已作廢)' : ''}`,
           `付款方式：${method}`,
           `Pilot 客戶：${formatCustomerOption(accountingCustomer)}`,
           `本場書展教會：${bookFairCustomer ? formatCustomerOption(bookFairCustomer) : '未保存'}`,
@@ -3964,6 +3971,7 @@ scanForm.addEventListener('submit', (e) => {
 
 // ===== 你原本匯出 CSV（保留）=====
 exportCsvBtn.addEventListener('click', async () => {
+  if(!isBookstore){alert('請由書房匯出');return;}
   try {
     updateSummaryTable();
     const notes = localStorage.getItem('notes') || '無備註';
@@ -3980,9 +3988,9 @@ exportCsvBtn.addEventListener('click', async () => {
     };
 
     const summaryRows = [
-      ['訂單編號', 'Pilot 客戶代號', 'Pilot 客戶名稱', '消費金額', '付款方式', '捐贈', '載具', '統編', '狀態', '備註', '訂單資料'],
+      ['出貨單號', 'Pilot 客戶代號', 'Pilot 客戶名稱', '消費金額', '付款方式', '捐贈', '載具', '統編', '狀態', '備註', '訂單資料'],
       ...Object.values(clients).map(client => ([
-        `${client.id}`,
+        `${displayOrderNumber(client)}`,
         client.accountingCustomer?.code || BOOK_FAIR_CUSTOMER.code,
         client.accountingCustomer?.name || BOOK_FAIR_CUSTOMER.name,
         Math.round(client.amount),
@@ -4021,11 +4029,11 @@ exportCsvBtn.addEventListener('click', async () => {
 
     const detailsRows = [
       ['詳細內容：'],
-      ['訂單編號', 'Pilot 客戶代號', 'Pilot 客戶名稱', '付款方式', '捐贈', '載具', '統編', '商品名稱', '數量', '單價', '折扣', '小計', '狀態', '備註', '訂單資料'],
+      ['出貨單號', 'Pilot 客戶代號', 'Pilot 客戶名稱', '付款方式', '捐贈', '載具', '統編', '商品名稱', '數量', '單價', '折扣', '小計', '狀態', '備註', '訂單資料'],
       ...Object.values(clients).flatMap(client =>
         (client.items || []).map(item => {
           return [
-            `${client.id}`,
+            `${displayOrderNumber(client)}`,
             client.accountingCustomer?.code || BOOK_FAIR_CUSTOMER.code,
             client.accountingCustomer?.name || BOOK_FAIR_CUSTOMER.name,
             client.paymentMethod || '現金',
@@ -4110,6 +4118,7 @@ const buildPilotExportFile = (rows, filename) => {
 };
 
 async function exportPilot(options = {}) {
+  if(!isBookstore){alert('請由書房匯出');return;}
   await cloud.flush(); await cloud.reserve(1024+Object.values(clients).reduce((s,c)=>s+(c.items||[]).length*12,0));
   try {
     const result = PilotExporter.buildPilotExport({
@@ -4174,6 +4183,8 @@ repairStoredZeroAmountClients();
 loadMasterData().then(() => {
   const groups=[...document.querySelectorAll('body > .flex-container')];groups.forEach((el,i)=>el.dataset.section=['checkout','history','accounting','exports'][i]);
   document.body.dataset.audience=cloud.event.tenant?'church':'bookstore';
+  document.body.dataset.role=cloud.me.role;
+  if(!isBookstore){btnF7.hidden=true;btnF10.hidden=true;document.querySelector('.payment-details').hidden=true;document.querySelector('[data-section="exports"]').hidden=true;document.querySelector('#pay-cash').closest('.pay-badge').hidden=true;document.querySelector('#pay-credit').closest('.pay-badge').hidden=true;}
   document.querySelector('#title').textContent='加入商品';
   document.querySelector('#current-date').closest('.header').hidden=true;
   document.querySelector('label[for="product-code"]').textContent='掃條碼，或輸入名稱、代碼';

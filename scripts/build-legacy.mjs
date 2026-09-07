@@ -24,7 +24,7 @@ html = html
   .replace('</head>', '<link rel="stylesheet" href="/checkout.css"></head>');
 html = html.replace(
   "document.addEventListener('DOMContentLoaded', () => {",
-  "document.addEventListener('DOMContentLoaded', async () => {\n      let cloud; try { cloud=await window.makeCloud(); } catch(error) { document.body.textContent=error.message; return; }\n      const localStorage=cloud.storage;\n",
+  "document.addEventListener('DOMContentLoaded', async () => {\n      let cloud; try { cloud=await window.makeCloud(); } catch(error) { document.body.textContent=error.message; parent.postMessage({type:'register-error'},location.origin); return; }\n      const localStorage=cloud.storage;\n      const isBookstore=cloud.me.role==='admin';\n      const displayOrderNumber=order=>cloud.numbers[order?.id] || '正在編號';\n",
 );
 const loadStart = html.indexOf('      const loadMasterData = async () => {');
 const loadEnd = html.indexOf('      const getSpecialDiscount', loadStart);
@@ -89,7 +89,7 @@ html = html.replace(
 );
 html = html.replace(
   '      const performCheckout = (paymentMethod, isComposite = false) => {',
-  "      let checkoutBusy=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy || cloud.event.status!=='open')return;",
+  "      let checkoutBusy=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy || cloud.event.status!=='open')return;\n        if(!isBookstore && /信用卡|現金/.test(paymentMethod)){alert('教會僅開放文化幣與 LINE PAY');return;}",
 );
 html = html.replace(
   '        POSAudio.success();\n\n        clients[clientId] = {',
@@ -116,7 +116,67 @@ html =
   html.slice(eriEnd);
 html = html.replace(
   'async function exportPilot(options = {}) {',
-  'async function exportPilot(options = {}) {\n  await cloud.flush(); await cloud.reserve(1024+Object.values(clients).reduce((s,c)=>s+(c.items||[]).length*12,0));',
+  "async function exportPilot(options = {}) {\n  if(!isBookstore){alert('請由書房匯出');return;}\n  await cloud.flush(); await cloud.reserve(1024+Object.values(clients).reduce((s,c)=>s+(c.items||[]).length*12,0));",
+);
+// Keep internal IDs and Pilot ERI intact; human-facing shipment numbers come from D1.
+html = html.replaceAll(
+  '單號：${client.id}',
+  '出貨單號：${displayOrderNumber(client)}',
+);
+html = html.replaceAll(
+  '>${client.id}</a>',
+  '>${displayOrderNumber(client)}</a>',
+);
+html = html.replaceAll('`${client.id}`', '`${displayOrderNumber(client)}`');
+html = html.replace(
+  '訂單：${clientId}',
+  '出貨單：${displayOrderNumber(client)}',
+);
+html = html.replaceAll('訂單編號', '出貨單號');
+html = html.replace('(作廢 / 刪除 / 修改付款)', '(刪除 / 修改內容)');
+html = html.replace(
+  'Object.values(clients).sort((a,b) => b.id.localeCompare(a.id))',
+  'Object.values(clients).sort((a,b) => String(b.createdAt||b.id).localeCompare(String(a.createdAt||a.id)))',
+);
+html = html.replace(
+  '<td><button class="btn-change-pay" data-client-id="${client.id}">${method}</button></td>',
+  '<td>${method}</td>',
+);
+html = html
+  .split('\n')
+  .map((line) =>
+    line.includes('${client.isValid ? `<button class="btn-void"')
+      ? '              <button class="btn-edit-order" data-client-id="${client.id}">修改</button>'
+      : line,
+  )
+  .join('\n');
+const historyStart = html.indexOf('      const attachHistoryEvents = () => {');
+const historyEnd = html.indexOf('      window.openPaymentModal', historyStart);
+html =
+  html.slice(0, historyStart) +
+  read('scripts/register-history.js') +
+  '\n' +
+  html.slice(historyEnd);
+html = html.replace(
+  'if (validCount > 0 && validCount % 20 === 0)',
+  'if (isBookstore && validCount > 0 && validCount % 20 === 0)',
+);
+html = html.replace(
+  "exportCsvBtn.addEventListener('click', async () => {",
+  "exportCsvBtn.addEventListener('click', async () => {\n  if(!isBookstore){alert('請由書房匯出');return;}",
+);
+// Church split payments use LINE PAY for the remainder, while bookstore keeps its cash flow.
+html = html.replace(
+  '  const cashAmount = totalAmount - coinAmount;',
+  "  const cashAmount = totalAmount - coinAmount;\n  const remainderMethod=isBookstore?'現金':'LINE PAY';",
+);
+html = html.replace(
+  '`文化幣(${coinAmount}) + 現金(${cashAmount})`',
+  '`文化幣(${coinAmount}) + ${remainderMethod}(${cashAmount})`',
+);
+html = html.replace(
+  'else methodStr = `現金(${totalAmount})`;',
+  'else methodStr = `${remainderMethod}(${totalAmount})`;',
 );
 // Import remains available, but await durable storage before reload.
 html = html.replace(
@@ -159,6 +219,8 @@ html = html.replace(
   `loadMasterData().then(() => {
   const groups=[...document.querySelectorAll('body > .flex-container')];groups.forEach((el,i)=>el.dataset.section=['checkout','history','accounting','exports'][i]);
   document.body.dataset.audience=cloud.event.tenant?'church':'bookstore';
+  document.body.dataset.role=cloud.me.role;
+  if(!isBookstore){btnF7.hidden=true;btnF10.hidden=true;document.querySelector('.payment-details').hidden=true;document.querySelector('[data-section="exports"]').hidden=true;document.querySelector('#pay-cash').closest('.pay-badge').hidden=true;document.querySelector('#pay-credit').closest('.pay-badge').hidden=true;}
   document.querySelector('#title').textContent='加入商品';
   document.querySelector('#current-date').closest('.header').hidden=true;
   document.querySelector('label[for="product-code"]').textContent='掃條碼，或輸入名稱、代碼';

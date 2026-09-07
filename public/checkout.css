@@ -1118,3 +1118,26 @@ body[data-view='history'] [data-section='checkout'] {
     display: none !important;
   }
 }
+body[data-role='church'] .checkout-buttons-area {
+  grid-template-columns: repeat(2, 1fr);
+}
+body[data-role='church'] .checkout-btn {
+  background: var(--primary-btn) !important;
+  color: white !important;
+}
+.btn-edit-order {
+  background: var(--soft);
+  color: var(--primary-btn);
+  border: 0;
+  padding: 10px 14px;
+}
+.btn-action-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+@media (max-width: 600px) {
+  .btn-action-group {
+    flex-direction: column;
+  }
+}

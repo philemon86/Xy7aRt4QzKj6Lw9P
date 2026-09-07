@@ -81,8 +81,8 @@ const order = (id) => ({
     { code: 'C296', name: '見證集', price: 899, quantity: 1, discount: 100 },
   ],
   amount: 899,
-  paymentMethod: '現金',
-  paymentRecords: [{ method: '現金', amount: 899 }],
+  paymentMethod: 'LINE PAY',
+  paymentRecords: [{ method: 'LINE PAY', amount: 899 }],
   invoiceInfo: {},
   accountingCustomer: { code: '0002', name: '書展' },
   bookFairCustomerCode: '',
@@ -138,7 +138,7 @@ ok(
     await call(
       'events/' + a + '/sync',
       { changes: [{ key: 'stock:C296', before: null, after: -100 }] },
-      church,
+      admin,
     )
   ).status === 200,
   'Negative reference inventory accepted',
@@ -202,8 +202,8 @@ const voucher = {
   ...order('voucher'),
   items: [{ code: 'R', name: '折抵', price: -50, quantity: 1, discount: 100 }],
   amount: -50,
-  paymentMethod: '現金退款',
-  paymentRecords: [{ method: '現金', amount: -50 }],
+  paymentMethod: 'LINE PAY退款',
+  paymentRecords: [{ method: 'LINE PAY', amount: -50 }],
 };
 ok(
   (
@@ -215,6 +215,142 @@ ok(
   ).status === 200 &&
     (await call('events/' + a)).data.state['order:voucher'].amount === -50,
   'Negative unit-price adjustment persists with exact refund amount',
+);
+const boot = await call('bootstrap', undefined, church);
+ok(
+  boot.status === 200 &&
+    boot.data.me.role === 'church' &&
+    boot.data.events.every((e) => e.tenant === 'aa01') &&
+    boot.data.catalog.customers.length <= 3,
+  'Single bootstrap keeps the church scope',
+);
+const numbered = (await call('events/' + a)).data;
+const numberA = numbered.numbers.a,
+  numberB = numbered.numbers.b;
+ok(
+  /^AA010906-\d{3,}$/.test(numberA) &&
+    Math.abs(
+      Number(numberA.split('-').at(-1)) - Number(numberB.split('-').at(-1)),
+    ) === 1,
+  'Concurrent checkouts allocate consecutive human-readable numbers',
+);
+await call('events/' + a + '/sync', { changes: [patches[1]] }, church);
+ok(
+  (await call('events/' + a)).data.numbers.b === numberB,
+  'Retry preserves shipment number',
+);
+ok(
+  (
+    await call(
+      'events/' + a + '/sync',
+      { changes: [{ key: 'stock:C296', before: -100, after: 20 }] },
+      church,
+    )
+  ).status === 403,
+  'Church cannot change inventory through the API',
+);
+for (const method of ['現金', '信用卡']) {
+  const bad = {
+    ...order('forbidden-' + method),
+    paymentMethod: method,
+    paymentRecords: [{ method, amount: 899 }],
+  };
+  ok(
+    (
+      await call(
+        'events/' + a + '/sync',
+        { changes: [{ key: 'order:' + bad.id, before: null, after: bad }] },
+        church,
+      )
+    ).status === 403,
+    'Church cannot submit ' + method + ' payments',
+  );
+}
+ok(
+  (await call('shipments', undefined, church)).status === 403 &&
+    (await call('events/' + a + '/backup', undefined, church)).status === 403 &&
+    (await call('events/' + a + '/eri', { count: 100 }, church)).status === 403,
+  'Church cannot use cross-church shipment, backup or accounting export endpoints',
+);
+const beforeEdit = (await call('events/' + a)).data.state['order:a'];
+const afterEdit = {
+  ...beforeEdit,
+  items: [
+    { code: 'C291', name: '替換商品', price: 200, quantity: 3, discount: 80 },
+  ],
+  amount: 480,
+  paymentMethod: '文化幣(100) + LINE PAY(380)',
+  paymentRecords: [
+    { method: '文化幣', amount: 100 },
+    { method: 'LINE PAY', amount: 380 },
+  ],
+};
+ok(
+  (
+    await call(
+      'events/' + a + '/sync',
+      { changes: [{ key: 'order:a', before: beforeEdit, after: afterEdit }] },
+      church,
+    )
+  ).status === 200,
+  'Existing shipment contents and supported split payments can be revised',
+);
+const afterRecord = (await call('events/' + a)).data;
+ok(
+  afterRecord.numbers.a === numberA &&
+    afterRecord.state['order:a'].items[0].code === 'C291' &&
+    afterRecord.state['order:a'].amount === 480,
+  'Edited order retains its number and persists replacement items',
+);
+ok(
+  (
+    await call(
+      'events/' + a + '/sync',
+      {
+        changes: [
+          {
+            key: 'order:a',
+            before: beforeEdit,
+            after: { ...afterEdit, note: 'outdated' },
+          },
+        ],
+      },
+      church,
+    )
+  ).status === 409,
+  'Stale shipment editor cannot overwrite another change',
+);
+await call('events/' + b + '/sync', {
+  changes: [{ key: 'order:store', before: null, after: order('store') }],
+});
+ok(
+  /^mon0906-\d{3,}$/.test((await call('events/' + b)).data.numbers.store),
+  'Bookstore shipments use mon prefix',
+);
+const hub = await call('shipments?tenant=aa01');
+ok(
+  hub.status === 200 &&
+    hub.data.every((o) => o.tenant === 'aa01') &&
+    hub.data.some((o) => o.number === numberA),
+  'Bookstore can filter all church shipment records',
+);
+await call(
+  'events/' + a + '/sync',
+  { changes: [{ key: 'order:b', before: order('b'), after: null }] },
+  church,
+);
+await call(
+  'events/' + a + '/sync',
+  { changes: [{ key: 'order:next', before: null, after: order('next') }] },
+  church,
+);
+ok(
+  Number((await call('events/' + a)).data.numbers.next.split('-').at(-1)) >
+    Math.max(
+      Number(numberA.split('-').at(-1)),
+      Number(numberB.split('-').at(-1)),
+    ),
+  'Deleting a shipment never reuses its sequence',
 );
 await call('events/' + a + '/archive', {});
 ok(

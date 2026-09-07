@@ -58,6 +58,8 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import Camera from './camera';
+import OrderEditor from './order-editor';
+import Shipments from './shipments';
 import Calculator from './calculator';
 import { stats } from '@/lib/state.mjs';
 const money = (v: number) =>
@@ -109,7 +111,13 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     [view, setView] = useState('checkout'),
     [state, setState] = useState<any>({}),
     [currentCash, setCurrentCash] = useState(0),
-    [scanFeedback, setScanFeedback] = useState<any>(null);
+    [scanFeedback, setScanFeedback] = useState<any>(null),
+    [editTarget, setEditTarget] = useState<{
+      eventId: string;
+      orderId: string;
+    } | null>(null),
+    [orderVersion, setOrderVersion] = useState(0),
+    [registerLoading, setRegisterLoading] = useState(false);
   const [newEvent, setNewEvent] = useState(false),
     [eventName, setEventName] = useState(''),
     [eventDate, setEventDate] = useState(''),
@@ -132,32 +140,60 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
   const frame = useRef<HTMLIFrameElement>(null),
     viewRef = useRef(view),
     activeRef = useRef(active),
-    stopSync = useRef(false);
+    stopSync = useRef(false),
+    eventRecord = useRef<Promise<any> | null>(null),
+    catalogRef = useRef(catalog),
+    meRef = useRef(me);
+  catalogRef.current = catalog;
+  meRef.current = me;
+  useEffect(() => {
+    (window as any).POSRegisterBootstrap = async (eventId: string) => {
+      if (activeRef.current?.id !== eventId || !meRef.current)
+        throw Error('請從書展清單開啟收銀台');
+      return {
+        event: await eventRecord.current,
+        catalog: catalogRef.current,
+        me: meRef.current,
+      };
+    };
+    return () => {
+      delete (window as any).POSRegisterBootstrap;
+    };
+  }, []);
   viewRef.current = view;
   activeRef.current = active;
   async function load() {
-    const user = await api('me');
+    const boot = await api('bootstrap');
+    const user = boot.me,
+      es = boot.events,
+      cat = boot.catalog;
     if (tenant && user.tenant !== tenant) {
       await api('logout', {});
       throw Error('請使用此教會入口密碼登入');
     }
-    const [es, cat] = await Promise.all([api('events'), api('catalog')]);
     setEvents(es);
     setCatalog(cat);
     setMe(user);
+    setLoaded(true);
     if (user.role === 'admin') {
-      setChurches(await api('churches'));
-      const job = await api('sync-shop');
-      setSync(job);
-      const last =
-        job.finished ||
-        cat.products
-          .filter((p: any) => p.syncedAt)
-          .map((p: any) => p.syncedAt)
-          .sort()
-          .at(-1);
-      if (!last || Date.now() - new Date(last).getTime() > 24 * 3600000)
-        setTimeout(() => syncShop(!job.total || job.cursor >= job.total), 1500);
+      Promise.all([api('churches'), api('sync-shop')])
+        .then(([churches, job]) => {
+          setChurches(churches);
+          setSync(job);
+          const last =
+            job.finished ||
+            cat.products
+              .filter((p: any) => p.syncedAt)
+              .map((p: any) => p.syncedAt)
+              .sort()
+              .at(-1);
+          if (!last || Date.now() - new Date(last).getTime() > 24 * 3600000)
+            setTimeout(
+              () => syncShop(!job.total || job.cursor >= job.total),
+              1500,
+            );
+        })
+        .catch((e) => setError(e.message));
     }
   }
   useEffect(() => {
@@ -191,15 +227,23 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
         setCloudStatus(m.text);
         setCloudError(m.error);
       }
-      if (m.type === 'register-ready')
+      if (m.type === 'edit-order' && activeRef.current)
+        setEditTarget({ eventId: activeRef.current.id, orderId: m.id });
+      if (m.type === 'register-error') setRegisterLoading(false);
+      if (m.type === 'register-ready') {
+        setRegisterLoading(false);
         frame.current?.contentWindow?.postMessage(
           { type: 'view', view: viewRef.current },
           location.origin,
         );
-      if (m.type === 'saved') {
-        api('events').then(setEvents);
-        if (activeRef.current)
-          api('events/' + activeRef.current.id).then((r) => setState(r.state));
+      }
+      if (m.type === 'saved' && m.event === activeRef.current?.id && m.state) {
+        setState(m.state);
+        setEvents((list) =>
+          list.map((event) =>
+            event.id === m.event ? { ...event, ...stats(m.state) } : event,
+          ),
+        );
       }
     };
     window.addEventListener('message', listener);
@@ -216,12 +260,26 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       setBusy(false);
     }
   };
-  async function openEvent(e: any) {
-    const record = await api('events/' + e.id);
-    setState(record.state);
-    setCurrentCash(stats(record.state).payments['現金'] || 0);
+  async function openEvent(e: any, nextView = 'checkout') {
+    if (!e) return;
+    await flushFrame();
+    setRegisterLoading(true);
+    setState({});
+    setCurrentCash(0);
+    eventRecord.current = api('events/' + e.id);
+    eventRecord.current
+      .then((record) => {
+        if (activeRef.current?.id === e.id) {
+          setState(record.state);
+          setCurrentCash(stats(record.state).payments['現金'] || 0);
+        }
+      })
+      .catch((e) => {
+        setError(e.message);
+        setRegisterLoading(false);
+      });
     setActive(e);
-    setView('checkout');
+    setView(nextView);
   }
   function tab(v: any) {
     setView(v);
@@ -229,7 +287,10 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       { type: 'view', view: v },
       location.origin,
     );
-    if (active) api('events/' + active.id).then((r) => setState(r.state));
+    if (active) {
+      const cloud = (frame.current?.contentWindow as any)?.POSCloud;
+      if (cloud) setState(cloud.snapshot());
+    }
   }
   async function flushFrame() {
     const cloud = (frame.current?.contentWindow as any)?.POSCloud;
@@ -410,7 +471,12 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
             {[
               ['events', '書展銷售清單', CalendarDays],
               ['catalog', '商品資料', Package],
-              ...(me.role === 'admin' ? [['churches', '教會入口', Users]] : []),
+              ...(me.role === 'admin'
+                ? [
+                    ['shipments', '教會出貨單', ReceiptText],
+                    ['churches', '教會入口', Users],
+                  ]
+                : []),
             ].map(([key, label, Icon]: any) => (
               <SidebarMenuItem key={key}>
                 <SidebarMenuButton
@@ -474,7 +540,9 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   ? '書展管理'
                   : section === 'catalog'
                     ? '商品資料'
-                    : '教會入口'}
+                    : section === 'shipments'
+                      ? '教會出貨單'
+                      : '教會入口'}
             </span>
           </div>
           <span className={cloudError ? 'error connection' : 'connection'}>
@@ -527,6 +595,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                           });
                           const all = await api('events');
                           setEvents(all);
+                          eventRecord.current = api('events/' + active.id);
                           setActive(all.find((e: any) => e.id === active.id));
                           if (frame.current)
                             frame.current.src = frame.current.src;
@@ -553,6 +622,31 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   </Button>
                 </div>
               </div>
+              {me.role === 'admin' && (
+                <div className="event-switcher">
+                  <label>快速查看場次</label>
+                  <Select
+                    value={active.id}
+                    onValueChange={(id) => {
+                      const selected = events.find((e) => e.id === id);
+                      if (selected && id !== active.id)
+                        run(() => openEvent(selected, 'history'));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {events.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.tenant ? e.tenant.toUpperCase() : '書房'} ·{' '}
+                          {e.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <Tabs value={view} onValueChange={tab}>
                 <TabsList variant="line" className="work-tabs">
                   <TabsTrigger value="checkout">
@@ -569,6 +663,11 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
+              {registerLoading && (
+                <p role="status" className="register-loading">
+                  正在開啟收銀台…
+                </p>
+              )}
               <iframe
                 ref={frame}
                 title="書展收銀台"
@@ -582,52 +681,91 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 }}
               />
               {view === 'stock' && (
-                <div className="stock-layout">
+                <div
+                  className={
+                    me.role === 'admin' ? 'stock-layout' : 'stock-readonly'
+                  }
+                >
+                  {me.role === 'admin' && (
+                    <section className="panel">
+                      <h2>書房匯入與調整庫存</h2>
+                      <p className="muted">
+                        數量可以留白。缺貨或負數不會阻擋結帳。
+                      </p>
+                      <label>調整方式</label>
+                      <Select
+                        value={stockMode}
+                        onValueChange={(v) => setStockMode(v || 'add')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="add">加減現有數量</SelectItem>
+                          <SelectItem value="set">設定為輸入數量</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <label htmlFor="stock-file">匯入數量 CSV</label>
+                      <Input
+                        id="stock-file"
+                        type="file"
+                        accept=".csv,.txt"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            const text = await file.text();
+                            const lines = text
+                              .replace(/^\uFEFF/, '')
+                              .split(/\r?\n/)
+                              .filter(Boolean)
+                              .map((line) => line.replaceAll('"', '').trim());
+                            if (
+                              lines[0] &&
+                              /商品|code|qty|quantity/i.test(lines[0]) &&
+                              !/^\S+[,，\s]+-?\d+$/.test(lines[0])
+                            )
+                              lines.shift();
+                            setStock(lines.join('\n'));
+                            setNotice('數量已讀入，確認後按儲存數量');
+                          } catch {
+                            setError('檔案無法讀取，請使用商品代碼、數量兩欄');
+                          }
+                        }}
+                      />
+                      <label htmlFor="stock-input">
+                        商品代碼,數量 · 每行一筆
+                      </label>
+                      <textarea
+                        id="stock-input"
+                        value={stock}
+                        onChange={(e) => setStock(e.target.value)}
+                        placeholder={'C296,20\nC001,-2'}
+                        rows={8}
+                      />
+                      <Button
+                        className="primary"
+                        disabled={busy || active.status !== 'open'}
+                        onClick={() => run(updateStock)}
+                      >
+                        儲存數量
+                      </Button>
+                    </section>
+                  )}
                   <section className="panel">
-                    <h2>批次建立與調整</h2>
-                    <p className="muted">
-                      數量可以留白。缺貨或負數不會阻擋結帳。
-                    </p>
-                    <label>調整方式</label>
-                    <Select
-                      value={stockMode}
-                      onValueChange={(v) => setStockMode(v || 'add')}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="add">加減現有數量</SelectItem>
-                        <SelectItem value="set">設定為輸入數量</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <label htmlFor="stock-input">
-                      商品代碼,數量 · 每行一筆
-                    </label>
-                    <textarea
-                      id="stock-input"
-                      value={stock}
-                      onChange={(e) => setStock(e.target.value)}
-                      placeholder={'C296,20\nC001,-2'}
-                      rows={8}
-                    />
-                    <Button
-                      className="primary"
-                      disabled={busy || active.status !== 'open'}
-                      onClick={() => run(updateStock)}
-                    >
-                      儲存數量
-                    </Button>
-                  </section>
-                  <section className="panel">
-                    <h2>本場商品數量</h2>
+                    <h2>{me.role === 'admin' ? '本場商品數量' : '目前庫存'}</h2>
+                    {me.role !== 'admin' && (
+                      <p className="muted">
+                        由書房匯入，依有效出貨單即時扣減。
+                      </p>
+                    )}
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>商品</TableHead>
-                          <TableHead>配置</TableHead>
+                          <TableHead>書房匯入</TableHead>
                           <TableHead>售出</TableHead>
-                          <TableHead>參考剩餘</TableHead>
+                          <TableHead>目前庫存</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -660,7 +798,11 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                       <div className="empty">
                         <Package />
                         <h3>尚未建立商品數量</h3>
-                        <p>可直接開始結帳，之後再補上。</p>
+                        <p>
+                          {me.role === 'admin'
+                            ? '可直接開始結帳，之後再補上。'
+                            : '書房尚未匯入庫存；仍可正常結帳。'}
+                        </p>
                       </div>
                     )}
                   </section>
@@ -680,7 +822,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   }}
                 />
               )}
-              {view === 'history' && (
+              {view === 'history' && me.role === 'admin' && (
                 <Button
                   variant="outline"
                   onClick={() =>
@@ -808,6 +950,15 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 歷史場次持續保留。封存後可查詢，也可由書房重新開啟。
               </p>
             </>
+          ) : section === 'shipments' && me.role === 'admin' ? (
+            <Shipments
+              events={events}
+              customers={catalog.customers}
+              request={api}
+              version={orderVersion}
+              onEdit={setEditTarget}
+              onOpen={(e) => run(() => openEvent(e, 'history'))}
+            />
           ) : section === 'catalog' ? (
             <>
               <div className="page-heading">
@@ -1085,6 +1236,25 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           </form>
         </DialogContent>
       </Dialog>
+      {editTarget && (
+        <OrderEditor
+          target={editTarget}
+          catalog={catalog}
+          role={me.role}
+          request={api}
+          onClose={() => setEditTarget(null)}
+          onSaved={() => {
+            setOrderVersion((v) => v + 1);
+            setNotice('出貨單已更新');
+            run(async () => {
+              const cloud = (frame.current?.contentWindow as any)?.POSCloud;
+              if (active?.id === editTarget.eventId && cloud)
+                await cloud.refresh();
+              setEvents(await api('events'));
+            });
+          }}
+        />
+      )}
       {camera && (
         <Camera
           feedback={scanFeedback}

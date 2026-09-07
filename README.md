@@ -23,22 +23,28 @@
 
 日結介面改成純加減乘除計算機，可帶入本場有效交易的現金淨額，含混合付款與退款。計算不寫入交易。過去日結資料及備份相容 API 保留，完整場次備份仍可取得舊紀錄。
 
-商品數量可不建立；建立時每行 `商品代碼,數量`。支援加減與設定數量，剩餘量為配置減有效訂單數量，負庫存不阻擋收銀。
+商品數量由書房管理，可以上傳 CSV 或貼上每行 `商品代碼,數量`，支援加減與設定。教會只看配置、已售與目前數量，不能修改或匯入；伺服器也會拒絕教會修改庫存。庫存可以不建立，負庫存不阻擋收銀。
+
+書房的「教會出貨單」集中列出各場交易，可依教會、日期、商品或單號篩選，直接修改或切換至該場。教會只看自己的場次。教會收款僅提供文化幣、LINE PAY 及兩者混合；書房保留現金與信用卡。CSV、Pilot 與完整備份由書房操作。
+
+出貨單按台灣交易日期、教會代碼與當日筆數編號，例如 `AA010907-001`、書房 `mon0907-001`。同一教會跨書展共用每日流水號，由資料庫原子分配；修改保持原單號，刪除後不重用。年份保存在編號資料表，畫面單號依要求只顯示月日。
+
+交易列表提供「刪除」與「修改」。修改可新增、替換、移除商品、改單價／數量／折扣／付款與備註，總額與庫存隨之更新；同時修改同一筆會提示衝突。原本已作廢紀錄保持原狀，封存場次須由書房重新開啟才能修改。
 
 ## 保留的收銀功能
 
-代碼／條碼與批次輸入、名稱搜尋、手動數量及負數退款、改價、分類折扣、指定商品折扣、四捨五入、現金／信用卡／LINE PAY／文化幣與現金複合付款、零元單、F7–F10、找零、捐贈／載具／統編與 Pilot 客戶對應、付款 QR 圖、熱感列印、修改付款、訂單備註、作廢與復原、刪除、原 JSON 備份還原、訂單 CSV、Pilot ERI CSV 與匯出前驗證。
+代碼／條碼與批次輸入、名稱搜尋、手動數量及負數退款、改價、分類折扣、指定商品折扣、四捨五入、零元單、捐贈／載具／統編與 Pilot 客戶對應、付款 QR 圖、熱感列印、修改付款、訂單備註與刪除。書房另保留四種付款、文化幣與現金複合付款、F7–F10、找零、原 JSON 備份還原、訂單 CSV、Pilot ERI CSV 與匯出前驗證；教會端依新版需求限制為文化幣與 LINE PAY。
 
 原始運算與匯出程式透過 `scripts/build-legacy.mjs` 接上雲端 adapter，以 `public/checkout.css`、`scripts/register-cart.js`、`scripts/register-search.js` 重新排版收銀台。價格與計算機邏輯共用 `lib/pos-core.mjs`；建置 adapter 時產生瀏覽器版本。營運資料由 D1 保存。
 
 ## 保存與一致性
 
-- Cloudflare D1 保存 events、churches、sessions、closings、audit、shop 與 settings。
+- Cloudflare D1 保存 events、churches、sessions、closings、audit、shop、settings 與 order_numbers。
 - 每場 state 以訂單、草稿、參考數量與共用設定分鍵；提交採三方差異合併與資料庫 revision 比較交換。
 - 兩筆不同訂單可並行保存；同一筆衝突回傳 409，避免靜默覆寫。
-- 訂單用 UUID，重送相同 mutation 可重試。結帳在伺服器確認前不顯示完成，失敗保留本機 recovery 並提示重試，不能重複收款。
+- 訂單內部使用 UUID，畫面及一般 CSV 使用每日流水單號；重送相同 mutation 可重試。結帳在伺服器確認前不顯示完成，失敗保留本機 recovery 並提示重試，不能重複收款。
 - 伺服器核對交易明細總額與付款總額。雲端更新的舊 state 由同一資料庫 trigger 原子寫入 audit；刪除與清空仍保留修訂紀錄。
-- 草稿依裝置分開，成交單跨装置共用。每 15 秒讀取場次新狀態。
+- 草稿依裝置分開，成交單跨裝置共用。每 15 秒讀取場次新狀態；背景讀取與儲存依序執行，保留讀取期間的掃描及原衝突基準。
 - 既有日結快照持續保存；介面已由計算機取代。完整場次備份包含場次、修訂與舊日結。
 - Pilot ERI 由伺服器分配全域不重疊序號範圍；原 exporter schema 與驗證保留。
 - 密碼以 PBKDF2 SHA-256 100,000 次雜湊，session cookie 為 HttpOnly / SameSite Strict / HTTPS Secure；登入有限速；變更教會密碼撤銷原 session。
@@ -57,7 +63,9 @@ Node.js 22.13 以上；`npm ci`、`npm run dev`、`npm run build`。首次本機
 
 `npm run db:generate` 產生 schema migration。初始 migration 含 audit trigger，未來 migration 必須保留。`.openai/hosting.json` 僅存 Sites ID 與 DB binding。部署封裝須包含 `dist/.openai/drizzle`。
 
-資料匯入工具 `node scripts/seed.mjs <CSV目錄>` 僅輸出必要商品及客戶欄位。更新收銀台、價格核心或 adapter 後執行 `node scripts/build-legacy.mjs`。`node --test tests/checkout.test.mjs tests/state.test.mjs tests/pos-core.test.mjs legacy/tests/pilot-exporter.test.cjs` 執行運算、掃描處理、特價優先順序、常用商品、計算機與匯出回歸測試。
+資料匯入工具 `node scripts/seed.mjs <CSV目錄>` 僅輸出必要商品及客戶欄位。更新收銀台、價格核心或 adapter 後執行 `node scripts/build-legacy.mjs`。`node --test tests/checkout.test.mjs tests/state.test.mjs tests/pos-core.test.mjs tests/orders.test.mjs legacy/tests/pilot-exporter.test.cjs` 執行運算、掃描處理、特價優先順序、常用商品、計算機、出貨單、刷新併發與匯出回歸測試。
+
+登入的必要資料合併為一個 bootstrap；教會入口設定與同步進度改成背景載入。進入收銀台共用外層已載入的商品快取與場次請求，移除 iframe 重複下載商品及場次。草稿儲存直接更新營收摘要，避免每次儲存重新下載場次清單。尚未宣稱實機載入時間改善百分比。
 
 ## 測試邊界
 
