@@ -476,6 +476,58 @@ ok(
   new Set(parallelEris).size === parallelEris.length,
   'Concurrent formal exports cannot reuse an ERI',
 );
+const groupedFair = (
+  await call('events', {
+    name: '合併現銷匯出驗證',
+    date: '2026-09-08',
+    tenant: '',
+    pricing: 'legacy',
+  })
+).data.id;
+const groupedOrders = [
+  order('blank'),
+  { ...order('donation'), invoiceInfo: { donationCode: '2995' } },
+  { ...order('carrier1'), invoiceInfo: { carrier: '/ABC1234' } },
+  { ...order('carrier2'), invoiceInfo: { carrier: '/ABC1234' } },
+];
+await call('events/' + groupedFair + '/sync', {
+  changes: groupedOrders.map((after) => ({
+    key: 'order:' + after.id,
+    before: null,
+    after,
+  })),
+});
+const groupedPreview = (
+  await call('events/' + groupedFair + '/pilot-preview', context)
+).data;
+ok(
+  groupedPreview.counts.masters === 3 &&
+    groupedPreview.preview[0].sourceIds.length === 2,
+  'Preview merges blank and default donation invoices while showing both source orders',
+);
+const groupedExport = (
+  await call('events/' + groupedFair + '/pilot-confirm', {
+    id: groupedPreview.id,
+  })
+).data;
+const groupedMappings = new Map(
+  groupedExport.mappings.map((m) => [m.transactionId, m]),
+);
+ok(
+  groupedMappings.get('blank').baseCode ===
+    groupedMappings.get('donation').baseCode &&
+    groupedMappings.get('carrier1').baseCode !==
+      groupedMappings.get('carrier2').baseCode,
+  'Persisted final mapping shares one base for general sales and preserves separate carrier orders',
+);
+const groupedState = (await call('events/' + groupedFair)).data.state;
+ok(
+  groupedOrders.every(
+    (o) => JSON.stringify(groupedState['order:' + o.id]) === JSON.stringify(o),
+  ),
+  'Consolidated accounting export leaves all original POS orders separate and unchanged',
+);
+await call('events/' + groupedFair + '/archive', {});
 await call('events/' + selfFair + '/archive', {});
 await call('events/' + a + '/archive', {});
 ok(

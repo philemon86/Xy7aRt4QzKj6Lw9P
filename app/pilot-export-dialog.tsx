@@ -69,6 +69,9 @@ export default function PilotExportDialog({
         <DialogDescription>
           輸入正式資料後先預覽；POS 原始出貨單與交易識別保持不變。
         </DialogDescription>
+        <p className="muted">
+          未填發票資料與捐贈碼 2995 合併匯出；載具、統編及其他愛心碼各自成單。
+        </p>
         {error && (
           <p className="error" role="alert">
             {error}
@@ -176,7 +179,20 @@ export default function PilotExportDialog({
                 <TableBody>
                   {preview.preview.map((row: any) => (
                     <TableRow key={row.code}>
-                      <TableCell>{row.sourceNumber}</TableCell>
+                      <TableCell>
+                        {row.sourceNumbers?.length > 1 ? (
+                          <details>
+                            <summary>{row.sourceNumber}</summary>
+                            {row.sourceNumbers.map(
+                              (number: string, i: number) => (
+                                <small key={row.sourceIds[i]}>{number}</small>
+                              ),
+                            )}
+                          </details>
+                        ) : (
+                          row.sourceNumber
+                        )}
+                      </TableCell>
                       <TableCell>
                         {row.customerCode} · {row.customer}
                         {row.carrier && <small>{row.carrier}</small>}
