@@ -447,7 +447,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           <p>
             {tenant
               ? '登入後管理自己教會的書展與交易。'
-              : '從一場書展開始，把每次服事好好保存。'}
+              : '書展與他們的場地'}
           </p>
           <form
             onSubmit={(e) => {
@@ -484,7 +484,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
             <ShieldCheck /> 獨立測試環境，所有操作都屬於 V2 測試資料。
           </div>
         </div>
-        <small>腓利門書房 · 書展與教會書報組</small>
+        <small>腓利門書展／書報組自辦書展</small>
       </main>
     );
   return (
