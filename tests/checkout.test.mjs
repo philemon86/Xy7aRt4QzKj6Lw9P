@@ -78,7 +78,7 @@ function make({ amount = 899, quantity = 1, fail = false } = {}) {
         if (tag === 'button') buttons.push(el);
         return el;
       },
-      body: { append: no },
+      body: { append: no, dataset: {} },
     },
     location: { reload: () => reloads++ },
     Date,

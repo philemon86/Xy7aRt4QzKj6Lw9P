@@ -38,6 +38,9 @@ export default function OrderEditor({
     [items, setItems] = useState<any[]>([]),
     [number, setNumber] = useState(''),
     [note, setNote] = useState(''),
+    [invoiceText, setInvoiceText] = useState(''),
+    [taxId, setTaxId] = useState(''),
+    [customerCode, setCustomerCode] = useState(''),
     [choice, setChoice] = useState('LINE PAY'),
     [split, setSplit] = useState('0'),
     [search, setSearch] = useState(''),
@@ -56,6 +59,11 @@ export default function OrderEditor({
         setItems(structuredClone(order.items));
         setNumber(event.numbers[order.id]);
         setNote(order.note || '');
+        setInvoiceText(
+          order.invoiceInfo?.carrier || order.invoiceInfo?.donationCode || '',
+        );
+        setTaxId(order.invoiceInfo?.taxId || '');
+        setCustomerCode(order.bookFairCustomerCode || '');
         setArchived(event.status !== 'open');
         const records = order.paymentRecords || [];
         const methods = records.map((p: any) => p.method);
@@ -128,7 +136,27 @@ export default function OrderEditor({
         throw Error('請輸入文化幣金額');
       const edited = items.map((i) => editCartItem(i, i));
       const amount = orderTotal(edited),
-        paymentRecords = makePayments(amount, choice, Number(split));
+        paymentRecords =
+          !choice && amount === original.amount
+            ? original.paymentRecords
+            : makePayments(amount, choice, Number(split));
+      const selectedCustomer = catalog.customers.find(
+        (c: any) => c.code === customerCode,
+      );
+      if (
+        taxId.trim() &&
+        (!selectedCustomer || ['0002', '305'].includes(customerCode))
+      )
+        throw Error('輸入統編時請選擇發票教會');
+      const invoiceInfo = taxId.trim()
+        ? { taxId: taxId.trim(), carrier: '', donationCode: '' }
+        : {
+            taxId: '',
+            carrier: /^\d+$/.test(invoiceText.trim()) ? '' : invoiceText.trim(),
+            donationCode: /^\d+$/.test(invoiceText.trim())
+              ? invoiceText.trim()
+              : '',
+          };
       const after = {
         ...original,
         items: edited,
@@ -136,6 +164,13 @@ export default function OrderEditor({
         paymentRecords,
         paymentMethod: paymentLabel(paymentRecords, amount),
         note,
+        invoiceInfo,
+        bookFairCustomerCode: invoiceInfo.taxId ? customerCode : '',
+        accountingCustomer: invoiceInfo.taxId
+          ? selectedCustomer
+          : catalog.customers.find(
+              (c: any) => c.code === (invoiceInfo.carrier ? '305' : '0002'),
+            ),
         modifiedAt: new Date().toISOString(),
       };
       await request('events/' + target.eventId + '/sync', {
@@ -326,7 +361,8 @@ export default function OrderEditor({
                   </Select>
                   {!choice && (
                     <small>
-                      原付款為{original.paymentMethod}，請依實際收款重新選擇。
+                      原付款為{original.paymentMethod}
+                      。總額不變時可保留原紀錄；如有補收或退款，請依實際收款重新選擇。
                     </small>
                   )}
                 </div>
@@ -348,6 +384,46 @@ export default function OrderEditor({
                   </label>
                 )}
               </div>
+              <details className="order-invoice-fields">
+                <summary>發票與客戶資料</summary>
+                <label>
+                  載具／捐贈碼
+                  <Input
+                    value={invoiceText}
+                    onChange={(e) => setInvoiceText(e.target.value)}
+                  />
+                </label>
+                <label>
+                  統一編號
+                  <Input
+                    value={taxId}
+                    inputMode="numeric"
+                    onChange={(e) => setTaxId(e.target.value)}
+                  />
+                </label>
+                {taxId && (
+                  <label>
+                    發票教會
+                    <Select
+                      value={customerCode}
+                      onValueChange={(v) => v && setCustomerCode(v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="請選擇教會" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {catalog.customers
+                          .filter((c: any) => !['0002', '305'].includes(c.code))
+                          .map((c: any) => (
+                            <SelectItem key={c.code} value={c.code}>
+                              {c.code} · {c.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                )}
+              </details>
               <label htmlFor="order-note">備註</label>
               <Input
                 id="order-note"

@@ -15,6 +15,16 @@ fs.writeFileSync(
   path.join(root, 'legacy/pilot-exporter.cjs'),
   html.slice(start, end),
 );
+const legacyPilot = html.slice(start, end);
+const factoryStart =
+  legacyPilot.indexOf('function () {') + 'function () {'.length;
+const factoryEnd = legacyPilot.lastIndexOf('});');
+fs.writeFileSync(
+  path.join(root, 'lib/pilot-core.mjs'),
+  'export default (function () {' +
+    legacyPilot.slice(factoryStart, factoryEnd) +
+    '})();\n',
+);
 html = html.replace(
   '<title>腓利門雲POS</title>',
   '<title>腓利門 POS V2 收銀台</title><link rel="stylesheet" href="/checkout.css"><script src="/bridge.js"></script><script src="/pos-core.js"></script>',
@@ -89,11 +99,11 @@ html = html.replace(
 );
 html = html.replace(
   '      const performCheckout = (paymentMethod, isComposite = false) => {',
-  "      let checkoutBusy=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy || cloud.event.status!=='open')return;\n        if(!isBookstore && /信用卡|現金/.test(paymentMethod)){alert('教會僅開放文化幣與 LINE PAY');return;}",
+  "      let checkoutBusy=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy || cloud.event.status!=='open')return;\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡|現金/.test(paymentMethod)){alert('教會僅開放文化幣與 LINE PAY');return;}",
 );
 html = html.replace(
-  '        POSAudio.success();\n\n        clients[clientId] = {',
-  '        clients[clientId] = {',
+  /        POSAudio.success\(\);\s*(?=clients\[clientId\] = \{)/,
+  '        ',
 );
 html = html.replace(
   '          transactionId: clientId,',
@@ -103,8 +113,8 @@ const checkoutMarker = '        cart.forEach(item => {';
 const pos = html.indexOf(checkoutMarker, html.indexOf('const performCheckout'));
 html =
   html.slice(0, pos) +
-  `        checkoutBusy=true;checkoutBtns.forEach(b=>b.disabled=true);
-        try { localStorage.setItem('cart','[]'); saveSummary(); await cloud.flush(); POSAudio.success(); } catch(error) { const cover=document.createElement('div');cover.className='retry-cover';const p=document.createElement('p');p.textContent='結帳等待雲端確認。請勿重新收款。'+error.message;const btn=document.createElement('button');btn.textContent='重試儲存';btn.onclick=async()=>{btn.disabled=true;try{await cloud.flush();location.reload();}catch(e){p.textContent=e.message;btn.disabled=false;}};cover.append(p,btn);document.body.append(cover);return; } finally {checkoutBusy=false;checkoutBtns.forEach(b=>b.disabled=false);}
+  `        checkoutBusy=true;checkoutBtns.forEach(b=>b.disabled=true);document.body.dataset.checkout='saving';let checkoutSaved=false;
+        try { localStorage.setItem('cart','[]'); saveSummary(); await cloud.flush(); checkoutSaved=true;POSAudio.success(); } catch(error) { const cover=document.createElement('div');cover.className='retry-cover';const p=document.createElement('p');p.textContent='結帳等待雲端確認。請勿重新收款。'+error.message;const btn=document.createElement('button');btn.textContent='重試儲存';btn.onclick=async()=>{btn.disabled=true;try{await cloud.flush();location.reload();}catch(e){p.textContent=e.message;btn.disabled=false;}};cover.append(p,btn);document.body.append(cover);return; } finally {checkoutBusy=!checkoutSaved;checkoutBtns.forEach(b=>b.disabled=!checkoutSaved);document.body.dataset.checkout=checkoutSaved?'saved':'failed';}
 ` +
   html.slice(pos);
 // Reserve globally unique, server-persistent ERI ranges; preserve exporter allocation rules.
@@ -133,6 +143,14 @@ html = html.replace(
   '出貨單：${displayOrderNumber(client)}',
 );
 html = html.replaceAll('訂單編號', '出貨單號');
+html = html.replace(
+  '<th>單號</th><th>金額</th><th>付款</th><th>操作</th>',
+  '<th>出貨單號</th><th>日期</th><th>金額</th><th>付款方式</th><th>操作</th>',
+);
+html = html.replace(
+  '<td>${Math.round(client.amount)}</td>',
+  '<td>${client.createdAt?new Date(client.createdAt).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",hour12:false}):String(client.id).slice(0,8)}</td><td>${Math.round(client.amount)}</td>',
+);
 html = html.replace('(作廢 / 刪除 / 修改付款)', '(刪除 / 修改內容)');
 html = html.replace(
   'Object.values(clients).sort((a,b) => b.id.localeCompare(a.id))',
@@ -210,6 +228,15 @@ html = html.replace(
   '確定刪除此筆訂單？雲端修訂紀錄會保留。',
 );
 // Preserve existing totals and operations, reshape the working surface into focused views.
+const exportStart = html.indexOf('async function exportPilot(options = {}) {');
+const exportEnd = html.indexOf('// ===== 啟動 =====', exportStart);
+if (exportStart < 0 || exportEnd < 0) throw Error('找不到既有 PILOT 匯出接點');
+html =
+  html.slice(0, exportStart) +
+  read('scripts/register-pilot.js') +
+  '\n\n' +
+  html.slice(exportEnd);
+html = html.replace(/doBackup\(\);\s*exportPilot\(\);/, 'doBackup();');
 html = html.replace(
   '<body>',
   '<body data-view="checkout"><div id="cloud-status" role="status">正在連接雲端…</div>',
@@ -218,7 +245,7 @@ html = html.replace(
   'loadMasterData().then(() => {',
   `loadMasterData().then(() => {
   const groups=[...document.querySelectorAll('body > .flex-container')];groups.forEach((el,i)=>el.dataset.section=['checkout','history','accounting','exports'][i]);
-  document.body.dataset.audience=cloud.event.tenant?'church':'bookstore';
+  document.body.dataset.audience=cloud.me.role==='church'||cloud.event.organizer==='church'?'church':'bookstore';
   document.body.dataset.role=cloud.me.role;
   if(!isBookstore){btnF7.hidden=true;btnF10.hidden=true;document.querySelector('.payment-details').hidden=true;document.querySelector('[data-section="exports"]').hidden=true;document.querySelector('#pay-cash').closest('.pay-badge').hidden=true;document.querySelector('#pay-credit').closest('.pay-badge').hidden=true;}
   document.querySelector('#title').textContent='加入商品';

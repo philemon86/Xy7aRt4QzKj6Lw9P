@@ -9,6 +9,7 @@ export const events = sqliteTable('events', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   tenant: text('tenant').notNull(),
+  organizer: text('organizer').notNull().default(''),
   date: text('date').notNull(),
   status: text('status').notNull().default('open'),
   pricing: text('pricing').notNull().default('website'),
@@ -73,4 +74,47 @@ export const orderNumbers = sqliteTable(
       table.sequence,
     ),
   ],
+);
+
+export const shipmentNumbers = sqliteTable(
+  'shipment_numbers',
+  {
+    event: text('event').notNull(),
+    orderId: text('order_id').notNull(),
+    scope: text('scope').notNull(),
+    day: text('day').notNull(),
+    sequence: integer('sequence').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.event, table.orderId] }),
+    uniqueIndex('idx_shipment_numbers_scope_day_sequence').on(
+      table.scope,
+      table.day,
+      table.sequence,
+    ),
+  ],
+);
+
+export const pilotExports = sqliteTable('pilot_exports', {
+  id: text('id').primaryKey(),
+  event: text('event').notNull(),
+  sourceHash: text('source_hash').notNull(),
+  context: text('context').notNull(),
+  snapshot: text('snapshot').notNull(),
+  created: text('created').notNull(),
+  confirmed: text('confirmed'),
+});
+
+export const pilotEris = sqliteTable('pilot_eris', {
+  eri: text('eri').primaryKey(),
+  exportId: text('export_id').notNull(),
+});
+export const pilotExportParts = sqliteTable(
+  'pilot_export_parts',
+  {
+    exportId: text('export_id').notNull(),
+    part: integer('part').notNull(),
+    data: text('data').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.exportId, table.part] })],
 );

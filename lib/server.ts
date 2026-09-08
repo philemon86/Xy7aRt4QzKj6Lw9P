@@ -4,6 +4,7 @@ import initialShop from '../data/shop-cache.json';
 import { mergeChanges, validateOrder, stats } from './state.mjs';
 import { parseShop } from './shop.mjs';
 import { formatOrderNumber, orderDay, validateRoleChange } from './orders.mjs';
+import { previewPilot, confirmPilot } from './pilot-service';
 type Session = { role: string; tenant: string; token: string };
 const db = () => env.DB;
 const enc = new TextEncoder();
@@ -76,7 +77,22 @@ export function json(
 const isAdmin = (s: Session) => {
   if (s.role !== 'admin') throw error('僅書房可以操作', 403);
 };
+let organizerMigration: Promise<any> | undefined;
+async function ensureOrganizers() {
+  // The first audit snapshot retains the actor that created an existing fair.
+  organizerMigration ??= db()
+    .prepare(
+      "UPDATE events SET organizer=CASE WHEN COALESCE((SELECT actor FROM audit WHERE audit.event=events.id ORDER BY revision LIMIT 1),actor)='admin' THEN 'bookstore' ELSE 'church' END WHERE organizer=''",
+    )
+    .run()
+    .catch((e: any) => {
+      organizerMigration = undefined;
+      throw e;
+    });
+  await organizerMigration;
+}
 async function event(id: string, s: Session) {
+  await ensureOrganizers();
   const e: any = await db()
     .prepare('SELECT * FROM events WHERE id=?')
     .bind(id)
@@ -97,6 +113,7 @@ function userInfo(s: Session) {
   };
 }
 async function listEvents(s: Session) {
+  await ensureOrganizers();
   const rows = await (
     s.role === 'admin'
       ? db().prepare('SELECT * FROM events ORDER BY date DESC,updated DESC')
@@ -113,7 +130,7 @@ async function listEvents(s: Session) {
 }
 async function numbersFor(e: any, state: Record<string, any>) {
   const existing = await db()
-    .prepare('SELECT order_id,day,sequence FROM order_numbers WHERE event=?')
+    .prepare('SELECT order_id,day,sequence FROM shipment_numbers WHERE event=?')
     .bind(e.id)
     .all<any>();
   const known = new Set(existing.results.map((r) => r.order_id));
@@ -123,37 +140,40 @@ async function numbersFor(e: any, state: Record<string, any>) {
     .sort((a, b) =>
       String(a.createdAt || a.id).localeCompare(String(b.createdAt || b.id)),
     );
-  // Each INSERT allocates from the same tenant/day index in one atomic SQLite statement.
-  // The mapping survives deletes and retries, including a lost HTTP response.
-  for (let offset = 0; offset < missing.length; offset += 80) {
-    await db().batch(
-      missing.slice(offset, offset + 80).map((order) => {
+  return {
+    ...Object.fromEntries(
+      existing.results.map((r) => [
+        r.order_id,
+        formatOrderNumber(e.tenant, r.day, r.sequence, e.organizer),
+      ]),
+    ),
+    ...(await assignNumbers(e, missing)),
+  };
+}
+async function assignNumbers(e: any, orders: any[]) {
+  const result: Record<string, string> = {};
+  for (let offset = 0; offset < orders.length; offset += 80) {
+    const rows = await db().batch(
+      orders.slice(offset, offset + 80).map((order) => {
         const day = orderDay(order),
-          scope = e.tenant || 'mon';
+          scope = e.organizer === 'bookstore' ? 'PF' : 'church:' + e.tenant;
         return db()
           .prepare(
-            'INSERT INTO order_numbers(event,order_id,scope,day,sequence) SELECT ?,?,?,?,COALESCE(MAX(sequence),0)+1 FROM order_numbers WHERE scope=? AND day=? ON CONFLICT(event,order_id) DO NOTHING',
+            'INSERT INTO shipment_numbers(event,order_id,scope,day,sequence) SELECT ?,?,?,?,COALESCE(MAX(sequence),0)+1 FROM shipment_numbers WHERE scope=? AND day=? ON CONFLICT(event,order_id) DO UPDATE SET order_id=excluded.order_id RETURNING order_id,day,sequence',
           )
           .bind(e.id, order.id, scope, day, scope, day);
       }),
     );
+    for (const batch of rows)
+      for (const row of batch.results as any[])
+        result[row.order_id] = formatOrderNumber(
+          e.tenant,
+          row.day,
+          row.sequence,
+          e.organizer,
+        );
   }
-  const rows = missing.length
-    ? (
-        await db()
-          .prepare(
-            'SELECT order_id,day,sequence FROM order_numbers WHERE event=?',
-          )
-          .bind(e.id)
-          .all<any>()
-      ).results
-    : existing.results;
-  return Object.fromEntries(
-    rows.map((r) => [
-      r.order_id,
-      formatOrderNumber(e.tenant, r.day, r.sequence),
-    ]),
-  );
+  return result;
 }
 async function getCatalog(s: Session) {
   const rows = await db().prepare('SELECT code,data FROM shop').all<any>();
@@ -240,6 +260,7 @@ export async function handle(req: Request, parts: string[]) {
   }
   if (route === 'shipments') {
     isAdmin(s);
+    await ensureOrganizers();
     const tenant = new URL(req.url).searchParams.get('tenant');
     const rows = await (
       tenant && tenant !== 'all'
@@ -346,7 +367,7 @@ export async function handle(req: Request, parts: string[]) {
     const eid = crypto.randomUUID();
     await db()
       .prepare(
-        'INSERT INTO events(id,name,tenant,date,pricing,updated,actor) VALUES(?,?,?,?,?,?,?)',
+        'INSERT INTO events(id,name,tenant,date,pricing,updated,actor,organizer) VALUES(?,?,?,?,?,?,?,?)',
       )
       .bind(
         eid,
@@ -356,12 +377,24 @@ export async function handle(req: Request, parts: string[]) {
         b.pricing,
         new Date().toISOString(),
         s.tenant || 'admin',
+        s.role === 'admin' ? 'bookstore' : 'church',
       )
       .run();
     return json({ id: eid });
   }
   if (route === 'events' && id) {
     const e = await event(id, s);
+    if (action === 'pilot-preview' || action === 'pilot-confirm') {
+      isAdmin(s);
+      if (req.method !== 'POST') throw error('請使用 POST', 405);
+      if (action === 'pilot-confirm')
+        return json(await confirmPilot(e, String(b.id || '')));
+      const [catalog, numbers] = await Promise.all([
+        getCatalog(s),
+        numbersFor(e, JSON.parse(e.state)),
+      ]);
+      return json(await previewPilot(e, catalog, b, numbers));
+    }
     if (req.method === 'GET' && !action) {
       const state = JSON.parse(e.state);
       return json({
@@ -405,7 +438,7 @@ export async function handle(req: Request, parts: string[]) {
           throw error('數量須為整數');
       }
       for (let attempt = 0; attempt < 6; attempt++) {
-        const current = await event(id, s);
+        const current = attempt === 0 ? e : await event(id, s);
         if (current.status !== 'open') throw error('書展已封存', 409);
         const next = mergeChanges(JSON.parse(current.state), b.changes);
         const data = JSON.stringify(next);
@@ -426,7 +459,12 @@ export async function handle(req: Request, parts: string[]) {
           return json({
             revision: current.revision + 1,
             state: next,
-            numbers: await numbersFor(current, next),
+            numbers: await assignNumbers(
+              current,
+              b.changes
+                .filter((p: any) => p.key.startsWith('order:') && p.after)
+                .map((p: any) => p.after),
+            ),
           });
       }
       throw error('資料忙碌，請重試', 409);

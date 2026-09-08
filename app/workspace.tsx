@@ -59,7 +59,8 @@ import {
 } from 'lucide-react';
 import Camera from './camera';
 import OrderEditor from './order-editor';
-import Shipments from './shipments';
+import RecoveryDialog from './recovery-dialog';
+import PilotExportDialog from './pilot-export-dialog';
 import Calculator from './calculator';
 import { stats } from '@/lib/state.mjs';
 const money = (v: number) =>
@@ -116,7 +117,10 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       eventId: string;
       orderId: string;
     } | null>(null),
-    [orderVersion, setOrderVersion] = useState(0),
+    [recovery, setRecovery] = useState(false),
+    [recoveryError, setRecoveryError] = useState(''),
+    [inventoryChurch, setInventoryChurch] = useState(''),
+    [pilotEvent, setPilotEvent] = useState<any>(null),
     [registerLoading, setRegisterLoading] = useState(false);
   const [newEvent, setNewEvent] = useState(false),
     [eventName, setEventName] = useState(''),
@@ -133,7 +137,12 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     [sync, setSync] = useState<any>(null),
     [syncing, setSyncing] = useState(false);
   const audience =
-    active?.tenant || me?.role === 'church' || tenant ? 'church' : 'bookstore';
+    me?.role === 'church' ||
+    tenant ||
+    active?.organizer === 'church' ||
+    (!active && section === 'church-events')
+      ? 'church'
+      : 'bookstore';
   useEffect(() => {
     document.documentElement.dataset.audience = audience;
   }, [audience]);
@@ -226,18 +235,30 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       if (m.type === 'cloud-status') {
         setCloudStatus(m.text);
         setCloudError(m.error);
+        if (m.error)
+          setRecoveryError(
+            (frame.current?.contentWindow as any)?.POSCloud?.recoveryError ||
+              '',
+          );
       }
       if (m.type === 'edit-order' && activeRef.current)
         setEditTarget({ eventId: activeRef.current.id, orderId: m.id });
+      if (m.type === 'resolve-recovery') setRecovery(true);
+      if (m.type === 'pilot-export' && meRef.current?.role === 'admin')
+        setPilotEvent(activeRef.current);
       if (m.type === 'register-error') setRegisterLoading(false);
       if (m.type === 'register-ready') {
         setRegisterLoading(false);
+        setRecoveryError(
+          (frame.current?.contentWindow as any)?.POSCloud?.recoveryError || '',
+        );
         frame.current?.contentWindow?.postMessage(
           { type: 'view', view: viewRef.current },
           location.origin,
         );
       }
       if (m.type === 'saved' && m.event === activeRef.current?.id && m.state) {
+        setRecoveryError('');
         setState(m.state);
         setEvents((list) =>
           list.map((event) =>
@@ -264,6 +285,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     if (!e) return;
     await flushFrame();
     setRegisterLoading(true);
+    setRecoveryError('');
     setState({});
     setCurrentCash(0);
     eventRecord.current = api('events/' + e.id);
@@ -312,6 +334,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     setEventName('');
     const all = await api('events');
     setEvents(all);
+    setSection('events');
     await openEvent(all.find((e: any) => e.id === result.id));
   }
   async function syncShop(restart = false) {
@@ -366,7 +389,18 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
-  const visibleEvents = events.filter(
+  const listEvents = events.filter(
+    (e) =>
+      me?.role === 'church' ||
+      e.organizer === (section === 'church-events' ? 'church' : 'bookstore'),
+  );
+  const listTitle =
+    me?.role === 'church'
+      ? '我的書展列表'
+      : section === 'church-events'
+        ? '教會自辦書展'
+        : '書房書展列表';
+  const visibleEvents = listEvents.filter(
     (e) =>
       (filter === 'all' || e.status === filter) &&
       [e.name, e.tenant, e.date]
@@ -374,7 +408,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
-  const scopedTotal = events.reduce((s, e) => s + e.revenue, 0);
+  const scopedTotal = listEvents.reduce((s, e) => s + e.revenue, 0);
   const sales = Object.entries(state)
     .filter(([k]) => k.startsWith('order:'))
     .map(([, v]: any) => v)
@@ -469,11 +503,15 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           <div className="side-label">工作空間</div>
           <SidebarMenu>
             {[
-              ['events', '書展銷售清單', CalendarDays],
+              [
+                'events',
+                me.role === 'admin' ? '書房書展列表' : '我的書展列表',
+                CalendarDays,
+              ],
               ['catalog', '商品資料', Package],
               ...(me.role === 'admin'
                 ? [
-                    ['shipments', '教會出貨單', ReceiptText],
+                    ['church-events', '教會自辦書展', ReceiptText],
                     ['churches', '教會入口', Users],
                   ]
                 : []),
@@ -540,8 +578,8 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   ? '書展管理'
                   : section === 'catalog'
                     ? '商品資料'
-                    : section === 'shipments'
-                      ? '教會出貨單'
+                    : section === 'church-events'
+                      ? '教會自辦書展'
                       : '教會入口'}
             </span>
           </div>
@@ -572,9 +610,12 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
               <div className="page-heading">
                 <div>
                   <span className="eyebrow">
-                    {active.tenant
-                      ? active.tenant.toUpperCase() + ' · 教會書展'
-                      : '腓利門書房 · 外出書展'}
+                    {(active.organizer === 'church'
+                      ? '教會自辦書展'
+                      : '書房書展') +
+                      (active.tenant
+                        ? ' · ' + active.tenant.toUpperCase()
+                        : ' · 腓利門書房')}
                   </span>
                   <h1>{active.name}</h1>
                   <p>
@@ -667,6 +708,14 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 <p role="status" className="register-loading">
                   正在開啟收銀台…
                 </p>
+              )}
+              {recoveryError && (
+                <div className="recovery-banner" role="alert">
+                  <span>上次結帳仍有待存資料：{recoveryError}</span>
+                  <Button variant="outline" onClick={() => setRecovery(true)}>
+                    處理待存結帳
+                  </Button>
+                </div>
               )}
               <iframe
                 ref={frame}
@@ -839,23 +888,29 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 </Button>
               )}
             </>
-          ) : section === 'events' ? (
+          ) : section === 'events' || section === 'church-events' ? (
             <>
               <div className="page-heading">
                 <div>
                   <span className="eyebrow">BOOK FAIRS</span>
-                  <h1>書展銷售清單</h1>
-                  <p>開啟一場書展，開始今天的服事。</p>
+                  <h1>{listTitle}</h1>
+                  <p>
+                    {me.role === 'admin'
+                      ? '選擇書展，查看出貨單與管理庫存。'
+                      : '選擇書展，開始結帳。'}
+                  </p>
                 </div>
-                <Button className="primary" onClick={() => setNewEvent(true)}>
-                  <Plus /> 新增書展
-                </Button>
+                {!(me.role === 'admin' && section === 'church-events') && (
+                  <Button className="primary" onClick={() => setNewEvent(true)}>
+                    <Plus /> 新增書展
+                  </Button>
+                )}
               </div>
               <div className="kpis">
                 <div>
                   <span>進行中的書展</span>
                   <strong>
-                    {events.filter((e) => e.status === 'open').length}
+                    {listEvents.filter((e) => e.status === 'open').length}
                     <small>場</small>
                   </strong>
                   <CalendarDays />
@@ -863,7 +918,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 <div>
                   <span>累計交易</span>
                   <strong>
-                    {money(events.reduce((s, e) => s + e.orders, 0))}
+                    {money(listEvents.reduce((s, e) => s + e.orders, 0))}
                     <small>筆</small>
                   </strong>
                   <ReceiptText />
@@ -902,7 +957,14 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   <button
                     className="event-row"
                     key={e.id}
-                    onClick={() => run(() => openEvent(e))}
+                    onClick={() =>
+                      run(() =>
+                        openEvent(
+                          e,
+                          me.role === 'admin' ? 'history' : 'checkout',
+                        ),
+                      )
+                    }
                   >
                     <div className="event-icon">
                       {e.tenant ? <Users /> : <BookOpen />}
@@ -933,15 +995,16 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   <div className="empty">
                     <BookOpen />
                     <h2>{search ? '找不到符合的書展' : '準備好下一場書展'}</h2>
-                    <p>建立場次後，結帳、交易與日結都會保存在這裡。</p>
-                    {!search && (
-                      <Button
-                        className="primary"
-                        onClick={() => setNewEvent(true)}
-                      >
-                        <Plus /> 新增第一場書展
-                      </Button>
-                    )}
+                    <p>建立場次後，結帳、出貨單與庫存都會保存在這裡。</p>
+                    {!search &&
+                      !(me.role === 'admin' && section === 'church-events') && (
+                        <Button
+                          className="primary"
+                          onClick={() => setNewEvent(true)}
+                        >
+                          <Plus /> 新增第一場書展
+                        </Button>
+                      )}
                   </div>
                 )}
               </section>
@@ -950,15 +1013,6 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 歷史場次持續保留。封存後可查詢，也可由書房重新開啟。
               </p>
             </>
-          ) : section === 'shipments' && me.role === 'admin' ? (
-            <Shipments
-              events={events}
-              customers={catalog.customers}
-              request={api}
-              version={orderVersion}
-              onEdit={setEditTarget}
-              onOpen={(e) => run(() => openEvent(e, 'history'))}
-            />
           ) : section === 'catalog' ? (
             <>
               <div className="page-heading">
@@ -1151,6 +1205,22 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                       </div>
                       <Button
                         variant="outline"
+                        onClick={() => {
+                          setChurchCode(c.code.toUpperCase());
+                          setChurchPassword('');
+                          document.getElementById('church-password')?.focus();
+                        }}
+                      >
+                        修改密碼
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setInventoryChurch(c.code)}
+                      >
+                        管理庫存
+                      </Button>
+                      <Button
+                        variant="outline"
                         onClick={() =>
                           run(async () => {
                             await navigator.clipboard.writeText(
@@ -1176,10 +1246,81 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           )}
         </div>
       </main>
+      {pilotEvent && me.role === 'admin' && (
+        <PilotExportDialog
+          event={pilotEvent}
+          request={api}
+          onClose={() => setPilotEvent(null)}
+        />
+      )}
+      <Dialog
+        open={!!inventoryChurch}
+        onOpenChange={(v) => !v && setInventoryChurch('')}
+      >
+        <DialogContent>
+          <DialogTitle>{inventoryChurch.toUpperCase()} · 書展庫存</DialogTitle>
+          <DialogDescription>
+            選擇該教會的場次，匯入商品代碼與數量。教會可在自己的庫存頁查看。
+          </DialogDescription>
+          <div className="inventory-fairs">
+            {events
+              .filter((e) => e.tenant === inventoryChurch)
+              .map((e) => (
+                <Button
+                  key={e.id}
+                  variant="outline"
+                  onClick={() =>
+                    run(async () => {
+                      setInventoryChurch('');
+                      await openEvent(e, 'stock');
+                    })
+                  }
+                >
+                  {e.name} · {e.date}
+                </Button>
+              ))}
+          </div>
+          <Button
+            onClick={() => {
+              setEventTenant(inventoryChurch.toUpperCase());
+              setInventoryChurch('');
+              setNewEvent(true);
+            }}
+          >
+            由書房建立配送場次
+          </Button>
+        </DialogContent>
+      </Dialog>
+      {recovery && (frame.current?.contentWindow as any)?.POSCloud && (
+        <RecoveryDialog
+          cloud={(frame.current!.contentWindow as any).POSCloud}
+          onClose={() => {
+            setRecovery(false);
+            setRecoveryError(
+              (frame.current?.contentWindow as any)?.POSCloud?.recoveryError ||
+                '',
+            );
+          }}
+          onLogout={() =>
+            run(async () => {
+              await api('logout', {});
+              setRecovery(false);
+              setActive(null);
+              setMe(null);
+              setNotice(
+                '待存資料已保留在此裝置，請由書房登入後開啟原場次處理。',
+              );
+              window.location.assign('/');
+            })
+          }
+        />
+      )}
       <Dialog open={newEvent} onOpenChange={setNewEvent}>
         <DialogContent className="event-dialog">
           <DialogHeader>
-            <DialogTitle>新增書展</DialogTitle>
+            <DialogTitle>
+              {me.role === 'admin' ? '新增書房書展' : '新增教會自辦書展'}
+            </DialogTitle>
             <DialogDescription>
               每場書展都有獨立的交易、商品數量與常用商品。
             </DialogDescription>
@@ -1244,7 +1385,6 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           request={api}
           onClose={() => setEditTarget(null)}
           onSaved={() => {
-            setOrderVersion((v) => v + 1);
             setNotice('出貨單已更新');
             run(async () => {
               const cloud = (frame.current?.contentWindow as any)?.POSCloud;

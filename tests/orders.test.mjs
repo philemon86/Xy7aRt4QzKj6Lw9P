@@ -11,12 +11,15 @@ import {
   orderTotal,
 } from '../lib/orders.mjs';
 import { validateOrder, mergeChanges, stats } from '../lib/state.mjs';
-test('Shipment numbers use church or mon prefix, Taiwan calendar date and growing sequence', () => {
+test('Shipment numbers use PF or church prefix, Taiwan full date and independent sequences', () => {
   const day = taipeiDay('2026-09-06T16:10:00Z');
   assert.equal(day, '2026-09-07');
-  assert.equal(formatOrderNumber('aa01', day, 1), 'AA010907-001');
-  assert.equal(formatOrderNumber('', day, 12), 'mon0907-012');
-  assert.equal(formatOrderNumber('aa01', day, 1000), 'AA010907-1000');
+  assert.equal(formatOrderNumber('aa01', day, 1), 'AA01202609070001');
+  assert.equal(formatOrderNumber('', day, 12, 'bookstore'), 'PF202609070012');
+  assert.equal(
+    formatOrderNumber('aa01', day, 1000, 'bookstore'),
+    'PF202609071000',
+  );
 });
 test('Church stock and payment permissions are enforced independent of the visible controls', () => {
   assert.throws(
@@ -295,4 +298,72 @@ test('Startup restores a pending order after cloud initialization and keeps its 
   assert.equal(cloud.snapshot()['order:recovered'].note, 'retained');
   assert.equal(cloud.numbers.recovered, 'AA010907-002');
   assert.equal(local.has('pos-recovery:event1:device1'), false);
+});
+
+test('A blocked legacy payment does not blank the register and can be explicitly corrected without losing its identity', async () => {
+  const order = {
+    id: 'held',
+    amount: 100,
+    paymentMethod: '現金',
+    paymentRecords: [{ method: '現金', amount: 100 }],
+  };
+  const { cloud, local } = await bridgeHarness(
+    {},
+    async (path, options) => {
+      const changes = JSON.parse(options.body).changes;
+      if (
+        changes.some((p) =>
+          p.after?.paymentRecords?.some((x) => x.method === '現金'),
+        )
+      )
+        return response({ error: '教會僅開放文化幣與 LINE PAY' }, false);
+      return response({
+        state: mergeChanges({}, changes),
+        numbers: { held: 'PF202609080001' },
+      });
+    },
+    { base: {}, desired: { 'order:held': order } },
+  );
+  assert.match(cloud.recoveryError, /LINE PAY/);
+  assert.equal(cloud.recoveryOrders()[0].id, 'held');
+  assert.ok(local.has('pos-recovery:event1:device1'));
+  await cloud.resolveRecovery({ held: [{ method: 'LINE PAY', amount: 100 }] });
+  assert.equal(cloud.recoveryError, '');
+  assert.equal(cloud.snapshot()['order:held'].id, 'held');
+  assert.equal(
+    JSON.parse(local.get('pos-recovery-original:event1:device1')).desired[
+      'order:held'
+    ].paymentMethod,
+    '現金',
+  );
+});
+
+test('Churches can preserve a previously saved historical payment while editing a note', () => {
+  const before = {
+    createdAt: '2026-09-01',
+    transactionId: 'old',
+    paymentRecords: [{ method: '現金', amount: 100 }],
+  };
+  validateRoleChange(
+    'church',
+    'aa01',
+    { key: 'order:old', after: { ...before, note: 'checked' } },
+    before,
+  );
+  assert.throws(
+    () =>
+      validateRoleChange(
+        'church',
+        'aa01',
+        {
+          key: 'order:old',
+          after: {
+            ...before,
+            paymentRecords: [{ method: '現金', amount: 101 }],
+          },
+        },
+        before,
+      ),
+    /LINE PAY/,
+  );
 });

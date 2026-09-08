@@ -228,10 +228,8 @@ const numbered = (await call('events/' + a)).data;
 const numberA = numbered.numbers.a,
   numberB = numbered.numbers.b;
 ok(
-  /^AA010906-\d{3,}$/.test(numberA) &&
-    Math.abs(
-      Number(numberA.split('-').at(-1)) - Number(numberB.split('-').at(-1)),
-    ) === 1,
+  /^PF20260906\d{4,}$/.test(numberA) &&
+    Math.abs(Number(numberA.slice(10)) - Number(numberB.slice(10))) === 1,
   'Concurrent checkouts allocate consecutive human-readable numbers',
 );
 await call('events/' + a + '/sync', { changes: [patches[1]] }, church);
@@ -324,8 +322,8 @@ await call('events/' + b + '/sync', {
   changes: [{ key: 'order:store', before: null, after: order('store') }],
 });
 ok(
-  /^mon0906-\d{3,}$/.test((await call('events/' + b)).data.numbers.store),
-  'Bookstore shipments use mon prefix',
+  /^PF20260906\d{4,}$/.test((await call('events/' + b)).data.numbers.store),
+  'Bookstore-created fairs use PF prefix even when assigned to a church',
 );
 const hub = await call('shipments?tenant=aa01');
 ok(
@@ -345,13 +343,140 @@ await call(
   church,
 );
 ok(
-  Number((await call('events/' + a)).data.numbers.next.split('-').at(-1)) >
-    Math.max(
-      Number(numberA.split('-').at(-1)),
-      Number(numberB.split('-').at(-1)),
-    ),
+  Number((await call('events/' + a)).data.numbers.next.slice(10)) >
+    Math.max(Number(numberA.slice(10)), Number(numberB.slice(10))),
   'Deleting a shipment never reuses its sequence',
 );
+const selfFair = (
+  await call(
+    'events',
+    {
+      name: '教會自行建立驗證',
+      date: '2026-09-08',
+      tenant: 'aa02',
+      pricing: 'website',
+    },
+    church,
+  )
+).data.id;
+await call(
+  'events/' + selfFair + '/sync',
+  { changes: [{ key: 'order:self', before: null, after: order('self') }] },
+  church,
+);
+const selfRecord = (await call('events/' + selfFair)).data;
+ok(
+  selfRecord.organizer === 'church' &&
+    selfRecord.tenant === 'aa01' &&
+    /^AA0120260906\d{4,}$/.test(selfRecord.numbers.self),
+  'Church-created fairs have their own organizer and independent church sequence',
+);
+const allFairs = (await call('events')).data;
+ok(
+  allFairs.find((e) => e.id === a).organizer === 'bookstore' &&
+    allFairs.find((e) => e.id === selfFair).organizer === 'church',
+  'Fair lists can distinguish the creator rather than the assigned tenant',
+);
+const beforeExport = (await call('events/' + a)).data.state;
+const context = {
+  date: '2026/09/08',
+  firstCode: '1152778',
+  firstInvoice: 'FR13223935',
+};
+ok(
+  (await call('events/' + a + '/pilot-preview', context, church)).status ===
+    403,
+  'Only bookstore can prepare a formal PILOT export',
+);
+const export1 = await call('events/' + a + '/pilot-preview', context);
+ok(
+  export1.status === 200 && export1.data.preview.length > 0,
+  'Formal export builds a persisted preview before allowing CSV download',
+);
+const csv1 = await call('events/' + a + '/pilot-confirm', {
+  id: export1.data.id,
+});
+ok(
+  csv1.status === 200 &&
+    csv1.data.rows.stkSale1.length === export1.data.counts.masters + 1,
+  'Confirmed export retrieves all three validated CSV tables',
+);
+const masterHeaders = csv1.data.rows.stkSale1[0];
+ok(
+  csv1.data.rows.stkSale1
+    .slice(1)
+    .every(
+      (row) =>
+        row[masterHeaders.indexOf('PAYCASH')] === 1 &&
+        row[masterHeaders.indexOf('EINVFLAG')] === 1 &&
+        row[masterHeaders.indexOf('INVCATE')] === 2,
+    ),
+  'Formal CSV checks POS cash sale and electronic invoice using the reference schema',
+);
+const historicalEris = new Set(
+  JSON.parse(fs.readFileSync('data/pilot-eri-history.json', 'utf8')).eris,
+);
+ok(
+  Object.values(csv1.data.rows).every((rows) =>
+    rows.slice(1).every((row) => !historicalEris.has(row[0])),
+  ),
+  'Formal ERIs avoid the supplied historical church shipment CSVs',
+);
+const export2 = await call('events/' + a + '/pilot-preview', context);
+const csv2 = await call('events/' + a + '/pilot-confirm', {
+  id: export2.data.id,
+});
+const eris1 = new Set(
+  Object.values(csv1.data.rows).flatMap((rows) =>
+    rows.slice(1).map((row) => row[0]),
+  ),
+);
+ok(
+  csv2.status === 200 &&
+    Object.values(csv2.data.rows).every((rows) =>
+      rows.slice(1).every((row) => !eris1.has(row[0])),
+    ),
+  'Repeated exports allocate fully disjoint ERIs from the persistent ledger',
+);
+ok(
+  JSON.stringify((await call('events/' + a)).data.state) ===
+    JSON.stringify(beforeExport),
+  'Formal CODE, invoice and ERI never overwrite original POS state',
+);
+const editSource = beforeExport['order:a'];
+await call('events/' + a + '/sync', {
+  changes: [
+    {
+      key: 'order:a',
+      before: editSource,
+      after: { ...editSource, note: 'changed after preview' },
+    },
+  ],
+});
+ok(
+  (await call('events/' + a + '/pilot-confirm', { id: export2.data.id }))
+    .status === 409,
+  'A stale preview is rejected after the source transaction changes',
+);
+const parallelExports = await Promise.all([
+  call('events/' + b + '/pilot-preview', context),
+  call('events/' + b + '/pilot-preview', context),
+]);
+const parallelRows = await Promise.all(
+  parallelExports.map((p) =>
+    call('events/' + b + '/pilot-confirm', { id: p.data.id }),
+  ),
+);
+const parallelEris = parallelRows.flatMap((p) =>
+  Object.values(p.data.rows).flatMap((rows) =>
+    rows.slice(1).map((row) => row[0]),
+  ),
+);
+ok(
+  new Set(parallelEris).size === parallelEris.length,
+  'Concurrent formal exports cannot reuse an ERI',
+);
+await call('events/' + selfFair + '/archive', {});
 await call('events/' + a + '/archive', {});
 ok(
   (await call('events/' + a + '/sync', { changes: [] }, church)).status === 409,

@@ -1091,16 +1091,31 @@ body {
 }
 
 :root {
-  --pos-brand: #192f4d;
-  --pos-brand-hover: #10243e;
-  --pos-sidebar: #142841;
-  --pos-background: #f3f5f7;
+  --pos-brand: #796049;
+  --pos-brand-hover: #594632;
+  --pos-sidebar: #514435;
+  --pos-background: #f5f2ed;
+}
+html[data-audience='bookstore'] {
+  --foreground: #3f352b !important;
+  --card-foreground: #3f352b !important;
+  --popover-foreground: #3f352b !important;
+  --secondary: #eee6db !important;
+  --accent: #eee6db !important;
+  --muted: #f0ebe4 !important;
+  --muted-foreground: #827362 !important;
+  --border: #ded4c6 !important;
+  --input: #cbbda9 !important;
+  --ring: #a58663 !important;
+  --sidebar-accent: #76634c !important;
+  --sidebar-border: #87735a !important;
+  --sidebar-primary-foreground: #594632 !important;
 }
 html[data-audience='church'] {
-  --pos-brand: #59666f;
-  --pos-brand-hover: #424e57;
-  --pos-sidebar: #48545d;
-  --pos-background: #f3f4f4;
+  --pos-brand: #526f84;
+  --pos-brand-hover: #3b5365;
+  --pos-sidebar: #414f5b;
+  --pos-background: #f0f3f5;
   --foreground: #303b43 !important;
   --card-foreground: #303b43 !important;
   --secondary: #eceff0 !important;
@@ -1746,4 +1761,195 @@ html[data-audience='church'] {
   .order-editor-footer [data-slot='button'] {
     flex: 1;
   }
+}
+
+html[data-audience] input,
+html[data-audience] textarea,
+html[data-audience] [data-slot='select-trigger'] {
+  border-color: var(--input) !important;
+}
+html[data-audience] .muted,
+html[data-audience] .eyebrow,
+html[data-audience] .topbar,
+html[data-audience] .back {
+  color: var(--muted-foreground);
+}
+html[data-audience] .panel,
+html[data-audience] .event-row,
+html[data-audience] .topbar {
+  border-color: var(--border);
+}
+html[data-audience='bookstore'] .side-label,
+html[data-audience='bookstore'] .side-note,
+html[data-audience='bookstore'] .user small {
+  color: #d0c4b5;
+}
+.recovery-banner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #fff3df;
+  color: #70470b;
+  border-radius: 8px;
+}
+.recovery-dialog {
+  max-height: 90dvh;
+  overflow: auto;
+}
+.recovery-order {
+  display: grid;
+  gap: 10px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.inventory-fairs {
+  display: grid;
+  gap: 10px;
+  max-height: 55dvh;
+  overflow: auto;
+}
+.church-row {
+  flex-wrap: wrap;
+}
+.church-row > div {
+  min-width: 140px;
+}
+@media (max-width: 640px) {
+  .recovery-banner {
+    align-items: start;
+    flex-direction: column;
+  }
+}
+
+.pilot-export-dialog {
+  width: min(1160px, calc(100vw - 28px)) !important;
+  max-width: 1160px !important;
+  max-height: 92dvh;
+  overflow: auto;
+}
+.pilot-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+.pilot-flags label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.pilot-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.pilot-fields label {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+}
+.pilot-preview {
+  overflow: auto;
+  max-height: 46dvh;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.pilot-preview table {
+  min-width: 820px;
+}
+.pilot-preview small {
+  display: block;
+}
+.pilot-counts {
+  font-weight: 700;
+  color: var(--pos-brand);
+}
+.pilot-downloads {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pilot-downloads b,
+.pilot-downloads p {
+  width: 100%;
+}
+@media (max-width: 640px) {
+  .pilot-fields {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+html[data-audience] small,
+html[data-audience] .event-name p,
+html[data-audience] .kpis > div > span,
+html[data-audience] .empty {
+  color: var(--muted-foreground);
+}
+html[data-audience] .kpis svg,
+html[data-audience] .event-arrow,
+html[data-audience] .empty > svg,
+html[data-audience] .empty h2,
+html[data-audience] .empty h3 {
+  color: var(--pos-brand);
+}
+html[data-audience] .kpis .revenue > span,
+html[data-audience] .kpis .revenue svg {
+  color: #fff;
+  opacity: 0.85;
+}
+html[data-audience] .event-list,
+html[data-audience] .kpis > div {
+  border-color: var(--border);
+}
+html[data-audience] .event-row:hover,
+html[data-audience] [data-slot='table-head'] {
+  background: var(--muted);
+  color: var(--foreground);
+}
+html[data-audience] input:focus-visible,
+html[data-audience] textarea:focus-visible {
+  outline-color: var(--ring);
+}
+html[data-audience] .stage {
+  border-color: var(--sidebar-border);
+  color: var(--sidebar-foreground);
+}
+.order-invoice-fields {
+  margin-top: 18px;
+  padding: 14px;
+  background: var(--muted);
+  border-radius: 8px;
+}
+.order-invoice-fields summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+html.dark[data-audience='bookstore'] {
+  --pos-background: #29241e;
+  --pos-sidebar: #342b20;
+  --pos-brand: #b39370;
+  --foreground: #f4ece0 !important;
+  --card: #352e26 !important;
+  --card-foreground: #f4ece0 !important;
+  --popover: #352e26 !important;
+  --popover-foreground: #f4ece0 !important;
+  --muted: #463a2e !important;
+  --muted-foreground: #c3b4a2 !important;
+  --border: #60503d !important;
+}
+html.dark[data-audience='church'] {
+  --pos-background: #202a32;
+  --pos-sidebar: #293640;
+  --pos-brand: #819bab;
+  --foreground: #edf2f5 !important;
+  --card: #2c3943 !important;
+  --card-foreground: #edf2f5 !important;
+  --popover: #2c3943 !important;
+  --popover-foreground: #edf2f5 !important;
+  --muted: #394955 !important;
+  --muted-foreground: #aebdc7 !important;
+  --border: #526671 !important;
 }

@@ -1003,7 +1003,7 @@
       <div class="table-container" style="max-height:400px;overflow-y:auto;">
         <table id="summary-table">
           <thead>
-            <tr><th>單號</th><th>金額</th><th>付款</th><th>操作</th></tr>
+            <tr><th>出貨單號</th><th>日期</th><th>金額</th><th>付款方式</th><th>操作</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -3184,6 +3184,7 @@ const handleCulturalCoinCheckout = () => {
       let checkoutBusy=false;
       const performCheckout = async (paymentMethod, isComposite = false) => {
         if(checkoutBusy || cloud.event.status!=='open')return;
+        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}
         if(!isBookstore && /信用卡|現金/.test(paymentMethod)){alert('教會僅開放文化幣與 LINE PAY');return;}
         if (cart.length === 0) {
           if (!hasShownEmptyCartAlert) { alert('購物車為空，無法結帳'); POSAudio.error(); hasShownEmptyCartAlert = true; }
@@ -3223,8 +3224,6 @@ const handleCulturalCoinCheckout = () => {
           ? getPersonalCustomer()
           : (invoiceInfo.taxId ? bookFairCustomer : BOOK_FAIR_CUSTOMER);
 
-        POSAudio.success();
-
         clients[clientId] = {
           id: clientId,
           transactionId: clientId,
@@ -3241,8 +3240,8 @@ const handleCulturalCoinCheckout = () => {
           ts: new Date().getTime().toString().slice(-12)
         };
 
-        checkoutBusy=true;checkoutBtns.forEach(b=>b.disabled=true);
-        try { localStorage.setItem('cart','[]'); saveSummary(); await cloud.flush(); POSAudio.success(); } catch(error) { const cover=document.createElement('div');cover.className='retry-cover';const p=document.createElement('p');p.textContent='結帳等待雲端確認。請勿重新收款。'+error.message;const btn=document.createElement('button');btn.textContent='重試儲存';btn.onclick=async()=>{btn.disabled=true;try{await cloud.flush();location.reload();}catch(e){p.textContent=e.message;btn.disabled=false;}};cover.append(p,btn);document.body.append(cover);return; } finally {checkoutBusy=false;checkoutBtns.forEach(b=>b.disabled=false);}
+        checkoutBusy=true;checkoutBtns.forEach(b=>b.disabled=true);document.body.dataset.checkout='saving';let checkoutSaved=false;
+        try { localStorage.setItem('cart','[]'); saveSummary(); await cloud.flush(); checkoutSaved=true;POSAudio.success(); } catch(error) { const cover=document.createElement('div');cover.className='retry-cover';const p=document.createElement('p');p.textContent='結帳等待雲端確認。請勿重新收款。'+error.message;const btn=document.createElement('button');btn.textContent='重試儲存';btn.onclick=async()=>{btn.disabled=true;try{await cloud.flush();location.reload();}catch(e){p.textContent=e.message;btn.disabled=false;}};cover.append(p,btn);document.body.append(cover);return; } finally {checkoutBusy=!checkoutSaved;checkoutBtns.forEach(b=>b.disabled=!checkoutSaved);document.body.dataset.checkout=checkoutSaved?'saved':'failed';}
         cart.forEach(item => {
           if (!overallSummary[item.code]) overallSummary[item.code] = { code: item.code, name: item.name, totalQuantity: 0, totalAmount: 0 };
           overallSummary[item.code].totalQuantity += item.quantity;
@@ -3265,7 +3264,6 @@ const handleCulturalCoinCheckout = () => {
         const validCount = Object.values(clients).filter(c => c && c.isValid).length;
         if (isBookstore && validCount > 0 && validCount % 20 === 0) {
           doBackup();
-          exportPilot();
         }
 
         clientCounter++;
@@ -3629,7 +3627,7 @@ scanForm.addEventListener('submit', (e) => {
           const noteClass = (client.note || formatInvoiceInfoInline(client.invoiceInfo)) ? 'client-link has-note' : 'client-link';
           row.innerHTML = `
             <td><a href="#" class="${noteClass}" data-client-id="${client.id}">${displayOrderNumber(client)}</a> ${!client.isValid ? '(已作廢)' : ''}</td>
-            <td>${Math.round(client.amount)}</td>
+            <td>${client.createdAt?new Date(client.createdAt).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",hour12:false}):String(client.id).slice(0,8)}</td><td>${Math.round(client.amount)}</td>
             <td>${method}</td>
             <td class="btn-action-group">
               <button class="btn-edit-order" data-client-id="${client.id}">修改</button>
@@ -3704,7 +3702,10 @@ const attachHistoryEvents = () => {
   document.querySelectorAll('.client-link').forEach((link) => {
     link.onclick = (e) => {
       e.preventDefault();
-      showClientDetails(link.dataset.clientId);
+      parent.postMessage(
+        { type: 'edit-order', id: link.dataset.clientId },
+        location.origin,
+      );
     };
   });
 };
@@ -4118,62 +4119,34 @@ const buildPilotExportFile = (rows, filename) => {
 };
 
 async function exportPilot(options = {}) {
-  if(!isBookstore){alert('請由書房匯出');return;}
-  await cloud.flush(); await cloud.reserve(1024+Object.values(clients).reduce((s,c)=>s+(c.items||[]).length*12,0));
-  try {
+  if (!isBookstore) {
+    alert('請由書房匯出');
+    return;
+  }
+  await cloud.flush();
+  if (options.dryRun) {
+    let counter = 0;
     const result = PilotExporter.buildPilotExport({
       clients,
       products,
       customerMap,
       unitMap,
-      generateERI,
-      now: options.now instanceof Date ? options.now : new Date()
+      now: options.now || new Date(),
+      generateERI: (type) =>
+        ({ master: '0H5', detail: '0H8', pay: '01E' })[type] +
+        'TMPPOS0' +
+        String(++counter).padStart(6, '0'),
     });
     window.lastPilotDryRun = result;
-
-    if (!result.ok) {
-      const message = `Pilot 正式匯出已阻止：\n${result.validationErrors.join('\n')}`;
-      console.error(message, result.audit);
-      dbStatusElement.textContent = `❌ ${result.validationErrors.join('；')}`;
-      dbStatusElement.style.color = 'red';
-      alert(message);
-      return result;
-    }
-
-    if (options.dryRun === true) return result;
-    const files = [
-      buildPilotExportFile(result.rows.stkSale1, 'STKSALE1.csv'),
-      buildPilotExportFile(result.rows.stkSale2, 'STKSALE2.csv'),
-      buildPilotExportFile(result.rows.vchrplus, 'VCHRPLUS_SALE1.csv')
-    ];
-    await exportFiles(
-      files,
-      'iPad 對多個 CSV 下載支援有限。若跳出分享面板，請選擇「儲存到檔案」；若仍被阻擋，請改用桌機匯出 Pilot 會計檔。'
-    );
-    const audit = result.audit;
-    const plusSubTotal = (result.rows.vchrplus || []).slice(1)
-      .reduce((sum, row) => sum + Number(row[6] || 0), 0);
-    const totalIndex = PilotExporter.STKSALE1_HEADER.indexOf('TOTAL');
-    const remainingCashTotal = (result.rows.stkSale1 || []).slice(1)
-      .reduce((sum, row) => sum + Number(row[totalIndex] || 0), 0);
-    dbStatusElement.textContent = `✅ Pilot 匯出驗證完成：STKSALE1 ${audit.stkSale1Count} 筆、STKSALE2 ${audit.stkSale2Count} 筆、VCHRPLUS ${audit.voucherCount} 筆；非現金加減項 ${plusSubTotal} 元、PILOT剩餘TOTAL ${remainingCashTotal} 元；應稅 ${audit.taxableGross} 元、免稅 ${audit.exemptGross} 元、銷售合計 ${audit.exportedGross} 元`;
-    dbStatusElement.style.color = 'green';
     return result;
-  } catch (error) {
-    console.error(error);
-    const message = `Pilot 匯出失敗：${error.message || error}`;
-    dbStatusElement.textContent = `❌ ${message}`;
-    dbStatusElement.style.color = 'red';
-    alert(message);
-    return null;
   }
+  parent.postMessage({ type: 'pilot-export' }, location.origin);
 }
+window.runPilotDryRun = (now) =>
+  exportPilot({ dryRun: true, now: now ? new Date(now) : new Date() });
+exportPilotBtn.onclick = () =>
+  exportPilot().catch((error) => alert(error.message));
 
-window.runPilotDryRun = (now) => exportPilot({
-  dryRun: true,
-  now: now ? new Date(now) : new Date()
-});
-exportPilotBtn.onclick = () => exportPilot();
 
 // ===== 啟動 =====
 loadDiscountRates();
@@ -4182,7 +4155,7 @@ repairStoredZeroAmountClients();
 // ✅ 先載入系統四檔，再渲染
 loadMasterData().then(() => {
   const groups=[...document.querySelectorAll('body > .flex-container')];groups.forEach((el,i)=>el.dataset.section=['checkout','history','accounting','exports'][i]);
-  document.body.dataset.audience=cloud.event.tenant?'church':'bookstore';
+  document.body.dataset.audience=cloud.me.role==='church'||cloud.event.organizer==='church'?'church':'bookstore';
   document.body.dataset.role=cloud.me.role;
   if(!isBookstore){btnF7.hidden=true;btnF10.hidden=true;document.querySelector('.payment-details').hidden=true;document.querySelector('[data-section="exports"]').hidden=true;document.querySelector('#pay-cash').closest('.pay-badge').hidden=true;document.querySelector('#pay-credit').closest('.pay-badge').hidden=true;}
   document.querySelector('#title').textContent='加入商品';

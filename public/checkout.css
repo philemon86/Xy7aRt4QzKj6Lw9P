@@ -1,14 +1,14 @@
 :root {
-  --bg-color: #f3f5f7;
+  --bg-color: #f5f2ed;
   --card-bg: #fff;
-  --primary-btn: #192f4d;
-  --primary-btn-hover: #0e223c;
-  --border-color: #dfe4e9;
+  --primary-btn: #796049;
+  --primary-btn-hover: #594632;
+  --border-color: #ded4c6;
   --input-bg: #fff;
-  --text-color: #233347;
-  --text-muted: #718092;
-  --soft: #edf1f5;
-  --focus: #a6b9d1;
+  --text-color: #3f352b;
+  --text-muted: #827362;
+  --soft: #eee6db;
+  --focus: #c9b290;
   --radius-card: 12px;
   --radius-input: 8px;
   --radius-pill: 8px;
@@ -16,9 +16,9 @@
   --shadow-md: none;
 }
 body[data-audience='church'] {
-  --bg-color: #f3f4f4;
-  --primary-btn: #59666f;
-  --primary-btn-hover: #424e57;
+  --bg-color: #f0f3f5;
+  --primary-btn: #526f84;
+  --primary-btn-hover: #3b5365;
   --border-color: #dce0e2;
   --text-color: #303b43;
   --text-muted: #757f85;
@@ -1140,4 +1140,36 @@ body[data-role='church'] .checkout-btn {
   .btn-action-group {
     flex-direction: column;
   }
+}
+
+.history-summary-box {
+  margin-bottom: 28px !important;
+}
+.summary-payment-row {
+  margin-top: 18px !important;
+  padding-bottom: 12px;
+  gap: 12px;
+}
+.pay-badge {
+  padding: 9px 15px !important;
+  background: var(--soft) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+body[data-checkout='saving'] .checkout-buttons-area::before {
+  content: '正在保存這筆結帳…';
+  grid-column: 1 / -1;
+  color: var(--primary-btn);
+  font-weight: 700;
+}
+body[data-checkout='saving'] .checkout-btn {
+  opacity: 0.6;
+}
+#summary-table td:nth-child(2) {
+  font-size: 13px;
+  min-width: 110px;
+}
+#summary-table .client-link {
+  color: var(--primary-btn);
+  font-weight: 700;
 }

@@ -137,7 +137,8 @@ window.makeCloud = async function () {
         }
       }
       base = result.state;
-      cloud.numbers = result.numbers || cloud.numbers;
+      cloud.numbers = { ...cloud.numbers, ...result.numbers };
+      cloud.recoveryError = '';
       failed = false;
       cloud?.onUpdate?.();
       status('已儲存至雲端');
@@ -148,6 +149,7 @@ window.makeCloud = async function () {
       );
     } catch (e) {
       failed = true;
+      cloud.recoveryError = e.message;
       window.localStorage.setItem(
         'pos-recovery:' + eid + ':' + device,
         JSON.stringify({ base, desired, at: new Date().toISOString() }),
@@ -197,6 +199,39 @@ window.makeCloud = async function () {
     snapshot() {
       return structuredClone(desired);
     },
+    recoveryOrders() {
+      return Object.entries(desired)
+        .filter(
+          ([key, value]) =>
+            key.startsWith('order:') &&
+            JSON.stringify(value) !== JSON.stringify(base[key]),
+        )
+        .map(([, value]) => structuredClone(value));
+    },
+    async resolveRecovery(payments) {
+      if (
+        !window.localStorage.getItem(
+          'pos-recovery-original:' + eid + ':' + device,
+        )
+      )
+        window.localStorage.setItem(
+          'pos-recovery-original:' + eid + ':' + device,
+          JSON.stringify({ base, desired, at: new Date().toISOString() }),
+        );
+      for (const [id, records] of Object.entries(payments)) {
+        const key = 'order:' + id;
+        if (!desired[key]) throw Error('找不到待存交易');
+        desired[key] = {
+          ...desired[key],
+          paymentRecords: records,
+          paymentMethod:
+            records.length === 1
+              ? records[0].method
+              : records.map((p) => p.method + '(' + p.amount + ')').join(' + '),
+        };
+      }
+      await flush();
+    },
   };
   async function readLatest() {
     busy = true;
@@ -245,11 +280,13 @@ window.makeCloud = async function () {
   );
   if (recover) {
     const r = JSON.parse(recover);
-    status('有未完成的儲存，請先復原', true);
-    if (confirm('這台裝置有尚未儲存的操作。要嘗試復原嗎？')) {
-      base = r.base;
-      desired = r.desired;
+    status('正在復原上次未完成的儲存…');
+    base = r.base;
+    desired = r.desired;
+    try {
       await flush();
+    } catch {
+      /* Keep the register available so the saved recovery can be reviewed. */
     }
   }
   setInterval(() => {
@@ -283,6 +320,11 @@ window.makeCloud = async function () {
         );
       }
   });
-  status('已連接雲端');
+  status(
+    cloud.recoveryError
+      ? '上次結帳待處理 · ' + cloud.recoveryError
+      : '已連接雲端',
+    !!cloud.recoveryError,
+  );
   return cloud;
 };

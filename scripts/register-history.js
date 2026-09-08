@@ -35,7 +35,10 @@ const attachHistoryEvents = () => {
   document.querySelectorAll('.client-link').forEach((link) => {
     link.onclick = (e) => {
       e.preventDefault();
-      showClientDetails(link.dataset.clientId);
+      parent.postMessage(
+        { type: 'edit-order', id: link.dataset.clientId },
+        location.origin,
+      );
     };
   });
 };
