@@ -18,11 +18,11 @@ const base = {
   defaultDiscount: 80,
   specialDiscount: 79,
 };
-test('Price precedence: website sale, legacy special, website regular, legacy fallback', () => {
+test('Price precedence: individual setting including legacy, website, category, original', () => {
   let p = resolveProductPricing({ ...base, websitePrice: 200 });
   assert.deepEqual(
     [p.price, p.defaultDiscount, p.priceSource],
-    [200, 100, 'website-sale'],
+    [300, 79, 'legacy-special'],
   );
   p = resolveProductPricing({ ...base, websitePrice: 300 });
   assert.deepEqual(
@@ -53,7 +53,14 @@ test('Price precedence: website sale, legacy special, website regular, legacy fa
     [p.price, p.defaultDiscount, p.priceSource],
     [300, 80, 'legacy'],
   );
-  assert.equal(resolveProductPricing({ ...base, websitePrice: 0 }).price, 0);
+  assert.equal(
+    resolveProductPricing({
+      ...base,
+      specialDiscount: undefined,
+      websitePrice: 0,
+    }).price,
+    0,
+  );
   assert.equal(
     resolveProductPricing({ ...base, websitePrice: -10 }).price,
     300,
@@ -201,7 +208,7 @@ test('Generated register scripts parse and manual discount overrides preset spec
       class: 'A',
       isManual: false,
     }),
-    100,
+    79,
   );
   assert.equal(
     context.discount({

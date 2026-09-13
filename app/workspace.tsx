@@ -62,7 +62,9 @@ import OrderEditor from './order-editor';
 import RecoveryDialog from './recovery-dialog';
 import PilotExportDialog from './pilot-export-dialog';
 import Calculator from './calculator';
+import CatalogSettings from './catalog-settings';
 import { stats } from '@/lib/state.mjs';
+import { resolveProductPricing } from '@/lib/pos-core.mjs';
 const money = (v: number) =>
   new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 }).format(v || 0);
 const today = () =>
@@ -124,8 +126,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     [registerLoading, setRegisterLoading] = useState(false);
   const [newEvent, setNewEvent] = useState(false),
     [eventName, setEventName] = useState(''),
-    [eventDate, setEventDate] = useState(''),
-    [eventTenant, setEventTenant] = useState('');
+    [eventDate, setEventDate] = useState('');
   const [churchCode, setChurchCode] = useState(''),
     [churchPassword, setChurchPassword] = useState(''),
     [churches, setChurches] = useState<any[]>([]),
@@ -215,6 +216,33 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     };
   }, []);
   useEffect(() => {
+    if (!me) return;
+    let stopped = false,
+      checking = false,
+      version = '';
+    const timer = setInterval(async () => {
+      if (checking || document.hidden) return;
+      checking = true;
+      try {
+        const v = await api('catalog/version');
+        if (v.version !== version) {
+          const next = await api('catalog');
+          if (!stopped) {
+            setCatalog(next);
+            version = v.version;
+          }
+        }
+      } catch {
+      } finally {
+        checking = false;
+      }
+    }, 60000);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [me]);
+  useEffect(() => {
     const listener = (e: MessageEvent) => {
       if (
         e.origin !== location.origin ||
@@ -282,6 +310,12 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     }
   };
   async function openEvent(e: any, nextView = 'checkout') {
+    if (
+      me.role === 'admin' &&
+      e.organizer === 'church' &&
+      nextView === 'checkout'
+    )
+      nextView = 'history';
     if (!e) return;
     await flushFrame();
     setRegisterLoading(true);
@@ -323,11 +357,20 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     setActive(null);
     setEvents(await api('events'));
   }
+  function beginEvent() {
+    setEventName(
+      me.role === 'admin'
+        ? ''
+        : me.tenant.toUpperCase() + today().replaceAll('-', ''),
+    );
+    setEventDate(today());
+    setNewEvent(true);
+  }
   async function create() {
     const result = await api('events', {
       name: eventName,
       date: eventDate,
-      tenant: eventTenant.split('｜')[0].trim(),
+      tenant: '',
       pricing: 'website',
     });
     setNewEvent(false);
@@ -384,7 +427,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     setNotice('商品數量已儲存');
   }
   const products = (catalog?.products || []).filter((p: any) =>
-    [p.name, p.code, p.barcode, p.webBarcode]
+    [p.name, p.csvName, p.webName, p.code, p.barcode, p.webBarcode]
       .join(' ')
       .toLowerCase()
       .includes(search.toLowerCase()),
@@ -445,9 +488,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           </span>
           <h1>{tenant ? '歡迎回到書報組' : '書展工作台'}</h1>
           <p>
-            {tenant
-              ? '登入後管理自己教會的書展與交易。'
-              : '書展與他們的場地'}
+            {tenant ? '登入後管理自己教會的書展與交易。' : '書展與他們的場地'}
           </p>
           <form
             onSubmit={(e) => {
@@ -618,6 +659,25 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                         : ' · 腓利門書房')}
                   </span>
                   <h1>{active.name}</h1>
+                  {(me.role !== 'admin' || active.organizer !== 'church') && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        const name = window.prompt('修改書展名稱', active.name);
+                        if (name && name !== active.name)
+                          run(async () => {
+                            await api('events/' + active.id + '/rename', {
+                              name,
+                              before: active.name,
+                            });
+                            setActive({ ...active, name });
+                            setEvents(await api('events'));
+                          });
+                      }}
+                    >
+                      修改名稱
+                    </Button>
+                  )}
                   <p>
                     {active.date} <span className="dot">·</span>{' '}
                     自動套用商品價格 <span className="dot">·</span>{' '}
@@ -625,7 +685,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   </p>
                 </div>
                 <div className="heading-actions">
-                  {me.role === 'admin' && (
+                  {(me.role !== 'admin' || active.organizer !== 'church') && (
                     <Button
                       variant="outline"
                       onClick={() =>
@@ -647,20 +707,22 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                       {active.status === 'open' ? '封存' : '重新開啟'}
                     </Button>
                   )}
-                  <Button
-                    className="primary"
-                    onClick={() => {
-                      tab('checkout');
-                      setScanFeedback(null);
-                      (
-                        frame.current?.contentWindow as any
-                      )?.POSCloud?.unlockAudio?.();
-                      setCamera(true);
-                    }}
-                    disabled={active.status !== 'open'}
-                  >
-                    <ScanBarcode /> 相機掃描
-                  </Button>
+                  {!(me.role === 'admin' && active.organizer === 'church') && (
+                    <Button
+                      className="primary"
+                      onClick={() => {
+                        tab('checkout');
+                        setScanFeedback(null);
+                        (
+                          frame.current?.contentWindow as any
+                        )?.POSCloud?.unlockAudio?.();
+                        setCamera(true);
+                      }}
+                      disabled={active.status !== 'open'}
+                    >
+                      <ScanBarcode /> 相機掃描
+                    </Button>
+                  )}
                 </div>
               </div>
               {me.role === 'admin' && (
@@ -690,9 +752,11 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
               )}
               <Tabs value={view} onValueChange={tab}>
                 <TabsList variant="line" className="work-tabs">
-                  <TabsTrigger value="checkout">
-                    <Store /> 結帳
-                  </TabsTrigger>
+                  {!(me.role === 'admin' && active.organizer === 'church') && (
+                    <TabsTrigger value="checkout">
+                      <Store /> 結帳
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="history">
                     <ReceiptText /> 交易與營收
                   </TabsTrigger>
@@ -901,7 +965,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   </p>
                 </div>
                 {!(me.role === 'admin' && section === 'church-events') && (
-                  <Button className="primary" onClick={() => setNewEvent(true)}>
+                  <Button className="primary" onClick={beginEvent}>
                     <Plus /> 新增書展
                   </Button>
                 )}
@@ -998,10 +1062,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                     <p>建立場次後，結帳、出貨單與庫存都會保存在這裡。</p>
                     {!search &&
                       !(me.role === 'admin' && section === 'church-events') && (
-                        <Button
-                          className="primary"
-                          onClick={() => setNewEvent(true)}
-                        >
+                        <Button className="primary" onClick={beginEvent}>
                           <Plus /> 新增第一場書展
                         </Button>
                       )}
@@ -1036,6 +1097,13 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   </Button>
                 )}
               </div>
+              {me.role === 'admin' && (
+                <CatalogSettings
+                  catalog={catalog}
+                  request={api}
+                  onUpdated={async () => setCatalog(await api('catalog'))}
+                />
+              )}
               {sync && (
                 <div className="sync-box">
                   <CloudCheck />
@@ -1075,6 +1143,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                     <TableRow>
                       <TableHead>商品</TableHead>
                       <TableHead>Barcode</TableHead>
+                      <TableHead>結帳單價</TableHead>
                       <TableHead>官網售價</TableHead>
                       <TableHead>定價</TableHead>
                       <TableHead>同步時間</TableHead>
@@ -1100,6 +1169,19 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                         </TableCell>
                         <TableCell>
                           {p.barcode || p.webBarcode || '—'}
+                        </TableCell>
+                        <TableCell>
+                          <strong>
+                            $
+                            {money(
+                              (resolveProductPricing(p).price *
+                                resolveProductPricing(p).defaultDiscount) /
+                                100,
+                            )}
+                          </strong>
+                          <small style={{ display: 'block' }}>
+                            {resolveProductPricing(p).priceLabel}
+                          </small>
                         </TableCell>
                         <TableCell>
                           <strong>
@@ -1280,15 +1362,9 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 </Button>
               ))}
           </div>
-          <Button
-            onClick={() => {
-              setEventTenant(inventoryChurch.toUpperCase());
-              setInventoryChurch('');
-              setNewEvent(true);
-            }}
-          >
-            由書房建立配送場次
-          </Button>
+          {!events.some((e) => e.tenant === inventoryChurch) && (
+            <p className="muted">請教會先登入並建立書展，再由書房匯入庫存。</p>
+          )}
         </DialogContent>
       </Dialog>
       {recovery && (frame.current?.contentWindow as any)?.POSCloud && (
@@ -1347,26 +1423,9 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
               value={eventDate}
               onChange={(e) => setEventDate(e.target.value)}
             />
-            {me.role === 'admin' && (
-              <>
-                <label htmlFor="event-tenant">所屬教會（外出書展可留白）</label>
-                <Input
-                  id="event-tenant"
-                  list="event-churches"
-                  value={eventTenant}
-                  onChange={(e) => setEventTenant(e.target.value)}
-                  placeholder="AA01｜臺北教會"
-                />
-                <datalist id="event-churches">
-                  {catalog?.customers.map((c: any) => (
-                    <option key={c.code} value={c.code + '｜' + c.name} />
-                  ))}
-                </datalist>
-              </>
-            )}
+
             <p className="pricing-policy">
-              價格依序採用：官網特價 → 原書展指定特價 →
-              官網一般售價。未比對官網時沿用原書展價格。
+              價格依序採用：單品設定 → 官網售價 → 類別設定 → CSV 原價。
             </p>
             <p className="muted">
               結帳時仍可修改單價、數量與折扣。商品數量可以稍後建立。
@@ -1382,6 +1441,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           target={editTarget}
           catalog={catalog}
           role={me.role}
+          readOnly={me.role === 'admin' && active?.organizer === 'church'}
           request={api}
           onClose={() => setEditTarget(null)}
           onSaved={() => {

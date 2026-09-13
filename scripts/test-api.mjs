@@ -31,17 +31,9 @@ ok(
 );
 const cat = await call('catalog');
 ok(
-  cat.data.products.length === 2126 && cat.data.customers.length === 515,
+  cat.data.products.length === 2130 && cat.data.customers.length === 515,
   'Catalog and customer seed counts',
 );
-const a = (
-  await call('events', {
-    name: '驗證用書展 A',
-    date: '2026-09-06',
-    tenant: 'aa01',
-    pricing: 'website',
-  })
-).data.id;
 const b = (
   await call('events', {
     name: '驗證用書展 B',
@@ -54,6 +46,13 @@ const pw = 'Test-' + crypto.randomUUID();
 await call('churches', { code: 'AA01', password: pw });
 const church = (await call('login', { tenant: 'aa01', password: pw }, ''))
   .cookie;
+const a = (
+  await call(
+    'events',
+    { name: '驗證用教會書展 A', date: '2026-09-06', pricing: 'website' },
+    church,
+  )
+).data.id;
 ok(
   (await call('events/' + b, undefined, church)).status === 404,
   'Church cannot read another fair',
@@ -228,8 +227,8 @@ const numbered = (await call('events/' + a)).data;
 const numberA = numbered.numbers.a,
   numberB = numbered.numbers.b;
 ok(
-  /^PF20260906\d{4,}$/.test(numberA) &&
-    Math.abs(Number(numberA.slice(10)) - Number(numberB.slice(10))) === 1,
+  /^AA0120260906\d{4,}$/.test(numberA) &&
+    Math.abs(Number(numberA.slice(12)) - Number(numberB.slice(12))) === 1,
   'Concurrent checkouts allocate consecutive human-readable numbers',
 );
 await call('events/' + a + '/sync', { changes: [patches[1]] }, church);
@@ -323,7 +322,7 @@ await call('events/' + b + '/sync', {
 });
 ok(
   /^PF20260906\d{4,}$/.test((await call('events/' + b)).data.numbers.store),
-  'Bookstore-created fairs use PF prefix even when assigned to a church',
+  'Bookstore-created fairs use PF prefix',
 );
 const hub = await call('shipments?tenant=aa01');
 ok(
@@ -343,8 +342,8 @@ await call(
   church,
 );
 ok(
-  Number((await call('events/' + a)).data.numbers.next.slice(10)) >
-    Math.max(Number(numberA.slice(10)), Number(numberB.slice(10))),
+  Number((await call('events/' + a)).data.numbers.next.slice(12)) >
+    Math.max(Number(numberA.slice(12)), Number(numberB.slice(12))),
   'Deleting a shipment never reuses its sequence',
 );
 const selfFair = (
@@ -373,7 +372,7 @@ ok(
 );
 const allFairs = (await call('events')).data;
 ok(
-  allFairs.find((e) => e.id === a).organizer === 'bookstore' &&
+  allFairs.find((e) => e.id === b).organizer === 'bookstore' &&
     allFairs.find((e) => e.id === selfFair).organizer === 'church',
   'Fair lists can distinguish the creator rather than the assigned tenant',
 );
@@ -444,15 +443,19 @@ ok(
   'Formal CODE, invoice and ERI never overwrite original POS state',
 );
 const editSource = beforeExport['order:a'];
-await call('events/' + a + '/sync', {
-  changes: [
-    {
-      key: 'order:a',
-      before: editSource,
-      after: { ...editSource, note: 'changed after preview' },
-    },
-  ],
-});
+await call(
+  'events/' + a + '/sync',
+  {
+    changes: [
+      {
+        key: 'order:a',
+        before: editSource,
+        after: { ...editSource, note: 'changed after preview' },
+      },
+    ],
+  },
+  church,
+);
 ok(
   (await call('events/' + a + '/pilot-confirm', { id: export2.data.id }))
     .status === 409,
@@ -528,8 +531,8 @@ ok(
   'Consolidated accounting export leaves all original POS orders separate and unchanged',
 );
 await call('events/' + groupedFair + '/archive', {});
-await call('events/' + selfFair + '/archive', {});
-await call('events/' + a + '/archive', {});
+await call('events/' + selfFair + '/archive', {}, church);
+await call('events/' + a + '/archive', {}, church);
 ok(
   (await call('events/' + a + '/sync', { changes: [] }, church)).status === 409,
   'Archived fair blocks operational writes',

@@ -1,5 +1,12 @@
 import { env } from 'cloudflare:workers';
 import catalog from '../data/catalog.json';
+import {
+  parseProductCSV,
+  mergeProducts,
+  defaultPricing,
+  composeCatalogProduct,
+  validatePriceRule,
+} from './catalog.mjs';
 import initialShop from '../data/shop-cache.json';
 import { mergeChanges, validateOrder, stats } from './state.mjs';
 import { parseShop } from './shop.mjs';
@@ -175,8 +182,58 @@ async function assignNumbers(e: any, orders: any[]) {
   }
   return result;
 }
+async function catalogSettings() {
+  const rows = await db()
+    .prepare(
+      "SELECT key,value FROM settings WHERE key IN ('catalog-products','global-pricing')",
+    )
+    .all<any>();
+  const settings = Object.fromEntries(
+    rows.results.map((r) => [r.key, JSON.parse(r.value)]),
+  );
+  const products = mergeProducts(
+    catalog.products,
+    settings['catalog-products']?.products || [],
+  );
+  const defaults = defaultPricing(catalog.products),
+    saved = settings['global-pricing'];
+  return {
+    products,
+    rules: {
+      products: { ...defaults.products, ...saved?.products },
+      classes: { ...defaults.classes, ...saved?.classes },
+    },
+    catalogRevision: settings['catalog-products']?.revision || '',
+    pricingRevision: saved?.revision || '',
+  };
+}
+async function writeCatalogSetting(key: string, value: any, revision: string) {
+  const text = JSON.stringify(value);
+  if (new TextEncoder().encode(text).length > 1800000)
+    throw error('商品資料超過儲存上限');
+  const old = await db()
+    .prepare('SELECT value FROM settings WHERE key=?')
+    .bind(key)
+    .first<any>();
+  if ((old ? JSON.parse(old.value).revision : '') !== revision)
+    throw error('資料已更新，請重新載入後再操作', 409);
+  const result = old
+    ? await db()
+        .prepare('UPDATE settings SET value=? WHERE key=? AND value=?')
+        .bind(text, key, old.value)
+        .run()
+    : await db()
+        .prepare('INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)')
+        .bind(key, text)
+        .run();
+  if (result.meta.changes !== 1)
+    throw error('資料已更新，請重新載入後再操作', 409);
+}
 async function getCatalog(s: Session) {
-  const rows = await db().prepare('SELECT code,data FROM shop').all<any>();
+  const [rows, config] = await Promise.all([
+    db().prepare('SELECT code,data FROM shop').all<any>(),
+    catalogSettings(),
+  ]);
   const web = {
     ...initialShop,
     ...Object.fromEntries(
@@ -185,13 +242,18 @@ async function getCatalog(s: Session) {
   };
   return {
     ...catalog,
+    pricingRules: config.rules,
+    catalogRevision: config.catalogRevision,
+    pricingRevision: config.pricingRevision,
     customers:
       s.role === 'admin'
         ? catalog.customers
         : catalog.customers.filter((c) =>
             [s.tenant.toUpperCase(), '0002', '305'].includes(c.code),
           ),
-    products: catalog.products.map((p) => ({ ...p, ...(web as any)[p.code] })),
+    products: config.products.map((p) =>
+      composeCatalogProduct(p, (web as any)[p.code], config.rules),
+    ),
   };
 }
 async function limited(key: string) {
@@ -322,7 +384,70 @@ export async function handle(req: Request, parts: string[]) {
         'pos_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0',
     });
   }
-  if (route === 'catalog') return json(await getCatalog(s));
+  if (route === 'catalog') {
+    if (req.method === 'GET') {
+      if (id === 'version') {
+        const rows = await db()
+          .prepare(
+            "SELECT key,json_extract(value,'$.revision') revision FROM settings WHERE key IN ('catalog-products','global-pricing')",
+          )
+          .all<any>();
+        const sync = await db()
+          .prepare("SELECT value FROM settings WHERE key='sync'")
+          .first<any>();
+        const job = sync ? JSON.parse(sync.value) : {};
+        return json({
+          version:
+            JSON.stringify(rows.results) +
+            ':' +
+            (job.started || '') +
+            ':' +
+            (job.cursor || 0),
+        });
+      }
+      return json(await getCatalog(s));
+    }
+    isAdmin(s);
+    if (req.method !== 'POST') throw error('請使用 POST', 405);
+    const config = await catalogSettings();
+    if (id === 'import') {
+      if (typeof b.text !== 'string' || b.text.length > 8000000)
+        throw error('CSV 檔案過大或格式錯誤');
+      const parsed = parseProductCSV(b.text);
+      const products = mergeProducts(config.products, parsed.products);
+      await writeCatalogSetting(
+        'catalog-products',
+        { revision: crypto.randomUUID(), products },
+        b.revision || '',
+      );
+      return json({ count: parsed.products.length, skipped: parsed.skipped });
+    }
+    if (id === 'pricing') {
+      if (
+        !['products', 'classes'].includes(b.scope) ||
+        typeof b.code !== 'string' ||
+        ['__proto__', 'constructor', 'prototype'].includes(b.code)
+      )
+        throw error('設定對象無效');
+      if (
+        !config.products.some((p) =>
+          b.scope === 'products' ? p.code === b.code : p.class === b.code,
+        )
+      )
+        throw error('找不到商品或類別');
+      const rule = validatePriceRule(b.rule);
+      const rules = config.rules as any;
+      rules[b.scope][b.code] = rule;
+      const revision = crypto.randomUUID();
+      await writeCatalogSetting(
+        'global-pricing',
+        { ...rules, revision },
+        b.revision || '',
+      );
+      return json({ ok: true, revision });
+    }
+    throw error('未知商品操作', 404);
+  }
   if (route === 'churches') {
     isAdmin(s);
     if (req.method === 'GET') {
@@ -350,8 +475,20 @@ export async function handle(req: Request, parts: string[]) {
     if (req.method === 'GET') {
       return json(await listEvents(s));
     }
-    const tenant =
-      s.role === 'admin' ? String(b.tenant || '').toLowerCase() : s.tenant;
+    if (s.role === 'admin' && b.tenant)
+      throw error('教會自辦書展請由教會入口建立', 403);
+    const tenant = s.role === 'admin' ? '' : s.tenant;
+    if (s.role !== 'admin' && !b.name?.trim())
+      b.name =
+        s.tenant.toUpperCase() +
+        new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Taipei',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        })
+          .format(new Date())
+          .replaceAll('-', '');
     if (
       tenant &&
       !catalog.customers.some((c) => c.code.toLowerCase() === tenant)
@@ -384,6 +521,20 @@ export async function handle(req: Request, parts: string[]) {
   }
   if (route === 'events' && id) {
     const e = await event(id, s);
+    if (action === 'rename') {
+      if (req.method !== 'POST') throw error('請使用 POST', 405);
+      if (s.role === 'admin' && e.organizer === 'church')
+        throw error('教會場次名稱請由教會自行修改', 403);
+      if (typeof b.name !== 'string' || !b.name.trim() || b.name.length > 100)
+        throw error('名稱須為 1～100 字');
+      const result = await db()
+        .prepare('UPDATE events SET name=?,updated=? WHERE id=? AND name=?')
+        .bind(b.name.trim(), new Date().toISOString(), id, b.before)
+        .run();
+      if (result.meta.changes !== 1)
+        throw error('名稱已更新，請重新開啟場次', 409);
+      return json({ ok: true });
+    }
     if (action === 'pilot-preview' || action === 'pilot-confirm') {
       isAdmin(s);
       if (req.method !== 'POST') throw error('請使用 POST', 405);
@@ -413,6 +564,12 @@ export async function handle(req: Request, parts: string[]) {
         throw error('此書展已封存，請由書房重新開啟', 409);
       if (!Array.isArray(b.changes) || b.changes.length > 1000)
         throw error('更新格式錯誤');
+      if (
+        s.role === 'admin' &&
+        e.organizer === 'church' &&
+        b.changes.some((p: any) => !String(p.key).startsWith('stock:'))
+      )
+        throw error('教會結帳內容請由教會自行管理；書房可匯入庫存及查看', 403);
       const originalState = JSON.parse(e.state);
       for (const p of b.changes) {
         if (!/^(order:|draft:|stock:|shared:)/.test(p.key))
@@ -470,7 +627,8 @@ export async function handle(req: Request, parts: string[]) {
       throw error('資料忙碌，請重試', 409);
     }
     if (action === 'archive') {
-      isAdmin(s);
+      if (s.role === 'admin' && e.organizer === 'church')
+        throw error('教會場次請由教會自行管理', 403);
       if (req.method !== 'POST') throw error('請使用 POST', 405);
       await db()
         .prepare('UPDATE events SET status=?,updated=? WHERE id=?')
@@ -570,6 +728,9 @@ export async function handle(req: Request, parts: string[]) {
     }
   }
   if (route === 'sync-shop') {
+    const syncCodes = new Set(
+      (await catalogSettings()).products.map((p) => p.code),
+    );
     isAdmin(s);
     if (req.method === 'GET') {
       const row: any = await db()
@@ -602,7 +763,7 @@ export async function handle(req: Request, parts: string[]) {
         const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
         if (!res.ok) throw Error();
         for (const p of parseShop(await res.text(), url)) {
-          if (catalog.products.some((x) => x.code === p.code)) {
+          if (syncCodes.has(p.code)) {
             await db()
               .prepare(
                 'INSERT INTO shop(code,data) VALUES(?,?) ON CONFLICT(code) DO UPDATE SET data=excluded.data',

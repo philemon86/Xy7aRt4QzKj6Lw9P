@@ -1,6 +1,8 @@
 const attachHistoryEvents = () => {
   document.querySelectorAll('.btn-edit-order').forEach((button) => {
-    button.disabled = cloud.event.status !== 'open';
+    button.disabled = false;
+    if (cloud.me?.role === 'admin' && cloud.event.organizer === 'church')
+      button.textContent = '查看';
     button.onclick = () =>
       parent.postMessage(
         { type: 'edit-order', id: button.dataset.clientId },
@@ -8,6 +10,10 @@ const attachHistoryEvents = () => {
       );
   });
   document.querySelectorAll('.btn-del').forEach((button) => {
+    if (cloud.me?.role === 'admin' && cloud.event.organizer === 'church') {
+      button.hidden = true;
+      return;
+    }
     button.disabled = cloud.event.status !== 'open';
     button.onclick = async () => {
       const id = button.dataset.clientId;

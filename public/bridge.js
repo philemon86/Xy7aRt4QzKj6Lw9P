@@ -44,6 +44,7 @@ window.makeCloud = async function () {
     ['cart', 'priceOverrides', 'clientCounter', 'printEnabled'].includes(k)
       ? 'draft:' + device + ':' + k
       : 'shared:' + k;
+  const readOnly = me.role === 'admin' && event.organizer === 'church';
   const storage = {
     getItem(k) {
       if (k === 'clients') {
@@ -60,6 +61,7 @@ window.makeCloud = async function () {
       return desired[prefix(k)] ?? null;
     },
     setItem(k, v) {
+      if (readOnly) return;
       if (k === 'clients') {
         const clients = JSON.parse(v);
         for (const id of new Set([
@@ -79,10 +81,12 @@ window.makeCloud = async function () {
       schedule();
     },
     removeItem(k) {
+      if (readOnly) return;
       delete desired[prefix(k)];
       schedule();
     },
     clear() {
+      if (readOnly) return;
       for (const k of Object.keys(desired))
         if (
           k.startsWith('order:') ||
@@ -172,6 +176,28 @@ window.makeCloud = async function () {
     }
   });
   window.addEventListener('online', () => flush().catch(() => {}));
+  let refreshingCatalog = false,
+    catalogVersion = null;
+  setInterval(async () => {
+    if (refreshingCatalog || document.hidden || !cloud) return;
+    refreshingCatalog = true;
+    try {
+      const { version } = await api('catalog/version');
+      const day = new Date().toLocaleDateString('en-CA', {
+        timeZone: 'Asia/Taipei',
+      });
+      const nextVersion = version + day;
+      if (nextVersion !== catalogVersion) {
+        const next = await api('catalog');
+        cloud.catalog = next;
+        await cloud.onCatalogUpdate?.();
+        catalogVersion = nextVersion;
+      }
+    } catch {
+    } finally {
+      refreshingCatalog = false;
+    }
+  }, 60000);
   cloud = {
     event,
     catalog,
@@ -278,7 +304,7 @@ window.makeCloud = async function () {
   const recover = window.localStorage.getItem(
     'pos-recovery:' + eid + ':' + device,
   );
-  if (recover) {
+  if (recover && !readOnly) {
     const r = JSON.parse(recover);
     status('正在復原上次未完成的儲存…');
     base = r.base;

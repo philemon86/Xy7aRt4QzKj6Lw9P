@@ -135,10 +135,11 @@ function renderSearch() {
   const terms = query.split(/\s+/).filter(Boolean);
   const matches = [...new Set(Object.values(products))].filter((p) =>
     terms.every((k) =>
-      [p.name, p.code, p.barcode, p.webBarcode].some((v) =>
-        String(v || '')
-          .toLowerCase()
-          .includes(k),
+      [p.name, p.csvName, p.webName, p.code, p.barcode, p.webBarcode].some(
+        (v) =>
+          String(v || '')
+            .toLowerCase()
+            .includes(k),
       ),
     ),
   );

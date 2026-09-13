@@ -45,18 +45,17 @@ html =
         customerOptions.replaceChildren(...data.customers.map(c=>{const option=document.createElement('option');option.value=formatCustomerOption(c);return option;}));
         products={};for(const source of data.products){const p=POSCore.resolveProductPricing(source);products[p.code]=p;if(p.barcode)products[p.barcode]=p;if(p.webBarcode&&!products[p.webBarcode])products[p.webBarcode]=p;}
         dbStatusElement.textContent=data.products.length+' 件商品 · 價格已快取';
-        invoiceCustomerInput.value=cloud.event.tenant?formatCustomerOption(customerMap[cloud.event.tenant.toUpperCase()]):'';syncInvoiceCustomerVisibility();
+        if(!cloud.catalogLoaded)invoiceCustomerInput.value=cloud.event.tenant?formatCustomerOption(customerMap[cloud.event.tenant.toUpperCase()]):'';syncInvoiceCustomerVisibility();cloud.catalogLoaded=true;
       };
+      cloud.onCatalogUpdate=async()=>{await loadMasterData();renderSearch();renderFavorites();};
 ` +
   html.slice(loadEnd);
-html = html.replace(
-  '        const special = getSpecialDiscount(item);',
-  "        if(item.isManual)return item.discount;\n        if(item.priceSource==='website-sale')return item.defaultDiscount;\n        const special = getSpecialDiscount(item);",
-);
-html = html.replace(
-  '        if (!item) return undefined;',
-  "        if (!item || item.websiteBase) return undefined;\n        if(item.priceSource==='legacy-special')return item.defaultDiscount;",
-);
+const discountStart = html.indexOf('      const getSpecialDiscount =');
+const discountEnd = html.indexOf('      const resetIdleTimer', discountStart);
+html =
+  html.slice(0, discountStart) +
+  '      const getSpecialDiscount = () => undefined;\n      const calculateItemDiscount = item => item.isManual ? item.discount : (item.defaultDiscount ?? 100);\n' +
+  html.slice(discountEnd);
 // Preset specials remain automatic; manual edits always take precedence.
 html = html.replace(
   /          if \(getSpecialDiscount\(newItem\) !== undefined\) \{[\s\S]*?\n          \}/g,
@@ -99,7 +98,7 @@ html = html.replace(
 );
 html = html.replace(
   '      const performCheckout = (paymentMethod, isComposite = false) => {',
-  "      let checkoutBusy=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy || cloud.event.status!=='open')return;\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡|現金/.test(paymentMethod)){alert('教會僅開放文化幣與 LINE PAY');return;}",
+  "      let checkoutBusy=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy || cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡|現金/.test(paymentMethod)){alert('教會僅開放文化幣與 LINE PAY');return;}",
 );
 html = html.replace(
   /        POSAudio.success\(\);\s*(?=clients\[clientId\] = \{)/,

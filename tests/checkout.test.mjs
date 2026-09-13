@@ -114,6 +114,22 @@ test('Checkout persists a full order and clears the draft before printing', asyn
   assert.equal(x.context.cart.length, 0);
   assert.equal(x.prints, 1);
 });
+test('No carrier or tax ID is always a book-fair sale even with a selected church or donation', async () => {
+  for (const invoiceInfo of [
+    {},
+    { donationCode: '2995' },
+    { donationCode: '12345' },
+  ]) {
+    const x = make();
+    x.context.getInvoiceInfoFromInputs = () => invoiceInfo;
+    x.context.getSelectedBookFairCustomer = () => ({
+      code: 'AA01',
+      name: '台北教會',
+    });
+    await x.checkout('現金');
+    assert.equal(Object.values(x.saved)[0].accountingCustomer.code, '0002');
+  }
+});
 test('Refund, zero amount, and cultural coin composite retain legacy payments', async () => {
   for (const [amount, quantity, method, total] of [
     [100, -2, '信用卡', -200],

@@ -23,6 +23,7 @@ export default function OrderEditor({
   target,
   catalog,
   role,
+  readOnly = false,
   request,
   onClose,
   onSaved,
@@ -30,6 +31,7 @@ export default function OrderEditor({
   target: Target;
   catalog: any;
   role: string;
+  readOnly?: boolean;
   request: (path: string, body?: any) => Promise<any>;
   onClose: () => void;
   onSaved: () => void;
@@ -95,7 +97,7 @@ export default function OrderEditor({
   const matches = search.trim()
     ? (catalog?.products || [])
         .filter((p: any) =>
-          [p.name, p.code, p.barcode, p.webBarcode]
+          [p.name, p.csvName, p.webName, p.code, p.barcode, p.webBarcode]
             .join(' ')
             .toLowerCase()
             .includes(search.trim().toLowerCase()),
@@ -187,9 +189,13 @@ export default function OrderEditor({
   return (
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent className="order-editor-dialog">
-        <DialogTitle>{number || '出貨單'} · 修改內容</DialogTitle>
+        <DialogTitle>
+          {number || '出貨單'} · {readOnly ? '查看內容' : '修改內容'}
+        </DialogTitle>
         <DialogDescription>
-          修改商品、單價、數量與付款紀錄，出貨單號保持不變。
+          {readOnly
+            ? '教會自行管理出貨單；書房可查看內容及匯入庫存。'
+            : '修改商品、單價、數量與付款紀錄，出貨單號保持不變。'}
         </DialogDescription>
         {error && (
           <p role="alert" className="error">
@@ -213,7 +219,7 @@ export default function OrderEditor({
                     : '原已作廢紀錄'}
               </span>
             </div>
-            <fieldset disabled={busy || archived}>
+            <fieldset disabled={busy || archived || readOnly}>
               <label htmlFor="order-product-search">
                 {replacement == null ? '加入商品' : '選擇要替換的商品'}
               </label>
@@ -233,7 +239,7 @@ export default function OrderEditor({
                       setSearch('');
                     }}
                   >
-                    取消替換
+                    關閉替換
                   </Button>
                 )}
               </div>
@@ -436,7 +442,7 @@ export default function OrderEditor({
             </fieldset>
             <div className="order-editor-footer">
               <span>
-                修正後總額
+                {readOnly ? '出貨單總額' : '修正後總額'}
                 <strong>
                   NT$ {Number.isFinite(total) ? total.toLocaleString() : '—'}
                 </strong>
@@ -446,10 +452,10 @@ export default function OrderEditor({
               </Button>
               <Button
                 className="primary"
-                disabled={busy || archived}
+                disabled={busy || archived || readOnly}
                 onClick={save}
               >
-                {busy ? '儲存中…' : '儲存修改'}
+                {readOnly ? '僅供查看' : busy ? '儲存中…' : '儲存修改'}
               </Button>
             </div>
           </>

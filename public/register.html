@@ -2477,26 +2477,11 @@
         customerOptions.replaceChildren(...data.customers.map(c=>{const option=document.createElement('option');option.value=formatCustomerOption(c);return option;}));
         products={};for(const source of data.products){const p=POSCore.resolveProductPricing(source);products[p.code]=p;if(p.barcode)products[p.barcode]=p;if(p.webBarcode&&!products[p.webBarcode])products[p.webBarcode]=p;}
         dbStatusElement.textContent=data.products.length+' 件商品 · 價格已快取';
-        invoiceCustomerInput.value=cloud.event.tenant?formatCustomerOption(customerMap[cloud.event.tenant.toUpperCase()]):'';syncInvoiceCustomerVisibility();
+        if(!cloud.catalogLoaded)invoiceCustomerInput.value=cloud.event.tenant?formatCustomerOption(customerMap[cloud.event.tenant.toUpperCase()]):'';syncInvoiceCustomerVisibility();cloud.catalogLoaded=true;
       };
-      const getSpecialDiscount = (item) => {
-        if (!item || item.websiteBase) return undefined;
-        if(item.priceSource==='legacy-special')return item.defaultDiscount;
-        if (SPECIAL_DISCOUNT_MAP[item.code] !== undefined) return SPECIAL_DISCOUNT_MAP[item.code];
-        if (item.barcode && SPECIAL_DISCOUNT_MAP[item.barcode] !== undefined) return SPECIAL_DISCOUNT_MAP[item.barcode];
-        return undefined;
-      };
-
-      const calculateItemDiscount = (item) => {
-        if(item.isManual)return item.discount;
-        if(item.priceSource==='website-sale')return item.defaultDiscount;
-        const special = getSpecialDiscount(item);
-        if (special !== undefined) return special;
-        if (item.isManual) return item.discount;
-        if (item.class && sessionRules[item.class] !== undefined) return sessionRules[item.class];
-        return item.defaultDiscount || 100;
-      };
-
+      cloud.onCatalogUpdate=async()=>{await loadMasterData();renderSearch();renderFavorites();};
+      const getSpecialDiscount = () => undefined;
+      const calculateItemDiscount = item => item.isManual ? item.discount : (item.defaultDiscount ?? 100);
       const resetIdleTimer = () => {
         if (idleTimer) clearTimeout(idleTimer);
         checkoutBtns.forEach(btn => btn.classList.remove('btn-alert'));
@@ -3183,7 +3168,7 @@ const handleCulturalCoinCheckout = () => {
 
       let checkoutBusy=false;
       const performCheckout = async (paymentMethod, isComposite = false) => {
-        if(checkoutBusy || cloud.event.status!=='open')return;
+        if(checkoutBusy || cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;
         if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}
         if(!isBookstore && /信用卡|現金/.test(paymentMethod)){alert('教會僅開放文化幣與 LINE PAY');return;}
         if (cart.length === 0) {
@@ -3508,10 +3493,11 @@ function renderSearch() {
   const terms = query.split(/\s+/).filter(Boolean);
   const matches = [...new Set(Object.values(products))].filter((p) =>
     terms.every((k) =>
-      [p.name, p.code, p.barcode, p.webBarcode].some((v) =>
-        String(v || '')
-          .toLowerCase()
-          .includes(k),
+      [p.name, p.csvName, p.webName, p.code, p.barcode, p.webBarcode].some(
+        (v) =>
+          String(v || '')
+            .toLowerCase()
+            .includes(k),
       ),
     ),
   );
@@ -3667,7 +3653,9 @@ scanForm.addEventListener('submit', (e) => {
 
 const attachHistoryEvents = () => {
   document.querySelectorAll('.btn-edit-order').forEach((button) => {
-    button.disabled = cloud.event.status !== 'open';
+    button.disabled = false;
+    if (cloud.me?.role === 'admin' && cloud.event.organizer === 'church')
+      button.textContent = '查看';
     button.onclick = () =>
       parent.postMessage(
         { type: 'edit-order', id: button.dataset.clientId },
@@ -3675,6 +3663,10 @@ const attachHistoryEvents = () => {
       );
   });
   document.querySelectorAll('.btn-del').forEach((button) => {
+    if (cloud.me?.role === 'admin' && cloud.event.organizer === 'church') {
+      button.hidden = true;
+      return;
+    }
     button.disabled = cloud.event.status !== 'open';
     button.onclick = async () => {
       const id = button.dataset.clientId;
