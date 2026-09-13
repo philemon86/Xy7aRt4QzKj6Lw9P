@@ -325,7 +325,30 @@ export async function handle(req: Request, parts: string[]) {
       'Set-Cookie': `pos_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800${new URL(req.url).protocol === 'https:' ? '; Secure' : ''}`,
     });
   }
-  const s = await session(req);
+  // Checkout reads fresh authorization and its event in one database round trip.
+  let preloadedEvent: any;
+  let s: Session;
+  if (route === 'events' && id && action === 'sync') {
+    const token = req.headers
+      .get('cookie')
+      ?.match(/(?:^|;\s*)pos_session=([^;]+)/)?.[1];
+    if (!token) throw error('請先登入', 401);
+    const reads = await db().batch([
+      db()
+        .prepare('SELECT * FROM sessions WHERE token=? AND expires>?')
+        .bind(await sha(token), Date.now()),
+      db().prepare('SELECT * FROM events WHERE id=?').bind(id),
+    ]);
+    s = reads[0].results[0] as Session;
+    if (!s) throw error('登入已到期，請重新登入', 401);
+    preloadedEvent = reads[1].results[0];
+    if (
+      !preloadedEvent ||
+      (s.role !== 'admin' && preloadedEvent.tenant !== s.tenant)
+    )
+      throw error('找不到書展', 404);
+    if (!preloadedEvent.organizer) preloadedEvent = await event(id, s);
+  } else s = await session(req);
   if (route === 'bootstrap') {
     const [events, catalog] = await Promise.all([listEvents(s), getCatalog(s)]);
     return json({ me: userInfo(s), events, catalog });
@@ -667,7 +690,7 @@ export async function handle(req: Request, parts: string[]) {
     return json({ id: eid });
   }
   if (route === 'events' && id) {
-    const e = await event(id, s);
+    const e = preloadedEvent || (await event(id, s));
     if (action === 'rename') {
       if (req.method !== 'POST') throw error('請使用 POST', 405);
       if (s.role === 'admin' && e.organizer === 'church')
@@ -747,7 +770,7 @@ export async function handle(req: Request, parts: string[]) {
         const next = mergeChanges(JSON.parse(current.state), b.changes);
         const data = JSON.stringify(next);
         if (data.length > 5000000) throw error('此場資料量過大，請建立新場次');
-        const r = await db()
+        const update = db()
           .prepare(
             "UPDATE events SET state=?,revision=revision+1,updated=?,actor=? WHERE id=? AND revision=? AND status='open'",
           )
@@ -757,18 +780,52 @@ export async function handle(req: Request, parts: string[]) {
             s.tenant || 'admin',
             id,
             current.revision,
-          )
-          .run();
+          );
+        const orders = b.changes
+          .filter((p: any) => p.key.startsWith('order:') && p.after)
+          .map((p: any) => p.after);
+        let r: any;
+        let assigned: Record<string, string> | undefined;
+        if (orders.length === 1) {
+          const day = orderDay(orders[0]);
+          const scope =
+            current.organizer === 'bookstore'
+              ? 'PF'
+              : 'church:' + current.tenant;
+          // D1 batch is atomic. Number only if the immediately preceding CAS update succeeded.
+          const results = await db().batch([
+            update,
+            db()
+              .prepare(
+                'INSERT INTO shipment_numbers(event,order_id,scope,day,sequence) SELECT ?,?,?,?,(SELECT COALESCE(MAX(sequence),0)+1 FROM shipment_numbers WHERE scope=? AND day=?) WHERE changes()>0 ON CONFLICT(event,order_id) DO UPDATE SET order_id=excluded.order_id RETURNING order_id,day,sequence',
+              )
+              .bind(id, orders[0].id, scope, day, scope, day),
+          ]);
+          r = results[0];
+          assigned = Object.fromEntries(
+            results[1].results.map((row: any) => [
+              row.order_id,
+              formatOrderNumber(
+                current.tenant,
+                row.day,
+                row.sequence,
+                current.organizer,
+              ),
+            ]),
+          );
+        } else r = await update.run();
         if (r.meta.changes)
           return json({
             revision: current.revision + 1,
             state: next,
-            numbers: await assignNumbers(
-              current,
-              b.changes
-                .filter((p: any) => p.key.startsWith('order:') && p.after)
-                .map((p: any) => p.after),
-            ),
+            numbers:
+              assigned ??
+              (await assignNumbers(
+                current,
+                b.changes
+                  .filter((p: any) => p.key.startsWith('order:') && p.after)
+                  .map((p: any) => p.after),
+              )),
           });
       }
       throw error('資料忙碌，請重試', 409);

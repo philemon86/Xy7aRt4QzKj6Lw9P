@@ -1030,14 +1030,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   <button
                     className="event-row"
                     key={e.id}
-                    onClick={() =>
-                      run(() =>
-                        openEvent(
-                          e,
-                          me.role === 'admin' ? 'history' : 'checkout',
-                        ),
-                      )
-                    }
+                    onClick={() => run(() => openEvent(e, 'checkout'))}
                   >
                     <div className="event-icon">
                       {e.tenant ? <Users /> : <BookOpen />}

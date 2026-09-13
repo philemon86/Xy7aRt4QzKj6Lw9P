@@ -77,8 +77,8 @@ ok(
 );
 let catalog = (await call('catalog', undefined, church)).data;
 ok(
-  catalog.pricingRules.groups.filter((g) => g.origin === 'website').length ===
-    7,
+  catalog.pricingRules.groups.filter((g) => g.id.startsWith('website-bogo-'))
+    .length === 7,
   'All seven official promotions reach churches',
 );
 const raw = {

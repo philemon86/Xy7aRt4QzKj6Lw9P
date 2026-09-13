@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 export default function ChurchInventory({
   tenant,
   catalog,
@@ -65,37 +64,15 @@ export default function ChurchInventory({
             </select>
           </label>
           <label>
-            讀取 CSV
-            <Input
-              type="file"
-              accept=".csv,.txt"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (f) {
-                  const bytes = await f.arrayBuffer();
-                  let value;
-                  try {
-                    value = new TextDecoder('utf-8', { fatal: true }).decode(
-                      bytes,
-                    );
-                  } catch {
-                    value = new TextDecoder('big5').decode(bytes);
-                  }
-                  setText(value);
-                }
-              }}
-            />
-          </label>
-          <label>
-            商品代碼,數量
+            商品代碼,數量（每行一筆，商品名稱由書房資料帶入）
             <textarea
               rows={5}
-              placeholder={'C296,20\nC175,10'}
+              placeholder={'C001,10\nC002,8'}
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
           </label>
-          <Button disabled={busy || !data}>
+          <Button type="submit" disabled={busy || !data || !text.trim()}>
             {busy ? '儲存中…' : '確認儲存庫存'}
           </Button>
         </form>
