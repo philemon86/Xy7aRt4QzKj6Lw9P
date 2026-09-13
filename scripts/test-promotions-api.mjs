@@ -88,7 +88,14 @@ const raw = {
   promotionGiftCode: 'C188',
 };
 const lines = applyPromotions(
-  [raw],
+  [
+    raw,
+    {
+      ...resolveProductPricing(catalog.products.find((p) => p.code === 'C188')),
+      quantity: 1,
+      discount: 100,
+    },
+  ],
   catalog.products,
   catalog.pricingRules.groups,
 );

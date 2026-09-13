@@ -316,10 +316,10 @@ export default function OrderEditor({
                         />
                       </label>
                       <label>
-                        折扣 %
+                        折數（79、88、79.5）
                         <Input
                           type="number"
-                          step="any"
+                          step="0.1"
                           min="0"
                           max="100"
                           value={item.discount}

@@ -8,7 +8,7 @@ test('Generated checkout totals apply current promotions without repricing saved
   const end = html.indexOf('      const calculateTotal =', start);
   const context = {
     POSCore: { applyPromotions },
-    cart: [item()],
+    cart: [item(), item('B')],
     products: Object.fromEntries(products.map((p) => [p.code, p])),
     cloud: { catalog: { pricingRules: { groups: [bogo] } } },
   };
@@ -61,8 +61,8 @@ const total = (rows) =>
   Math.round(
     rows.reduce((s, i) => s + (i.price * i.quantity * i.discount) / 100, 0),
   );
-test('BOGO creates 100% paid and 0% gift lines once, without mutating the draft', () => {
-  const cart = [item()];
+test('BOGO reprices two scanned products without adding physical quantity or mutating the draft', () => {
+  const cart = [item(), item('B')];
   const before = JSON.stringify(cart);
   const result = applyPromotions(cart, products, [bogo]);
   assert.deepEqual(
@@ -83,18 +83,24 @@ test('BOGO creates 100% paid and 0% gift lines once, without mutating the draft'
     paymentRecords: [{ method: 'LINE PAY', amount: 100 }],
   });
 });
-test('Gift choices use the selected allowed gift; arbitrary codes are ignored', () => {
-  const g = { ...bogo, giftCodes: ['A', 'B'] };
-  assert.equal(
-    applyPromotions([{ ...item(), promotionGiftCode: 'B' }], products, [g])[1]
-      .code,
-    'B',
+test('Old auto rules require a scanned eligible gift; unmatched scans keep their prices', () => {
+  const lone = applyPromotions([item()], products, [bogo]);
+  assert.equal(lone.length, 1);
+  assert.equal(lone[0].discount, 79);
+  assert.equal(lone[0].price, 50);
+  const noRule = applyPromotions([item(), item('B')], products, []);
+  assert.ok(noRule.every((i) => i.discount === 79));
+  const reversed = applyPromotions([item('B'), item()], products, [bogo]);
+  assert.equal(total(reversed), 100);
+  const removed = applyPromotions([item()], products, [bogo]);
+  assert.equal(total(removed), 40);
+  const manual = applyPromotions(
+    [item(), { ...item('B'), isManual: true }],
+    products,
+    [bogo],
   );
-  assert.equal(
-    applyPromotions([{ ...item(), promotionGiftCode: 'X' }], products, [g])[1]
-      .code,
-    'A',
-  );
+  assert.equal(manual.length, 2);
+  assert.ok(manual.every((i) => !i.promotionGift));
 });
 test('Scanned mode conserves physical quantity for same and different books', () => {
   const same = applyPromotions([item('A', 3)], products, [
@@ -158,8 +164,10 @@ test('Priority, inactive dates, manual prices and refunds remain deterministic',
     79,
   );
   assert.equal(
-    applyPromotions([item()], products, [{ ...tiers, priority: 2 }, bogo])[0]
-      .promotionId,
+    applyPromotions([item(), item('B')], products, [
+      { ...tiers, priority: 2 },
+      bogo,
+    ])[0].promotionId,
     'g',
   );
   assert.throws(() =>
@@ -201,4 +209,24 @@ test('Official cached promotion mappings contain all seven website products and 
     'C197',
     'C212',
   ]);
+});
+
+import { formatDiscount } from '../lib/pos-core.mjs';
+test('Taiwan discount labels preserve one decimal and shipment totals round to integer', () => {
+  assert.equal(formatDiscount(79), '79 折');
+  assert.equal(formatDiscount(88), '88 折');
+  assert.equal(formatDiscount(79.5), '79.5 折');
+  assert.equal(formatDiscount(100), '原價');
+  const rows = applyPromotions([item()], products, [
+    { ...tiers, tiers: [{ quantity: 1, mode: 'discount', value: 79.5 }] },
+  ]);
+  assert.equal(rows[0].discount, 79.5);
+  assert.equal(total(rows), 80);
+  validateOrder({
+    id: 'rounding',
+    items: rows,
+    amount: 80,
+    paymentMethod: 'LINE PAY',
+    paymentRecords: [{ method: 'LINE PAY', amount: 80 }],
+  });
 });

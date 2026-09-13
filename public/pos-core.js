@@ -1,4 +1,8 @@
 window.POSCore=(()=>{// Shared by the register and React tools. Existing orders keep their saved prices.
+function formatDiscount(value) {
+  const n = Number(value);
+  return n === 100 ? '原價' : n === 0 ? '免費' : Number(n.toFixed(1)) + ' 折';
+}
 function resolveProductPricing(product, now = new Date()) {
   const day = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Taipei',
@@ -210,7 +214,7 @@ function validatePromotion(value, products) {
       ...result,
       giftCodes,
       giftCode: value.giftCode || '',
-      giftMode: value.giftMode === 'scanned' ? 'scanned' : 'auto',
+      giftMode: 'scanned',
     };
   }
   if (
@@ -256,6 +260,8 @@ function applyPromotions(items, products, groups, now = new Date()) {
   const claimed = new Set();
   const active = (groups || [])
     .filter((g) => ruleActive(g, promotionDay(now)))
+    // Old saved auto-gift rules also require both physical products to be scanned.
+    .map((g) => (g.type === 'bogo' ? { ...g, giftMode: 'scanned' } : g))
     .sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
   for (const group of active) {
     const eligible = lines.filter(
@@ -293,16 +299,20 @@ function applyPromotions(items, products, groups, now = new Date()) {
           : choices[0];
         const giftCode =
           group.giftMode === 'scanned'
-            ? choices.find((code) =>
-                lines.some(
-                  (i) =>
-                    i.code === code &&
-                    i.quantity >= (code === item.code ? 2 : 1) &&
-                    !i.isManual &&
-                    !i.promotionGift &&
-                    !claimed.has(i.promotionSourceIndex),
-                ),
-              ) || selected
+            ? [...choices]
+                .sort(
+                  (a, b) => Number(a === item.code) - Number(b === item.code),
+                )
+                .find((code) =>
+                  lines.some(
+                    (i) =>
+                      i.code === code &&
+                      i.quantity >= (code === item.code ? 2 : 1) &&
+                      !i.isManual &&
+                      !i.promotionGift &&
+                      !claimed.has(i.promotionSourceIndex),
+                  ),
+                ) || selected
             : selected;
         const gift = productMap[giftCode];
         if (!gift) continue;
@@ -356,4 +366,4 @@ function applyPromotions(items, products, groups, now = new Date()) {
   return lines.filter((i) => i.quantity !== 0);
 }
 
-return {applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate};})();
+return {formatDiscount,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate};})();

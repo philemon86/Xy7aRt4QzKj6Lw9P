@@ -11,8 +11,9 @@ const core =
     .replace(/^export /gm, '');
 fs.writeFileSync(
   path.join(root, 'public/pos-core.js'),
-  `window.POSCore=(()=>{${core}\nreturn {applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate};})();\n`,
+  `window.POSCore=(()=>{${core}\nreturn {formatDiscount,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate};})();\n`,
 );
+html = html.replaceAll('折扣 %', '折數').replace('`${item.discount}%`', 'POSCore.formatDiscount(item.discount)');
 const start = html.indexOf('(function (root, factory)');
 const end = html.indexOf('</script>', start);
 fs.mkdirSync(path.join(root, 'legacy'), { recursive: true });

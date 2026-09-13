@@ -7,9 +7,9 @@ editDialog.innerHTML = `<form id="item-edit-form">
   <div class="editor-fields">
     <label>單價<input id="edit-price" type="number" step="any" inputmode="decimal" required></label>
     <label>數量<input id="edit-quantity" type="number" step="1" inputmode="numeric" required></label>
-    <label>折扣 %<input id="edit-discount" type="number" min="0" max="100" step="any" inputmode="decimal" required></label>
+    <label>折數<input id="edit-discount" type="number" min="0" max="100" step="0.1" inputmode="decimal" required></label>
   </div>
-  <p class="editor-help">79 表示七九折；100 為原價。退貨可輸入負數數量。</p>
+  <p class="editor-help">79 表示 79 折，支援 79.5；100 為原價，0 為免費。出貨單總額四捨五入至整元。退貨可輸入負數數量。</p>
   <label class="editor-sync"><input type="checkbox" id="edit-sync"> 同時設定本場同分類的折扣</label>
   <p id="edit-error" role="status"></p>
   <div class="editor-preview">此項小計 <strong id="edit-subtotal"></strong></div>
@@ -122,7 +122,7 @@ editDialog.querySelector('form').onsubmit = (e) => {
     if (editField('sync').checked && edited.class) {
       sessionRules[edited.class] = edited.discount;
       localStorage.setItem('sessionRules', JSON.stringify(sessionRules));
-      displayItems.forEach((item) => {
+      cart.forEach((item) => {
         if (item.class === edited.class) {
           item.discount = edited.discount;
           item.isManual = true;
@@ -158,7 +158,7 @@ const updateCartDisplay = () => {
     row.append(cell);
     cartTableBody.append(row);
   }
-  cart.forEach((item) => {
+  displayItems.forEach((item) => {
     const row = document.createElement('tr');
     row.className = 'cart-item';
     row.dataset.code = item.code;
@@ -175,7 +175,7 @@ const updateCartDisplay = () => {
       formatAmount(item.price) +
       (Number(item.discount) === 100 && item.priceSource !== 'group'
         ? '／件'
-        : ' × ' + item.discount + '%');
+        : ' × ' + POSCore.formatDiscount(item.discount));
     row.querySelector('.cart-subtotal strong').textContent =
       '$' +
       formatAmount(

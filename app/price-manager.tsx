@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import CSVImport from './csv-import';
-import { resolveProductPricing } from '@/lib/pos-core.mjs';
+import { resolveProductPricing, formatDiscount } from '@/lib/pos-core.mjs';
 import {
   applyPromotions,
   productPromotions,
@@ -16,7 +16,7 @@ const ruleLabel = (r: any) =>
     ? '未設定'
     : r.mode === 'price'
       ? '$' + money(r.value)
-      : r.value + '%';
+      : formatDiscount(r.value);
 const codes = (s: string) =>
   s
     .split(/[,，\s]+/)
@@ -99,7 +99,7 @@ export default function PriceManager({
       codes: [],
       giftCode: '',
       giftCodes: [],
-      giftMode: 'auto',
+      giftMode: 'scanned',
       priority: 0,
       start: '',
       end: '',
@@ -124,9 +124,7 @@ export default function PriceManager({
       onKeyDown={(e) => {
         if (e.key === 'Enter') action?.();
       }}
-      onClick={() => {
-        if (window.matchMedia('(pointer:coarse)').matches) action?.();
-      }}
+      onClick={action}
       title={action ? '雙擊修改；手機可按修改按鈕' : text}
     >
       {text}
@@ -163,7 +161,7 @@ export default function PriceManager({
               value={edit.mode}
               onChange={(e) => setEdit({ ...edit, mode: e.target.value })}
             >
-              <option value="discount">折扣 %</option>
+              <option value="discount">折數</option>
               <option value="price">固定單價 $</option>
             </select>
           </label>
@@ -173,7 +171,7 @@ export default function PriceManager({
               type="number"
               required
               min="0"
-              step="0.01"
+              step="0.1"
               max={edit.mode === 'price' ? 9999999 : 100}
               value={edit.value}
               onChange={(e) => setEdit({ ...edit, value: e.target.value })}
@@ -238,7 +236,9 @@ export default function PriceManager({
           </div>
         )}
         <div className="heading-actions">
-          <Button disabled={busy}>確認價格</Button>
+          <Button type="submit" disabled={busy}>
+            確認價格
+          </Button>
           <Button
             variant="outline"
             type="button"
@@ -537,7 +537,7 @@ export default function PriceManager({
               {group.type === 'bogo' ? (
                 <>
                   <label>
-                    預設贈品代碼（留白送同商品）
+                    贈品商品代碼（留白為同商品）
                     <Input
                       list="promotion-products"
                       value={group.giftCode}
@@ -550,7 +550,7 @@ export default function PriceManager({
                     />
                   </label>
                   <label>
-                    可選贈品代碼（含預設，可留白）
+                    其他可搭配的贈品代碼（可留白）
                     <Input
                       value={group.giftCodesText}
                       onChange={(e) =>
@@ -561,18 +561,9 @@ export default function PriceManager({
                       }
                     />
                   </label>
-                  <label>
-                    套用方式
-                    <select
-                      value={group.giftMode}
-                      onChange={(e) =>
-                        setGroup({ ...group, giftMode: e.target.value })
-                      }
-                    >
-                      <option value="auto">掃購買商品，自動加入贈品</option>
-                      <option value="scanned">贈品也掃描後，才套用 0 元</option>
-                    </select>
-                  </label>
+                  <p className="muted">
+                    掃描購買商品與符合的贈品後，自動套用一件原價、一件免費；未滿兩件不套用。
+                  </p>
                 </>
               ) : (
                 <div>
@@ -614,7 +605,7 @@ export default function PriceManager({
                             })
                           }
                         >
-                          <option value="discount">折扣 %</option>
+                          <option value="discount">折數</option>
                           <option value="price">每件單價 $</option>
                         </select>
                       </label>
@@ -623,7 +614,7 @@ export default function PriceManager({
                         <Input
                           type="number"
                           min="0"
-                          step="0.01"
+                          step="0.1"
                           required
                           value={t.value}
                           onChange={(e) =>
@@ -707,7 +698,9 @@ export default function PriceManager({
                 </div>
               </details>
               <div className="heading-actions">
-                <Button disabled={busy}>確認儲存</Button>
+                <Button type="submit" disabled={busy}>
+                  確認儲存
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
