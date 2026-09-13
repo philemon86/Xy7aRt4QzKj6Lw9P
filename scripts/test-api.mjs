@@ -246,7 +246,7 @@ ok(
   ).status === 403,
   'Church cannot change inventory through the API',
 );
-for (const method of ['現金', '信用卡']) {
+for (const method of ['信用卡']) {
   const bad = {
     ...order('forbidden-' + method),
     paymentMethod: method,

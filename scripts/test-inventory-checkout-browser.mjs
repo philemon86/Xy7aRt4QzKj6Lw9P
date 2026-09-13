@@ -21,8 +21,9 @@ const api = async (path, body) => {
   return r.json();
 };
 const old = await api('church-stock/aa01');
+const eventName = '庫存與快速結帳瀏覽器驗證 ' + crypto.randomUUID();
 const event = await api('events', {
-  name: '庫存與快速結帳瀏覽器驗證',
+  name: eventName,
   date: '2026-09-13',
   pricing: 'website',
 });
@@ -38,29 +39,28 @@ try {
   await page.locator('#church-code').fill('AA01');
   await page.getByRole('button', { name: '為下方教會先建立庫存' }).click();
   const panel = page.locator('.church-stock-panel');
-  await panel.locator('select').selectOption('set');
+  assert.equal(await panel.locator('select').count(), 0);
   assert.equal(await panel.locator('input[type=file]').count(), 0);
   await panel.locator('textarea').fill('c001,10\nc002;8');
-  await panel.getByRole('button', { name: '確認儲存庫存' }).click();
+  await panel.getByRole('button', { name: '匯入庫存' }).click();
   await panel.getByText('教會庫存已儲存', { exact: true }).waitFor();
   let stock = await api('church-stock/aa01');
   assert.equal(stock.rows.find((r) => r.code === 'C001').available, 10);
   assert.equal(stock.rows.find((r) => r.code === 'C002').available, 8);
-  await panel.locator('select').selectOption('add');
-  await panel.locator('textarea').fill('c001,-2');
-  await panel.getByRole('button', { name: '確認儲存庫存' }).click();
-  await panel.getByText('教會庫存已儲存', { exact: true }).waitFor();
+  await panel
+    .getByRole('button', { name: '修改 C001 庫存 10', exact: true })
+    .dblclick();
+  await panel.getByRole('spinbutton', { name: 'C001 庫存數量' }).fill('8');
+  await panel.getByRole('button', { name: '儲存', exact: true }).click();
+  await panel.getByText('C001 庫存已更新', { exact: true }).waitFor();
   stock = await api('church-stock/aa01');
   assert.equal(stock.rows.find((r) => r.code === 'C001').available, 8);
   console.log(
-    'Text inventory save and signed adjustments persist with catalog names',
+    'Text import and double-click quantity edits persist with catalog names',
   );
   await page.reload();
   await page.getByRole('button', { name: '書房書展列表', exact: true }).click();
-  await page
-    .locator('.event-row')
-    .filter({ hasText: event.name || '庫存與快速結帳瀏覽器驗證' })
-    .click();
+  await page.locator('.event-row').filter({ hasText: eventName }).click();
   await page.getByRole('tab', { name: '結帳', exact: true }).waitFor();
   assert.equal(
     await page

@@ -1184,3 +1184,10 @@ body[data-checkout='saving'] .checkout-btn {
   background: white;
   font-size: 13px;
 }
+
+/* Church cash spans the same width as the two electronic-payment buttons. */
+body[data-role='church'] .checkout-buttons-area { grid-template-columns: repeat(2,minmax(0,1fr)); }
+body[data-role='church'] #btn-f8 { grid-column: 1; grid-row: 1; }
+body[data-role='church'] #btn-f9 { grid-column: 2; grid-row: 1; }
+body[data-role='church'] #btn-f10 { grid-column: 1 / -1; grid-row: 2; }
+body[data-role='church'][data-checkout='saving'] .checkout-buttons-area::before { grid-row: 3; }

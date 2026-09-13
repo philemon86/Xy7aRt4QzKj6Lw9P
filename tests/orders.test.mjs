@@ -28,7 +28,7 @@ test('Church stock and payment permissions are enforced independent of the visib
     /書房/,
   );
   validateRoleChange('admin', '', { key: 'stock:C296', after: 10 });
-  for (const method of ['現金', '信用卡'])
+  for (const method of ['信用卡'])
     assert.throws(
       () =>
         validateRoleChange('church', 'aa01', {
@@ -304,8 +304,8 @@ test('A blocked legacy payment does not blank the register and can be explicitly
   const order = {
     id: 'held',
     amount: 100,
-    paymentMethod: '現金',
-    paymentRecords: [{ method: '現金', amount: 100 }],
+    paymentMethod: '信用卡',
+    paymentRecords: [{ method: '信用卡', amount: 100 }],
   };
   const { cloud, local } = await bridgeHarness(
     {},
@@ -313,7 +313,7 @@ test('A blocked legacy payment does not blank the register and can be explicitly
       const changes = JSON.parse(options.body).changes;
       if (
         changes.some((p) =>
-          p.after?.paymentRecords?.some((x) => x.method === '現金'),
+          p.after?.paymentRecords?.some((x) => x.method === '信用卡'),
         )
       )
         return response({ error: '教會僅開放文化幣與 LINE PAY' }, false);
@@ -334,7 +334,7 @@ test('A blocked legacy payment does not blank the register and can be explicitly
     JSON.parse(local.get('pos-recovery-original:event1:device1')).desired[
       'order:held'
     ].paymentMethod,
-    '現金',
+    '信用卡',
   );
 });
 
@@ -342,7 +342,7 @@ test('Churches can preserve a previously saved historical payment while editing 
   const before = {
     createdAt: '2026-09-01',
     transactionId: 'old',
-    paymentRecords: [{ method: '現金', amount: 100 }],
+    paymentRecords: [{ method: '信用卡', amount: 100 }],
   };
   validateRoleChange(
     'church',
@@ -359,11 +359,19 @@ test('Churches can preserve a previously saved historical payment while editing 
           key: 'order:old',
           after: {
             ...before,
-            paymentRecords: [{ method: '現金', amount: 101 }],
+            paymentRecords: [{ method: '信用卡', amount: 101 }],
           },
         },
         before,
       ),
     /LINE PAY/,
   );
+});
+
+test('Church cash sales and refunds are permitted', () => {
+  for (const amount of [100, -100])
+    validateRoleChange('church', 'aa01', {
+      key: 'order:cash',
+      after: { paymentRecords: [{ method: '現金', amount }] },
+    });
 });

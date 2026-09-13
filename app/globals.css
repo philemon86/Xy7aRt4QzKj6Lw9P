@@ -2285,3 +2285,8 @@ html.dark[data-audience='church'] {
     font-size: 18px;
   }
 }
+
+.stock-row-editor { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.stock-row-editor input { width:100px; min-height:40px; border:1px solid var(--border); border-radius:6px; padding:8px; }
+.stock-quantity-button { display:inline-flex; gap:10px; align-items:center; min-height:44px; padding:8px 12px; border:1px solid var(--border); border-radius:6px; cursor:pointer; }
+.stock-quantity-button small { color:var(--muted-foreground); }

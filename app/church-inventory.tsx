@@ -9,7 +9,7 @@ export default function ChurchInventory({
 }: any) {
   const [data, setData] = useState<any>(null),
     [text, setText] = useState(''),
-    [mode, setMode] = useState('add'),
+    [editing, setEditing] = useState<any>(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState('');
   const path = 'church-stock/' + tenant.toLowerCase();
@@ -35,6 +35,11 @@ export default function ChurchInventory({
         書房可先建立庫存。教會新增書展即共用這份庫存，各場有效銷售（含贈品）合計扣除，退貨補回。
       </p>
       {!readOnly && (
+        <p className="muted">
+          直接匯入每項商品的目前數量；同代碼再次匯入會更新數量。匯入後雙擊表格的目前庫存即可修改。
+        </p>
+      )}
+      {!readOnly && (
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -43,7 +48,7 @@ export default function ChurchInventory({
             try {
               const r = await request(path, {
                 text,
-                mode,
+                mode: 'set',
                 revision: data?.revision || '',
               });
               setData(r);
@@ -57,13 +62,6 @@ export default function ChurchInventory({
           }}
         >
           <label>
-            匯入方式
-            <select value={mode} onChange={(e) => setMode(e.target.value)}>
-              <option value="add">加減庫存（進貨／退回書房）</option>
-              <option value="set">設定目前剩餘數量</option>
-            </select>
-          </label>
-          <label>
             商品代碼,數量（每行一筆，商品名稱由書房資料帶入）
             <textarea
               rows={5}
@@ -72,8 +70,11 @@ export default function ChurchInventory({
               onChange={(e) => setText(e.target.value)}
             />
           </label>
-          <Button type="submit" disabled={busy || !data || !text.trim()}>
-            {busy ? '儲存中…' : '確認儲存庫存'}
+          <Button
+            type="submit"
+            disabled={busy || !data || !text.trim() || !!editing}
+          >
+            {busy ? '儲存中…' : '匯入庫存'}
           </Button>
         </form>
       )}
@@ -85,7 +86,7 @@ export default function ChurchInventory({
               <th>商品</th>
               <th>書房提供</th>
               <th>各場已售／贈送</th>
-              <th>剩餘</th>
+              <th>目前庫存</th>
             </tr>
           </thead>
           <tbody>
@@ -101,7 +102,86 @@ export default function ChurchInventory({
                 <td>{r.supplied}</td>
                 <td>{r.sold}</td>
                 <td>
-                  <strong>{r.available}</strong>
+                  {readOnly ? (
+                    <strong>{r.available}</strong>
+                  ) : editing?.code === r.code ? (
+                    <form
+                      className="stock-row-editor"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        setBusy(true);
+                        setMessage('');
+                        try {
+                          const updated = await request(path, {
+                            mode: 'set',
+                            text: r.code + ',' + editing.value,
+                            revision: editing.revision,
+                          });
+                          setData(updated);
+                          setEditing(null);
+                          setMessage(r.code + ' 庫存已更新');
+                        } catch (error: any) {
+                          setMessage(error.message);
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      <input
+                        aria-label={r.code + ' 庫存數量'}
+                        type="number"
+                        step="1"
+                        min="-10000000"
+                        max="10000000"
+                        required
+                        autoFocus
+                        value={editing.value}
+                        onChange={(e) =>
+                          setEditing({ ...editing, value: e.target.value })
+                        }
+                      />
+                      <Button type="submit" disabled={busy}>
+                        儲存
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => setEditing(null)}
+                      >
+                        取消
+                      </Button>
+                    </form>
+                  ) : (
+                    <button
+                      type="button"
+                      className="stock-quantity-button"
+                      disabled={busy}
+                      title="雙擊修改庫存；手機可點選，鍵盤可按 Enter"
+                      aria-label={'修改 ' + r.code + ' 庫存 ' + r.available}
+                      onDoubleClick={() =>
+                        setEditing({
+                          code: r.code,
+                          value: String(r.available),
+                          revision: data.revision,
+                        })
+                      }
+                      onClick={(e) => {
+                        if (
+                          window.matchMedia('(pointer:coarse)').matches ||
+                          e.detail === 0
+                        )
+                          setEditing({
+                            code: r.code,
+                            value: String(r.available),
+                            revision: data.revision,
+                          });
+                      }}
+                    >
+                      <strong>{r.available}</strong>
+                      <small>修改</small>
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

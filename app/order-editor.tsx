@@ -72,7 +72,7 @@ export default function OrderEditor({
         const allowed =
           role === 'admin'
             ? ['現金', '信用卡', 'LINE PAY', '文化幣']
-            : ['LINE PAY', '文化幣'];
+            : ['現金', 'LINE PAY', '文化幣'];
         const selected =
           methods.includes('文化幣') && methods.length > 1
             ? '文化幣 + ' + (methods.includes('LINE PAY') ? 'LINE PAY' : '現金')
@@ -353,11 +353,12 @@ export default function OrderEditor({
                     </SelectTrigger>
                     <SelectContent>
                       {[
-                        ...(role === 'admin' ? ['現金', '信用卡'] : []),
+                        '現金',
+                        ...(role === 'admin' ? ['信用卡'] : []),
                         'LINE PAY',
                         '文化幣',
                         '文化幣 + LINE PAY',
-                        ...(role === 'admin' ? ['文化幣 + 現金'] : []),
+                        '文化幣 + 現金',
                       ].map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}

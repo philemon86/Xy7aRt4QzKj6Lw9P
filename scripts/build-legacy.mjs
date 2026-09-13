@@ -112,7 +112,7 @@ html = html.replace(
 );
 html = html.replace(
   '      const performCheckout = (paymentMethod, isComposite = false) => {',
-  "      let checkoutBusy=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy || cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡|現金/.test(paymentMethod)){alert('教會僅開放文化幣與 LINE PAY');return;}",
+  "      let checkoutBusy=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy || cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡/.test(paymentMethod)){alert('教會未開放信用卡');return;}",
 );
 html = html.replace(
   /        POSAudio.success\(\);\s*(?=clients\[clientId\] = \{)/,
@@ -260,7 +260,7 @@ html = html.replace(
   const groups=[...document.querySelectorAll('body > .flex-container')];groups.forEach((el,i)=>el.dataset.section=['checkout','history','accounting','exports'][i]);
   document.body.dataset.audience=cloud.me.role==='church'||cloud.event.organizer==='church'?'church':'bookstore';
   document.body.dataset.role=cloud.me.role;
-  if(!isBookstore){btnF7.hidden=true;btnF10.hidden=true;document.querySelector('.payment-details').hidden=true;document.querySelector('[data-section="exports"]').hidden=true;document.querySelector('#pay-cash').closest('.pay-badge').hidden=true;document.querySelector('#pay-credit').closest('.pay-badge').hidden=true;}
+  if(!isBookstore){btnF7.hidden=true;document.querySelector('[data-section="exports"]').hidden=true;document.querySelector('#pay-credit').closest('.pay-badge').hidden=true;}
   document.querySelector('#title').textContent='加入商品';
   document.querySelector('#current-date').closest('.header').hidden=true;
   document.querySelector('label[for="product-code"]').textContent='掃條碼，或輸入名稱、代碼';
