@@ -32,6 +32,7 @@ function make({ amount = 899, quantity = 1, fail = false } = {}) {
     btnF8: {},
     btnF10: {},
     triggerButtonAnimation: no,
+    pricedCart: () => context.cart,
     calculateCartTotal: (cart) =>
       Math.round(
         cart.reduce((s, i) => s + (i.price * i.quantity * i.discount) / 100, 0),

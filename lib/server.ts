@@ -1,3 +1,7 @@
+import { churchInventory, parseStock } from './church-stock.mjs';
+import { validatePromotion } from './promotions.mjs';
+import initialPromotions from '../data/shop-promotions.json';
+import { BOGO_API, parseShopPromotions } from './shop-promotions.mjs';
 import { env } from 'cloudflare:workers';
 import catalog from '../data/catalog.json';
 import {
@@ -202,6 +206,12 @@ async function catalogSettings() {
     rules: {
       products: { ...defaults.products, ...saved?.products },
       classes: { ...defaults.classes, ...saved?.classes },
+      groups: [
+        ...initialPromotions.filter(
+          (g) => !(saved?.groups || []).some((x: any) => x.id === g.id),
+        ),
+        ...(saved?.groups || []),
+      ],
     },
     catalogRevision: settings['catalog-products']?.revision || '',
     pricingRevision: saved?.revision || '',
@@ -422,6 +432,90 @@ export async function handle(req: Request, parts: string[]) {
       );
       return json({ count: parsed.products.length, skipped: parsed.skipped });
     }
+    if (id === 'sync-promotions') {
+      const products: any[] = [];
+      let total = 0;
+      for (let page = 1; page <= 20; page++) {
+        const response = await fetch(BOGO_API + '?page=' + page + '&per=100', {
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!response.ok) throw error('官網暫時無法讀取，保留現有活動', 502);
+        const data: any = await response.json();
+        if (
+          !Array.isArray(data.products) ||
+          !Number.isSafeInteger(data.total_count)
+        )
+          throw error('官網清單格式變更，保留現有活動', 502);
+        total = data.total_count;
+        products.push(...data.products);
+        if (page >= data.total_pages) break;
+      }
+      if (products.length !== total || !total)
+        throw error('官網清單不完整或為空，保留現有活動', 502);
+      const incoming = parseShopPromotions(products, config.products);
+      const overrides = new Map(
+        config.rules.groups
+          .filter((g: any) => g.origin !== 'website')
+          .map((g: any) => [g.id, g]),
+      );
+      const removed = config.rules.groups
+        .filter(
+          (g: any) =>
+            g.origin === 'website' && !incoming.some((n: any) => n.id === g.id),
+        )
+        .map((g: any) => ({ ...g, disabled: true }));
+      const groups = [
+        ...incoming.filter((g: any) => !overrides.has(g.id)),
+        ...removed,
+        ...overrides.values(),
+      ];
+      const revision = crypto.randomUUID();
+      await writeCatalogSetting(
+        'global-pricing',
+        { ...config.rules, groups, revision },
+        b.revision || '',
+      );
+      return json({ revision, count: incoming.length });
+    }
+    if (id === 'group') {
+      const rules = config.rules;
+      const id = String(b.group?.id || crypto.randomUUID());
+      if (b.remove)
+        rules.groups = rules.groups.map((g: any) =>
+          g.id === id ? { ...g, disabled: true, origin: 'custom' } : g,
+        );
+      else {
+        const group = validatePromotion(
+          { ...b.group, id, origin: 'custom' },
+          config.products,
+        );
+        rules.groups = [...rules.groups.filter((g: any) => g.id !== id), group];
+      }
+      if (rules.groups.length > 300) throw error('最多 300 個活動群組');
+      const revision = crypto.randomUUID();
+      await writeCatalogSetting(
+        'global-pricing',
+        { ...rules, revision },
+        b.revision || '',
+      );
+      return json({ revision });
+    }
+    if (id === 'classify') {
+      if (
+        !config.products.some((p) => p.code === b.code) ||
+        !Object.hasOwn(catalog.classes, b.class)
+      )
+        throw error('商品或類別不存在');
+      const products = config.products.map((p) =>
+        p.code === b.code ? { ...p, class: b.class } : p,
+      );
+      await writeCatalogSetting(
+        'catalog-products',
+        { products, revision: crypto.randomUUID() },
+        b.revision || '',
+      );
+      return json({ ok: true });
+    }
     if (id === 'pricing') {
       if (
         !['products', 'classes'].includes(b.scope) ||
@@ -447,6 +541,59 @@ export async function handle(req: Request, parts: string[]) {
       return json({ ok: true, revision });
     }
     throw error('未知商品操作', 404);
+  }
+  if (route === 'church-stock') {
+    const tenant = String(id || '').toLowerCase();
+    if (
+      (s.role !== 'admin' && s.tenant !== tenant) ||
+      !catalog.customers.some((c) => c.code.toLowerCase() === tenant) ||
+      ['0002', '305'].includes(tenant)
+    )
+      throw error('找不到教會', 404);
+    await ensureOrganizers();
+    const [stored, events] = await Promise.all([
+      db()
+        .prepare('SELECT value FROM settings WHERE key=?')
+        .bind('church-stock:' + tenant)
+        .first<any>(),
+      db()
+        .prepare(
+          "SELECT state FROM events WHERE tenant=? AND organizer='church'",
+        )
+        .bind(tenant)
+        .all<any>(),
+    ]);
+    const inventory = churchInventory(
+      events.results,
+      stored ? JSON.parse(stored.value) : null,
+    );
+    if (req.method === 'GET') return json(inventory);
+    isAdmin(s);
+    if (req.method !== 'POST' || !['add', 'set'].includes(b.mode))
+      throw error('庫存更新格式不符');
+    if (typeof b.text !== 'string' || b.text.length > 1000000)
+      throw error('庫存資料過大');
+    const changes = parseStock(b.text, (await catalogSettings()).products),
+      quantities: Record<string, number> = { ...inventory.quantities };
+    for (const [code, value] of Object.entries(changes))
+      quantities[code] =
+        b.mode === 'set'
+          ? Number(value) +
+            ((inventory.sold as Record<string, number>)[code] || 0)
+          : (quantities[code] || 0) + Number(value);
+    if (
+      Object.values(quantities).some(
+        (n) => !Number.isSafeInteger(n) || Math.abs(n) > 10000000,
+      )
+    )
+      throw error('庫存數量超出範圍');
+    const configured = { quantities, revision: crypto.randomUUID() };
+    await writeCatalogSetting(
+      'church-stock:' + tenant,
+      configured,
+      b.revision || '',
+    );
+    return json(churchInventory(events.results, configured));
   }
   if (route === 'churches') {
     isAdmin(s);

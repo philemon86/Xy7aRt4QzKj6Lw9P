@@ -122,7 +122,7 @@ editDialog.querySelector('form').onsubmit = (e) => {
     if (editField('sync').checked && edited.class) {
       sessionRules[edited.class] = edited.discount;
       localStorage.setItem('sessionRules', JSON.stringify(sessionRules));
-      cart.forEach((item) => {
+      displayItems.forEach((item) => {
         if (item.class === edited.class) {
           item.discount = edited.discount;
           item.isManual = true;
@@ -139,11 +139,15 @@ editDialog.querySelector('form').onsubmit = (e) => {
   }
 };
 const updateCartDisplay = () => {
+  const displayItems = pricedCart();
   cartTableBody.replaceChildren();
   const count = document.getElementById('cart-count');
   if (count)
     count.textContent =
-      cart.length + ' 種 · ' + cart.reduce((s, i) => s + i.quantity, 0) + ' 件';
+      new Set(displayItems.map((i) => i.code)).size +
+      ' 種 · ' +
+      displayItems.reduce((s, i) => s + i.quantity, 0) +
+      ' 件';
   if (!cart.length) {
     const row = document.createElement('tr');
     row.className = 'cart-empty';
@@ -169,7 +173,9 @@ const updateCartDisplay = () => {
     row.querySelector('.cart-price-note').textContent =
       '$' +
       formatAmount(item.price) +
-      (Number(item.discount) === 100 ? '／件' : ' × ' + item.discount + '%');
+      (Number(item.discount) === 100 && item.priceSource !== 'group'
+        ? '／件'
+        : ' × ' + item.discount + '%');
     row.querySelector('.cart-subtotal strong').textContent =
       '$' +
       formatAmount(
@@ -181,9 +187,10 @@ const updateCartDisplay = () => {
       (button, i) =>
         (button.onclick = () => {
           if (cloud.event.status !== 'open' || checkoutBusy) return;
-          const next = item.quantity + (i ? 1 : -1);
+          const original = cart[item.promotionSourceIndex];
+          const next = original.quantity + (i ? 1 : -1);
           if (Math.abs(next) > 100000) return;
-          item.quantity = next;
+          original.quantity = next;
           updateCartDisplay();
           calculateTotal();
           saveCart();
@@ -196,6 +203,34 @@ const updateCartDisplay = () => {
       openItemEditor(item.code, 'price');
     row.querySelector('.cart-subtotal').ondblclick = () =>
       openItemEditor(item.code, 'discount');
+    if (item.promotionGift) {
+      if (
+        item.promotionGiftMode !== 'scanned' &&
+        item.promotionGiftChoices?.length > 1
+      ) {
+        const select = document.createElement('select');
+        select.setAttribute('aria-label', '選擇贈品');
+        for (const code of item.promotionGiftChoices) {
+          const o = document.createElement('option');
+          o.value = code;
+          o.textContent = products[code]?.name || code;
+          select.append(o);
+        }
+        select.value = item.code;
+        select.disabled = cloud.event.status !== 'open';
+        select.onchange = () => {
+          cart[item.promotionSourceIndex].promotionGiftCode = select.value;
+          updateCartDisplay();
+          calculateTotal();
+          saveCart();
+        };
+        row.querySelector('.cart-product').append(select);
+      }
+      row.querySelector('.cart-edit button').textContent = '贈品';
+      row.querySelectorAll('button').forEach((b) => (b.disabled = true));
+      row.querySelector('.cart-product').ondblclick = null;
+      row.querySelector('.cart-subtotal').ondblclick = null;
+    }
     if (cloud.event.status !== 'open')
       row.querySelectorAll('button').forEach((b) => (b.disabled = true));
     cartTableBody.append(row);

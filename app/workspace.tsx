@@ -62,7 +62,8 @@ import OrderEditor from './order-editor';
 import RecoveryDialog from './recovery-dialog';
 import PilotExportDialog from './pilot-export-dialog';
 import Calculator from './calculator';
-import CatalogSettings from './catalog-settings';
+import ChurchInventory from './church-inventory';
+import PriceManager from './price-manager';
 import { stats } from '@/lib/state.mjs';
 import { resolveProductPricing } from '@/lib/pos-core.mjs';
 const money = (v: number) =>
@@ -793,7 +794,15 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                     : 'block',
                 }}
               />
-              {view === 'stock' && (
+              {view === 'stock' && active.organizer === 'church' && (
+                <ChurchInventory
+                  tenant={active.tenant}
+                  catalog={catalog}
+                  request={api}
+                  readOnly={me.role !== 'admin'}
+                />
+              )}
+              {view === 'stock' && active.organizer !== 'church' && (
                 <div
                   className={
                     me.role === 'admin' ? 'stock-layout' : 'stock-readonly'
@@ -1097,13 +1106,6 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   </Button>
                 )}
               </div>
-              {me.role === 'admin' && (
-                <CatalogSettings
-                  catalog={catalog}
-                  request={api}
-                  onUpdated={async () => setCatalog(await api('catalog'))}
-                />
-              )}
               {sync && (
                 <div className="sync-box">
                   <CloudCheck />
@@ -1128,92 +1130,12 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   )}
                 </div>
               )}
-              <div className="search catalog-search">
-                <Search />
-                <Input
-                  aria-label="搜尋商品"
-                  placeholder="搜尋名稱、商品代碼、條碼"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-              <section className="panel">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>商品</TableHead>
-                      <TableHead>Barcode</TableHead>
-                      <TableHead>結帳單價</TableHead>
-                      <TableHead>官網售價</TableHead>
-                      <TableHead>定價</TableHead>
-                      <TableHead>同步時間</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.slice(0, 100).map((p: any) => (
-                      <TableRow key={p.code}>
-                        <TableCell>
-                          <div className="product-name">
-                            {p.image ? (
-                              <img src={p.image} alt="" loading="lazy" />
-                            ) : (
-                              <span className="book-placeholder">
-                                <BookOpen />
-                              </span>
-                            )}
-                            <div>
-                              <b>{p.name}</b>
-                              <small>{p.code}</small>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {p.barcode || p.webBarcode || '—'}
-                        </TableCell>
-                        <TableCell>
-                          <strong>
-                            $
-                            {money(
-                              (resolveProductPricing(p).price *
-                                resolveProductPricing(p).defaultDiscount) /
-                                100,
-                            )}
-                          </strong>
-                          <small style={{ display: 'block' }}>
-                            {resolveProductPricing(p).priceLabel}
-                          </small>
-                        </TableCell>
-                        <TableCell>
-                          <strong>
-                            {p.websitePrice != null
-                              ? '$' + money(p.websitePrice)
-                              : '尚未比對'}
-                          </strong>
-                        </TableCell>
-                        <TableCell>${money(p.listPrice)}</TableCell>
-                        <TableCell>
-                          {p.syncedAt ? (
-                            <a
-                              href={p.sourceUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              {new Date(p.syncedAt).toLocaleDateString('zh-TW')}{' '}
-                              ↗
-                            </a>
-                          ) : (
-                            'CSV 基礎資料'
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <p className="footnote">
-                  顯示 {Math.min(products.length, 100)} / {products.length}{' '}
-                  件。尚未比對官網的商品沿用原書展定價與折扣。
-                </p>
-              </section>
+              <PriceManager
+                catalog={catalog}
+                request={api}
+                onUpdated={async () => setCatalog(await api('catalog'))}
+                readOnly={me.role !== 'admin'}
+              />
             </>
           ) : (
             <>
@@ -1226,7 +1148,26 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
               </div>
               <div className="stock-layout">
                 <section className="panel">
-                  <h2>設定教會密碼</h2>
+                  <h2>設定教會密碼與庫存</h2>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const code = churchCode
+                        .split('｜')[0]
+                        .trim()
+                        .toLowerCase();
+                      if (
+                        catalog.customers.some(
+                          (c: any) => c.code.toLowerCase() === code,
+                        ) &&
+                        !['0002', '305'].includes(code)
+                      )
+                        setInventoryChurch(code);
+                      else setError('請先選擇有效的教會代碼');
+                    }}
+                  >
+                    為下方教會先建立庫存
+                  </Button>
                   <label htmlFor="church-code">教會客戶代碼</label>
                   <Input
                     id="church-code"
@@ -1339,31 +1280,17 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
         open={!!inventoryChurch}
         onOpenChange={(v) => !v && setInventoryChurch('')}
       >
-        <DialogContent>
-          <DialogTitle>{inventoryChurch.toUpperCase()} · 書展庫存</DialogTitle>
+        <DialogContent className="church-inventory-dialog">
+          <DialogTitle>教會庫存</DialogTitle>
           <DialogDescription>
-            選擇該教會的場次，匯入商品代碼與數量。教會可在自己的庫存頁查看。
+            先建立庫存，再由教會自行新增書展。
           </DialogDescription>
-          <div className="inventory-fairs">
-            {events
-              .filter((e) => e.tenant === inventoryChurch)
-              .map((e) => (
-                <Button
-                  key={e.id}
-                  variant="outline"
-                  onClick={() =>
-                    run(async () => {
-                      setInventoryChurch('');
-                      await openEvent(e, 'stock');
-                    })
-                  }
-                >
-                  {e.name} · {e.date}
-                </Button>
-              ))}
-          </div>
-          {!events.some((e) => e.tenant === inventoryChurch) && (
-            <p className="muted">請教會先登入並建立書展，再由書房匯入庫存。</p>
+          {inventoryChurch && (
+            <ChurchInventory
+              tenant={inventoryChurch}
+              catalog={catalog}
+              request={api}
+            />
           )}
         </DialogContent>
       </Dialog>
@@ -1425,7 +1352,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
             />
 
             <p className="pricing-policy">
-              價格依序採用：單品設定 → 官網售價 → 類別設定 → CSV 原價。
+              價格依序採用：群組 → 單品 → 官網 → 類別 → 原價，依順位擇一。
             </p>
             <p className="muted">
               結帳時仍可修改單價、數量與折扣。商品數量可以稍後建立。

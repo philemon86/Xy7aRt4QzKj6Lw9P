@@ -1173,3 +1173,14 @@ body[data-checkout='saving'] .checkout-btn {
   color: var(--primary-btn);
   font-weight: 700;
 }
+
+.cart-product select {
+  display: block;
+  max-width: 100%;
+  margin-top: 7px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 7px;
+  background: white;
+  font-size: 13px;
+}

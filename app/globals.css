@@ -2019,3 +2019,269 @@ html.dark[data-audience='church'] {
     flex-direction: column;
   }
 }
+
+.price-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  margin: 20px 0 12px;
+}
+.price-tabs button {
+  white-space: nowrap;
+  padding: 14px 18px;
+  font-weight: 600;
+  border-bottom: 3px solid transparent;
+}
+.price-tabs [aria-selected='true'] {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.pricing-order {
+  font-size: 14px;
+  color: var(--muted-foreground);
+  margin-bottom: 20px;
+}
+.price-message {
+  padding: 14px;
+  border-radius: 8px;
+  background: #f5ead5;
+  margin: 12px 0;
+}
+.product-price-list,
+.category-price-list,
+.group-list {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+}
+.product-price-row,
+.category-price-row,
+.group-card {
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.product-price-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+.product-price-heading b {
+  font-size: 16px;
+}
+.product-price-heading small {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  margin-top: 5px;
+}
+.price-result {
+  text-align: right;
+  min-width: 95px;
+}
+.price-result strong {
+  font-size: 21px;
+}
+.price-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+}
+.price-pill {
+  border-radius: 999px;
+  border: 1px solid #d8d5cf;
+  padding: 6px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  background: #f5f4f1;
+  color: #5b554d;
+  cursor: pointer;
+  text-align: left;
+}
+.price-pill.group {
+  background: #ece5f4;
+  color: #655179;
+  border-color: #d8c9e9;
+}
+.price-pill.single {
+  background: #f6ead6;
+  color: #785f38;
+}
+.price-pill.web {
+  background: #e5f0e9;
+  color: #446650;
+}
+.price-pill.category {
+  background: #e8edf4;
+  color: #53667d;
+}
+.price-pill.chosen {
+  font-weight: 700;
+  border-width: 2px;
+  box-shadow: 0 0 0 2px var(--card);
+}
+.price-overlap {
+  font-size: 12px;
+  color: #956328;
+  margin-top: 10px;
+}
+.inline-price-editor {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  border-radius: 10px;
+  margin-top: 16px;
+}
+.inline-price-editor label,
+.church-stock-panel label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  min-width: 0;
+}
+.inline-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.inline-fields > label {
+  flex: 1;
+  min-width: 120px;
+}
+.inline-price-editor select,
+.church-stock-panel select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--card);
+}
+.inline-price-editor textarea,
+.church-stock-panel textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px;
+}
+.inline-price-editor details summary {
+  cursor: pointer;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.group-editor {
+  margin: 20px 0;
+}
+.tier-row {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+  margin: 12px 0;
+}
+.group-card p {
+  margin-top: 12px;
+  font-size: 14px;
+}
+.csv-import {
+  margin: 16px 0;
+  max-width: 620px;
+}
+.csv-import > label {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 13px;
+}
+.csv-import input {
+  max-width: 300px;
+}
+.church-inventory-dialog {
+  max-width: 850px !important;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+.church-stock-panel {
+  background: var(--card);
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.church-stock-panel h2 {
+  font-size: 21px;
+  font-weight: 650;
+}
+.church-stock-panel > p {
+  margin: 10px 0;
+}
+.church-stock-panel form {
+  display: grid;
+  gap: 15px;
+  max-width: 650px;
+  margin: 20px 0;
+}
+.inventory-table {
+  overflow-x: auto;
+}
+.inventory-table table {
+  width: 100%;
+  font-size: 14px;
+  border-collapse: collapse;
+}
+.inventory-table th,
+.inventory-table td {
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.inventory-table small {
+  display: block;
+  color: var(--muted-foreground);
+}
+.group-card .heading-actions {
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .product-price-row,
+  .category-price-row,
+  .group-card,
+  .church-stock-panel {
+    padding: 14px;
+  }
+  .product-price-heading {
+    align-items: start;
+  }
+  .price-tabs button {
+    padding: 12px 10px;
+    font-size: 13px;
+  }
+  .tier-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .inline-price-editor {
+    padding: 12px;
+  }
+  .inline-price-editor .heading-actions {
+    flex-wrap: wrap;
+  }
+  .csv-import > label {
+    display: block;
+  }
+  .group-card .product-price-heading {
+    flex-wrap: wrap;
+  }
+  .price-pill {
+    padding: 7px 10px;
+  }
+  .price-result strong {
+    font-size: 18px;
+  }
+}

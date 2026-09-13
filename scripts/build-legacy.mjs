@@ -3,10 +3,15 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 let html = fs.readFileSync(path.join(root, 'legacy/index.html'), 'utf8');
 const read = (name) => fs.readFileSync(path.join(root, name), 'utf8');
-const core = read('lib/pos-core.mjs').replace(/^export /gm, '');
+const core =
+  read('lib/pos-core.mjs').replace(/^export /gm, '') +
+  '\n' +
+  read('lib/promotions.mjs')
+    .replace(/^import .*;$/gm, '')
+    .replace(/^export /gm, '');
 fs.writeFileSync(
   path.join(root, 'public/pos-core.js'),
-  `window.POSCore=(()=>{${core}\nreturn {resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate};})();\n`,
+  `window.POSCore=(()=>{${core}\nreturn {applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate};})();\n`,
 );
 const start = html.indexOf('(function (root, factory)');
 const end = html.indexOf('</script>', start);
@@ -47,7 +52,7 @@ html =
         dbStatusElement.textContent=data.products.length+' 件商品 · 價格已快取';
         if(!cloud.catalogLoaded)invoiceCustomerInput.value=cloud.event.tenant?formatCustomerOption(customerMap[cloud.event.tenant.toUpperCase()]):'';syncInvoiceCustomerVisibility();cloud.catalogLoaded=true;
       };
-      cloud.onCatalogUpdate=async()=>{await loadMasterData();renderSearch();renderFavorites();};
+      cloud.onCatalogUpdate=async()=>{await loadMasterData();renderSearch();renderFavorites();updateCartDisplay();calculateTotal();};
 ` +
   html.slice(loadEnd);
 const discountStart = html.indexOf('      const getSpecialDiscount =');
@@ -56,13 +61,21 @@ html =
   html.slice(0, discountStart) +
   '      const getSpecialDiscount = () => undefined;\n      const calculateItemDiscount = item => item.isManual ? item.discount : (item.defaultDiscount ?? 100);\n' +
   html.slice(discountEnd);
+html = html.replace(
+  '      const calculateCartTotal = (items = cart) => {',
+  '      const pricedCart=()=>POSCore.applyPromotions(cart,products,cloud.catalog.pricingRules?.groups||[]);\n      const calculateCartTotal = (items = cart) => {\n        if(items===cart)items=pricedCart();',
+);
+html = html.replace(
+  'items: cart.map(i => ({ ...i })),',
+  'items: pricedCart().map(i => ({ ...i })),',
+);
 // Preset specials remain automatic; manual edits always take precedence.
 html = html.replace(
   /          if \(getSpecialDiscount\(newItem\) !== undefined\) \{[\s\S]*?\n          \}/g,
   '',
 );
 const cartStart = html.indexOf('      const updateCartDisplay = () => {');
-const cartEnd = html.indexOf('      const calculateCartTotal', cartStart);
+const cartEnd = html.indexOf('      const pricedCart=', cartStart);
 html =
   html.slice(0, cartStart) +
   read('scripts/register-cart.js') +
