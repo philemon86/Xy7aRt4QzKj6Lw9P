@@ -35,6 +35,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   BookOpen,
@@ -75,14 +76,21 @@ const today = () =>
     month: '2-digit',
     day: '2-digit',
   }).format(new Date());
-async function api(path: string, body?: any): Promise<any> {
+async function requestAPI(
+  portal: string,
+  path: string,
+  body?: any,
+): Promise<any> {
   const r = await fetch(
     '/api/' + path,
     body === undefined
-      ? {}
+      ? { headers: { 'X-POS-Portal': portal } }
       : {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-POS-Portal': portal,
+          },
           body: JSON.stringify(body),
         },
   );
@@ -99,7 +107,25 @@ function download(data: any, name: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
+function CheckoutSidebar({
+  eventId,
+  view,
+}: {
+  eventId?: string;
+  view: string;
+}) {
+  const { setOpen, setOpenMobile } = useSidebar();
+  useEffect(() => {
+    if (eventId && view === 'checkout') {
+      setOpen(false);
+      setOpenMobile(false);
+    }
+  }, [eventId, view]);
+  return null;
+}
 export default function Workspace({ tenant = '' }: { tenant?: string }) {
+  const api = (path: string, body?: any) =>
+    requestAPI(tenant || 'admin', path, body);
   const [me, setMe] = useState<any>(null),
     [loaded, setLoaded] = useState(false),
     [password, setPassword] = useState(''),
@@ -179,7 +205,6 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       es = boot.events,
       cat = boot.catalog;
     if (tenant && user.tenant !== tenant) {
-      await api('logout', {});
       throw Error('請使用此教會入口密碼登入');
     }
     setEvents(es);
@@ -531,6 +556,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     );
   return (
     <SidebarProvider data-audience={audience}>
+      <CheckoutSidebar eventId={active?.id} view={view} />
       <Sidebar className="pos-sidebar">
         <SidebarHeader>
           <div className="brand">
@@ -612,7 +638,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       <main className={active ? 'workspace workspace-active' : 'workspace'}>
         <header className="topbar">
           <div>
-            <SidebarTrigger />
+            <SidebarTrigger aria-label="展開或收合選單" />
             <span>
               {active
                 ? '書展 / ' + active.name
@@ -785,7 +811,12 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
               <iframe
                 ref={frame}
                 title="書展收銀台"
-                src={'/register.html?event=' + active.id}
+                src={
+                  '/register.html?event=' +
+                  active.id +
+                  '&portal=' +
+                  encodeURIComponent(tenant || 'admin')
+                }
                 allow="camera"
                 className="register-frame"
                 style={{

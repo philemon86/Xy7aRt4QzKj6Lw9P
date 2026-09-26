@@ -1,5 +1,7 @@
 window.makeCloud = async function () {
   const eid = new URLSearchParams(location.search).get('event');
+  const portal = new URLSearchParams(location.search).get('portal');
+  const portalHeaders = portal ? { 'X-POS-Portal': portal } : {};
   let device = window.localStorage.getItem('pos-device');
   if (!device) {
     device = crypto.randomUUID();
@@ -9,10 +11,10 @@ window.makeCloud = async function () {
     const r = await fetch(
       '/api/' + path,
       body === undefined
-        ? {}
+        ? { headers: portalHeaders }
         : {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...portalHeaders },
             body: JSON.stringify(body),
           },
     );

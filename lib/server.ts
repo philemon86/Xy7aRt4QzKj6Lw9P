@@ -52,16 +52,53 @@ export async function passwordHash(p: string, salt = crypto.randomUUID()) {
     )
   );
 }
+function portalCookie(req: Request) {
+  const cookies = Object.fromEntries(
+    (req.headers.get('cookie') || '')
+      .split(';')
+      .map((v) => v.trim().split('=')),
+  );
+  const selected = req.headers.get('X-POS-Portal')?.toLowerCase();
+  if (selected && !/^[a-z0-9_-]{1,24}$/.test(selected))
+    throw error('入口代碼錯誤');
+  const names = Object.keys(cookies).filter((k) =>
+    k.startsWith('pos_session_'),
+  );
+  const name = selected
+    ? 'pos_session_' + selected
+    : cookies.pos_session_admin
+      ? 'pos_session_admin'
+      : names.length === 1
+        ? names[0]
+        : 'pos_session';
+  const actualName = cookies[name] ? name : 'pos_session';
+  return {
+    name: actualName,
+    token: cookies[actualName],
+    selected:
+      selected ||
+      (actualName.startsWith('pos_session_') ? actualName.slice(12) : ''),
+  };
+}
+function verifyPortal(req: Request, s: Session) {
+  const { selected } = portalCookie(req);
+  if (
+    selected &&
+    (selected === 'admin'
+      ? s.role !== 'admin'
+      : s.role !== 'church' || s.tenant !== selected)
+  )
+    throw error('請登入此入口', 401);
+}
 export async function session(req: Request): Promise<Session> {
-  const token = req.headers
-    .get('cookie')
-    ?.match(/(?:^|;\s*)pos_session=([^;]+)/)?.[1];
+  const token = portalCookie(req).token;
   if (!token) throw error('請先登入', 401);
   const s = await db()
     .prepare('SELECT * FROM sessions WHERE token=? AND expires>?')
     .bind(await sha(token), Date.now())
     .first<Session>();
   if (!s) throw error('登入已到期，請重新登入', 401);
+  verifyPortal(req, s);
   return s;
 }
 export function guard(req: Request) {
@@ -322,16 +359,14 @@ export async function handle(req: Request, parts: string[]) {
       )
       .run();
     return json({ ok: true }, 200, {
-      'Set-Cookie': `pos_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800${new URL(req.url).protocol === 'https:' ? '; Secure' : ''}`,
+      'Set-Cookie': `pos_session_${tenant || 'admin'}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800${new URL(req.url).protocol === 'https:' ? '; Secure' : ''}`,
     });
   }
   // Checkout reads fresh authorization and its event in one database round trip.
   let preloadedEvent: any;
   let s: Session;
   if (route === 'events' && id && action === 'sync') {
-    const token = req.headers
-      .get('cookie')
-      ?.match(/(?:^|;\s*)pos_session=([^;]+)/)?.[1];
+    const token = portalCookie(req).token;
     if (!token) throw error('請先登入', 401);
     const reads = await db().batch([
       db()
@@ -341,6 +376,7 @@ export async function handle(req: Request, parts: string[]) {
     ]);
     s = reads[0].results[0] as Session;
     if (!s) throw error('登入已到期，請重新登入', 401);
+    verifyPortal(req, s);
     preloadedEvent = reads[1].results[0];
     if (
       !preloadedEvent ||
@@ -408,13 +444,17 @@ export async function handle(req: Request, parts: string[]) {
               ?.name,
     });
   if (route === 'logout') {
+    const legacy = req.headers
+      .get('cookie')
+      ?.match(/(?:^|;\s*)pos_session=([^;]+)/)?.[1];
     await db()
-      .prepare('DELETE FROM sessions WHERE token=?')
-      .bind(s.token)
+      .prepare(
+        'DELETE FROM sessions WHERE (token=? OR token=?) AND role=? AND tenant=?',
+      )
+      .bind(s.token, legacy ? await sha(legacy) : s.token, s.role, s.tenant)
       .run();
     return json({ ok: true }, 200, {
-      'Set-Cookie':
-        'pos_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0',
+      'Set-Cookie': `${portalCookie(req).name}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`,
     });
   }
   if (route === 'catalog') {
