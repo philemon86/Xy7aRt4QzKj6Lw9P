@@ -672,111 +672,120 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           )}
           {active ? (
             <>
-              <button className="back" onClick={() => run(goHome)}>
-                <ArrowLeft size={16} /> 所有書展
-              </button>
-              <div className="page-heading">
-                <div>
-                  <span className="eyebrow">
-                    {(active.organizer === 'church'
-                      ? '教會自辦書展'
-                      : '書房書展') +
-                      (active.tenant
-                        ? ' · ' + active.tenant.toUpperCase()
-                        : ' · 腓利門書房')}
-                  </span>
-                  <h1>{active.name}</h1>
-                  {(me.role !== 'admin' || active.organizer !== 'church') && (
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        const name = window.prompt('修改書展名稱', active.name);
-                        if (name && name !== active.name)
-                          run(async () => {
-                            await api('events/' + active.id + '/rename', {
-                              name,
-                              before: active.name,
+              <div className="event-toolbar">
+                <button className="back" onClick={() => run(goHome)}>
+                  <ArrowLeft size={16} /> 所有書展
+                </button>
+                <div className="page-heading event-heading">
+                  <div className="event-identity">
+                    <span className="eyebrow">
+                      {(active.organizer === 'church'
+                        ? '教會自辦書展'
+                        : '書房書展') +
+                        (active.tenant
+                          ? ' · ' + active.tenant.toUpperCase()
+                          : ' · 腓利門書房')}
+                    </span>
+                    <h1 title={active.name}>{active.name}</h1>
+                    {(me.role !== 'admin' || active.organizer !== 'church') && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          const name = window.prompt(
+                            '修改書展名稱',
+                            active.name,
+                          );
+                          if (name && name !== active.name)
+                            run(async () => {
+                              await api('events/' + active.id + '/rename', {
+                                name,
+                                before: active.name,
+                              });
+                              setActive({ ...active, name });
+                              setEvents(await api('events'));
                             });
-                            setActive({ ...active, name });
-                            setEvents(await api('events'));
-                          });
+                        }}
+                      >
+                        修改名稱
+                      </Button>
+                    )}
+                    <p>
+                      {active.date} <span className="dot">·</span>{' '}
+                      {active.status === 'open' ? '進行中' : '已封存'}
+                    </p>
+                  </div>
+                  <div className="heading-actions">
+                    {(me.role !== 'admin' || active.organizer !== 'church') && (
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          run(async () => {
+                            await flushFrame();
+                            await api('events/' + active.id + '/archive', {
+                              open: active.status !== 'open',
+                            });
+                            const all = await api('events');
+                            setEvents(all);
+                            eventRecord.current = api('events/' + active.id);
+                            setActive(all.find((e: any) => e.id === active.id));
+                            if (frame.current)
+                              frame.current.src = frame.current.src;
+                          })
+                        }
+                      >
+                        <Archive />
+                        {active.status === 'open' ? '封存' : '重新開啟'}
+                      </Button>
+                    )}
+                    {!(
+                      me.role === 'admin' && active.organizer === 'church'
+                    ) && (
+                      <Button
+                        className="primary"
+                        onClick={() => {
+                          tab('checkout');
+                          setScanFeedback(null);
+                          (
+                            frame.current?.contentWindow as any
+                          )?.POSCloud?.unlockAudio?.();
+                          setCamera(true);
+                        }}
+                        disabled={active.status !== 'open'}
+                      >
+                        <ScanBarcode /> 相機掃描
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {me.role === 'admin' && (
+                  <div className="event-switcher">
+                    <label id="event-switcher-label">切換場次</label>
+                    <Select
+                      value={active.id}
+                      onValueChange={(id) => {
+                        const selected = events.find((e) => e.id === id);
+                        if (selected && id !== active.id)
+                          run(() => openEvent(selected, 'history'));
                       }}
                     >
-                      修改名稱
-                    </Button>
-                  )}
-                  <p>
-                    {active.date} <span className="dot">·</span>{' '}
-                    自動套用商品價格 <span className="dot">·</span>{' '}
-                    {active.status === 'open' ? '進行中' : '已封存'}
-                  </p>
-                </div>
-                <div className="heading-actions">
-                  {(me.role !== 'admin' || active.organizer !== 'church') && (
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        run(async () => {
-                          await flushFrame();
-                          await api('events/' + active.id + '/archive', {
-                            open: active.status !== 'open',
-                          });
-                          const all = await api('events');
-                          setEvents(all);
-                          eventRecord.current = api('events/' + active.id);
-                          setActive(all.find((e: any) => e.id === active.id));
-                          if (frame.current)
-                            frame.current.src = frame.current.src;
-                        })
-                      }
-                    >
-                      <Archive />
-                      {active.status === 'open' ? '封存' : '重新開啟'}
-                    </Button>
-                  )}
-                  {!(me.role === 'admin' && active.organizer === 'church') && (
-                    <Button
-                      className="primary"
-                      onClick={() => {
-                        tab('checkout');
-                        setScanFeedback(null);
-                        (
-                          frame.current?.contentWindow as any
-                        )?.POSCloud?.unlockAudio?.();
-                        setCamera(true);
-                      }}
-                      disabled={active.status !== 'open'}
-                    >
-                      <ScanBarcode /> 相機掃描
-                    </Button>
-                  )}
-                </div>
+                      <SelectTrigger aria-labelledby="event-switcher-label">
+                        <SelectValue>
+                          {active.tenant ? active.tenant.toUpperCase() : '書房'}{' '}
+                          · {active.name}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {events.map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.tenant ? e.tenant.toUpperCase() : '書房'} ·{' '}
+                            {e.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
-              {me.role === 'admin' && (
-                <div className="event-switcher">
-                  <label>快速查看場次</label>
-                  <Select
-                    value={active.id}
-                    onValueChange={(id) => {
-                      const selected = events.find((e) => e.id === id);
-                      if (selected && id !== active.id)
-                        run(() => openEvent(selected, 'history'));
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {events.map((e) => (
-                        <SelectItem key={e.id} value={e.id}>
-                          {e.tenant ? e.tenant.toUpperCase() : '書房'} ·{' '}
-                          {e.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
               <Tabs value={view} onValueChange={tab}>
                 <TabsList variant="line" className="work-tabs">
                   {!(me.role === 'admin' && active.organizer === 'church') && (
