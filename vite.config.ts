@@ -3,6 +3,7 @@ import tailwindcss from '@tailwindcss/postcss';
 import vinext from 'vinext';
 import { defineConfig, type ViteDevServer } from 'vite';
 import hostingConfig from './.openai/hosting.json';
+import { readFileSync } from 'node:fs';
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   '00000000-0000-4000-8000-000000000000';
@@ -50,6 +51,19 @@ export default defineConfig(async () => {
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,
     plugins: [
+      {
+        name: 'pos-camera-compatible-chunks',
+        generateBundle() {
+          if (this.environment.name !== 'client') return;
+          for (const file of ['esm-BIEdAo5f.js', 'esm-CozMJoCa.js']) {
+            this.emitFile({
+              type: 'asset',
+              fileName: 'pos/_next/static/chunks/' + file,
+              source: readFileSync(new URL('./compat/camera/' + file, import.meta.url)),
+            });
+          }
+        },
+      },
       {
         name: 'pos-canonical-entry',
         configureServer(server: ViteDevServer) {
