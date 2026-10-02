@@ -1,7 +1,6 @@
 import { churchInventory, parseStock } from './church-stock.mjs';
 import { validatePromotion } from './promotions.mjs';
 import initialPromotions from '../data/shop-promotions.json';
-import { BOGO_API, parseShopPromotions } from './shop-promotions.mjs';
 import { env } from 'cloudflare:workers';
 import catalog from '../data/catalog.json';
 import {
@@ -9,11 +8,12 @@ import {
   mergeProducts,
   defaultPricing,
   composeCatalogProduct,
+  rebaseCatalogProducts,
   validatePriceRule,
 } from './catalog.mjs';
 import initialShop from '../data/shop-cache.json';
 import { mergeChanges, validateOrder, stats } from './state.mjs';
-import { parseShop } from './shop.mjs';
+import { syncShopStep, syncStatus, syncPromotions } from './shop-sync.mjs';
 import { formatOrderNumber, orderDay, validateRoleChange } from './orders.mjs';
 import { previewPilot, confirmPilot } from './pilot-service';
 type Session = { role: string; tenant: string; token: string };
@@ -53,11 +53,11 @@ export async function passwordHash(p: string, salt = crypto.randomUUID()) {
   );
 }
 function portalCookie(req: Request) {
-  const cookies = Object.fromEntries(
-    (req.headers.get('cookie') || '')
-      .split(';')
-      .map((v) => v.trim().split('=')),
-  );
+  const cookies: Record<string, string> = {};
+  for (const part of (req.headers.get('cookie') || '').split(';')) {
+    const [name, ...value] = part.trim().split('=');
+    if (!Object.hasOwn(cookies, name)) cookies[name] = value.join('=');
+  }
   const selected = req.headers.get('X-POS-Portal')?.toLowerCase();
   if (selected && !/^[a-z0-9_-]{1,24}$/.test(selected))
     throw error('入口代碼錯誤');
@@ -232,10 +232,34 @@ async function catalogSettings() {
   const settings = Object.fromEntries(
     rows.results.map((r) => [r.key, JSON.parse(r.value)]),
   );
-  const products = mergeProducts(
-    catalog.products,
-    settings['catalog-products']?.products || [],
-  );
+  const stored = settings['catalog-products'];
+  let products = mergeProducts(catalog.products, stored?.products || []);
+  if (
+    catalog.sourceRevision &&
+    stored?.sourceRevision !== catalog.sourceRevision
+  ) {
+    products = rebaseCatalogProducts(
+      products,
+      catalog.products,
+      catalog.importedCodes,
+    );
+    const value = {
+      products,
+      sourceRevision: catalog.sourceRevision,
+      revision: crypto.randomUUID(),
+    };
+    try {
+      await writeCatalogSetting(
+        'catalog-products',
+        value,
+        stored?.revision || '',
+      );
+      settings['catalog-products'] = value;
+    } catch (e: any) {
+      if (e.status !== 409) throw e;
+      return catalogSettings();
+    }
+  }
   const defaults = defaultPricing(catalog.products),
     saved = settings['global-pricing'];
   return {
@@ -303,7 +327,7 @@ async function getCatalog(s: Session) {
     ),
   };
 }
-async function limited(key: string) {
+async function limited(key: string, max = 12) {
   const bucket = Math.floor(Date.now() / 600000);
   const r: any = await db()
     .prepare(
@@ -311,16 +335,68 @@ async function limited(key: string) {
     )
     .bind(key + ':' + bucket, Date.now() + 600000)
     .first();
-  if (r.n > 12) throw error('登入嘗試過多，請稍後再試', 429);
+  if (r.n > max) throw error('登入嘗試過多，請稍後再試', 429);
 }
 export async function handle(req: Request, parts: string[]) {
-  guard(req);
   const [route, id, action] = parts;
+  if (route === 'scheduled-sync') {
+    const expected =
+      (env as any).SYNC_SERVICE_KEY_HASH || process.env.SYNC_SERVICE_KEY_HASH;
+    const supplied = req.headers.get('X-POS-Sync-Key') || '';
+    if (
+      !expected ||
+      supplied.length > 10000 ||
+      (await sha('pos-sync:' + supplied)) !== expected
+    )
+      throw error('沒有同步權限', 401);
+    if (req.method === 'GET') {
+      const [job, rows] = await Promise.all([
+        db()
+          .prepare("SELECT value FROM settings WHERE key='sync'")
+          .first<any>(),
+        db().prepare('SELECT COUNT(*) count FROM shop').first<any>(),
+      ]);
+      return json({
+        ...syncStatus(job ? JSON.parse(job.value) : null),
+        cachedProducts: rows?.count || 0,
+        catalogSourceRevision: catalog.sourceRevision,
+      });
+    }
+    if (req.method !== 'POST') throw error('請使用 POST', 405);
+    return json(
+      await syncShopStep(db(), await catalogSettings(), { daily: true }),
+    );
+  }
+  guard(req);
+  if (
+    req.method === 'GET' &&
+    (['login', 'logout'].includes(route) ||
+      [
+        'sync',
+        'rename',
+        'archive',
+        'eri',
+        'pilot-preview',
+        'pilot-confirm',
+      ].includes(action))
+  )
+    throw error('請使用 POST', 405);
+  if (Number(req.headers.get('content-length') || 0) > 9000000)
+    throw error('傳送資料過大', 413);
+  if (
+    req.method !== 'GET' &&
+    !req.headers.get('content-type')?.startsWith('application/json')
+  )
+    throw error('請使用 JSON', 415);
   const b = req.method === 'GET' ? {} : ((await req.json()) as any);
   if (route === 'login') {
     const tenant = String(b.tenant || '').toLowerCase();
     if (tenant && !/^[a-z0-9_-]{1,24}$/.test(tenant))
       throw error('入口代碼錯誤');
+    await limited(
+      'login-ip:' + (await sha(req.headers.get('cf-connecting-ip') || 'local')),
+      60,
+    );
     await limited(
       'login:' +
         (await sha(
@@ -359,7 +435,7 @@ export async function handle(req: Request, parts: string[]) {
       )
       .run();
     return json({ ok: true }, 200, {
-      'Set-Cookie': `pos_session_${tenant || 'admin'}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800${new URL(req.url).protocol === 'https:' ? '; Secure' : ''}`,
+      'Set-Cookie': `pos_session_${tenant || 'admin'}=${token}; Path=/pos; HttpOnly; SameSite=Strict; Max-Age=28800${new URL(req.url).protocol === 'https:' ? '; Secure' : ''}`,
     });
   }
   // Checkout reads fresh authorization and its event in one database round trip.
@@ -444,17 +520,23 @@ export async function handle(req: Request, parts: string[]) {
               ?.name,
     });
   if (route === 'logout') {
-    const legacy = req.headers
-      .get('cookie')
-      ?.match(/(?:^|;\s*)pos_session=([^;]+)/)?.[1];
-    await db()
-      .prepare(
-        'DELETE FROM sessions WHERE (token=? OR token=?) AND role=? AND tenant=?',
-      )
-      .bind(s.token, legacy ? await sha(legacy) : s.token, s.role, s.tenant)
-      .run();
+    // Revoke both old root-path and new /pos cookies for this portal only.
+    const ownName = 'pos_session_' + (s.role === 'admin' ? 'admin' : s.tenant);
+    const hashes = new Set([s.token]);
+    for (const part of (req.headers.get('cookie') || '').split(';')) {
+      const [name, ...value] = part.trim().split('=');
+      if (name === ownName || name === 'pos_session')
+        hashes.add(await sha(value.join('=')));
+    }
+    await db().batch(
+      [...hashes].map((hash) =>
+        db()
+          .prepare('DELETE FROM sessions WHERE token=? AND role=? AND tenant=?')
+          .bind(hash, s.role, s.tenant),
+      ),
+    );
     return json({ ok: true }, 200, {
-      'Set-Cookie': `${portalCookie(req).name}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`,
+      'Set-Cookie': `${portalCookie(req).name}=; Path=/pos; HttpOnly; SameSite=Strict; Max-Age=0`,
     });
   }
   if (route === 'catalog') {
@@ -490,55 +572,19 @@ export async function handle(req: Request, parts: string[]) {
       const products = mergeProducts(config.products, parsed.products);
       await writeCatalogSetting(
         'catalog-products',
-        { revision: crypto.randomUUID(), products },
+        {
+          revision: crypto.randomUUID(),
+          products,
+          sourceRevision: catalog.sourceRevision,
+        },
         b.revision || '',
       );
       return json({ count: parsed.products.length, skipped: parsed.skipped });
     }
     if (id === 'sync-promotions') {
-      const products: any[] = [];
-      let total = 0;
-      for (let page = 1; page <= 20; page++) {
-        const response = await fetch(BOGO_API + '?page=' + page + '&per=100', {
-          signal: AbortSignal.timeout(15000),
-        });
-        if (!response.ok) throw error('官網暫時無法讀取，保留現有活動', 502);
-        const data: any = await response.json();
-        if (
-          !Array.isArray(data.products) ||
-          !Number.isSafeInteger(data.total_count)
-        )
-          throw error('官網清單格式變更，保留現有活動', 502);
-        total = data.total_count;
-        products.push(...data.products);
-        if (page >= data.total_pages) break;
-      }
-      if (products.length !== total || !total)
-        throw error('官網清單不完整或為空，保留現有活動', 502);
-      const incoming = parseShopPromotions(products, config.products);
-      const overrides = new Map(
-        config.rules.groups
-          .filter((g: any) => g.origin !== 'website')
-          .map((g: any) => [g.id, g]),
-      );
-      const removed = config.rules.groups
-        .filter(
-          (g: any) =>
-            g.origin === 'website' && !incoming.some((n: any) => n.id === g.id),
-        )
-        .map((g: any) => ({ ...g, disabled: true }));
-      const groups = [
-        ...incoming.filter((g: any) => !overrides.has(g.id)),
-        ...removed,
-        ...overrides.values(),
-      ];
-      const revision = crypto.randomUUID();
-      await writeCatalogSetting(
-        'global-pricing',
-        { ...config.rules, groups, revision },
-        b.revision || '',
-      );
-      return json({ revision, count: incoming.length });
+      if (config.pricingRevision !== (b.revision || ''))
+        throw error('資料已更新，請重新載入後再操作', 409);
+      return json(await syncPromotions(db(), config));
     }
     if (id === 'group') {
       const rules = config.rules;
@@ -574,7 +620,11 @@ export async function handle(req: Request, parts: string[]) {
       );
       await writeCatalogSetting(
         'catalog-products',
-        { products, revision: crypto.randomUUID() },
+        {
+          products,
+          revision: crypto.randomUUID(),
+          sourceRevision: catalog.sourceRevision,
+        },
         b.revision || '',
       );
       return json({ ok: true });
@@ -972,66 +1022,18 @@ export async function handle(req: Request, parts: string[]) {
     }
   }
   if (route === 'sync-shop') {
-    const syncCodes = new Set(
-      (await catalogSettings()).products.map((p) => p.code),
-    );
     isAdmin(s);
     if (req.method === 'GET') {
       const row: any = await db()
         .prepare("SELECT value FROM settings WHERE key='sync'")
         .first();
-      return json(row ? JSON.parse(row.value) : { cursor: 0, total: 0 });
+      return json(syncStatus(row ? JSON.parse(row.value) : null));
     }
-    const last: any = await db()
-      .prepare("SELECT value FROM settings WHERE key='sync'")
-      .first();
-    let job = last ? JSON.parse(last.value) : null;
-    if (b.restart || !job || !job.urls?.length) {
-      const res = await fetch('https://www.pbooks.com.tw/sitemap.xml');
-      if (!res.ok) throw error('官網暫時無法同步，既有快取仍可使用', 502);
-      const xml = await res.text();
-      job = {
-        urls: [
-          ...xml.matchAll(
-            /<loc>(https:\/\/www\.pbooks\.com\.tw\/products\/[^<]+)<\/loc>/g,
-          ),
-        ].map((m) => m[1]),
-        cursor: 0,
-        matched: 0,
-        failed: 0,
-        started: new Date().toISOString(),
-      };
-    }
-    for (const url of job.urls.slice(job.cursor, job.cursor + 5)) {
-      try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-        if (!res.ok) throw Error();
-        for (const p of parseShop(await res.text(), url)) {
-          if (syncCodes.has(p.code)) {
-            await db()
-              .prepare(
-                'INSERT INTO shop(code,data) VALUES(?,?) ON CONFLICT(code) DO UPDATE SET data=excluded.data',
-              )
-              .bind(p.code, JSON.stringify(p))
-              .run();
-            job.matched++;
-          }
-        }
-      } catch {
-        job.failed++;
-      }
-      job.cursor++;
-    }
-    job.total = job.urls.length;
-    job.finished = job.cursor >= job.total ? new Date().toISOString() : null;
-    await db()
-      .prepare(
-        "INSERT INTO settings(key,value) VALUES('sync',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-      )
-      .bind(JSON.stringify(job))
-      .run();
-    const { urls, ...status } = job;
-    return json(status);
+    return json(
+      await syncShopStep(db(), await catalogSettings(), {
+        restart: !!b.restart,
+      }),
+    );
   }
   throw error('找不到功能', 404);
 }

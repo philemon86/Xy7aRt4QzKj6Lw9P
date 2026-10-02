@@ -1,7 +1,7 @@
 import { sites } from '@openai/sites-vite-plugin';
 import tailwindcss from '@tailwindcss/postcss';
 import vinext from 'vinext';
-import { defineConfig } from 'vite';
+import { defineConfig, type ViteDevServer } from 'vite';
 import hostingConfig from './.openai/hosting.json';
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
@@ -13,7 +13,7 @@ const { d1, r2 } = hostingConfig;
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === 'seatbelt';
 
 const localBindingConfig = {
-  main: 'vinext/server/fetch-handler',
+  main: './worker.ts',
   compatibility_flags: ['nodejs_compat'],
   d1_databases: d1
     ? [
@@ -50,6 +50,17 @@ export default defineConfig(async () => {
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,
     plugins: [
+      {
+        name: 'pos-canonical-entry',
+        configureServer(server: ViteDevServer) {
+          server.middlewares.use((request, response, next) => {
+            const url = new URL(request.url || '/', 'http://localhost');
+            if (url.pathname !== '/pos') return next();
+            response.writeHead(308, { Location: '/pos/' + url.search });
+            response.end();
+          });
+        },
+      },
       vinext(),
       sites(),
       cloudflare({

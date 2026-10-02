@@ -114,3 +114,16 @@ Node.js 22.13 以上；`npm ci`、`npm run dev`、`npm run build`。首次本機
 教會結帳支援現金、LINE PAY、文化幣，仍不開放信用卡；F10 現金按鈕位於另外兩個付款按鈕下方，跨兩欄並維持等高。庫存介面取消模式選單，匯入更新指定商品的目前庫存，不影響未列出的商品；雙擊目前庫存可直接編輯，觸控可單擊，鍵盤可 Enter。庫存維護權限仍屬書房，教會唯讀。
 
 登入改為各入口獨立 HttpOnly Cookie；主入口明確選取 admin，教會入口選取自己的代碼。Workspace 與收銀台 API 均傳入口識別，後端驗證該 session 的角色／教會，並保留旧 Cookie 的受限相容。主入口不接受教會身份；登出僅撤銷當前入口。進入結帳會自動收合桌機側欄與手機選單，使用者仍可隨時展開。scripts/test-portal-browser.mjs 以同一瀏覽器三個入口驗證登入、資料隔離、结帳、登出及側欄操作。
+
+
+## /pos 上架與商品更新（2026-10-02）
+
+主入口 `/pos/`、教會 `/pos/aa01`。根入口與舊教會短網址保留導向；自訂 hostname 為 `www.philemon.com.tw`，DNS 驗證完成前不能宣稱正式網址可用。網址只公開登入畫面，營運 API 持續驗證 POS 身份與教會，原正式 `pos.pbooks.com.tw` 不變。
+
+四份 Big5 商品 CSV 匯入 2,138 筆有效商品、新增 21 個代碼，更新 35 個分類、23 個單位及 1 個 KIND；保留未列出的舊商品，共 2,151 件。四筆空白名稱略過。部署後以 sourceRevision 做一次性 CSV 更新，避免旧 D1 匯入覆蓋新主檔；後續人工編輯繼續有效。獨立 global-pricing、官網快取、訂單與庫存不受此更新覆寫。詳見 data/catalog-import-report.json。
+
+官網更新獨立於結帳，採每批六頁、同時最多兩頁、10 秒逾時、D1 短租約及持久游標；失敗保留原快取，下一次可以續傳。每輪亦同步買一送一活動，人工覆寫優先保存。瀏覽器不再於登入時啟動爬取；書房手動同步仍可使用。
+
+無人值守使用已部署網站 `/pos/api/scheduled-sync`。每次雲端排程由 Sites get_site 取得目前 current_live_url 及受平台管理的 siwc_bypass_bearer_token；只對該 Site 發送 `OAI-Sites-Authorization: Bearer <token>` 與 `X-POS-Sync-Key: <token>`。伺服器以密鑰設定 SYNC_SERVICE_KEY_HASH 驗證 SHA256("pos-sync:" + token)，不信任入口代碼或瀏覽器身份。POST 反覆同步至 finished，busy 時等待再試；GET 讀回持久游標、cachedProducts 與 catalogSourceRevision。請求不帶客戶、訂單或付款資料，不建置或發布網站。憑證只留在記憶體與 stdin，禁止記錄、寫入排程提示或提交原始碼。若平台服務憑證輪替導致 401，停止並回報需重新綁定，不能放寬權限。
+
+登入除每入口每 IP 12 次／10 分鐘外，另有每 IP 合計 60 次／10 分鐘限制。API 寫入驗證 Origin 及 JSON，禁止以 GET 登入、登出或修改。入口 Cookie 只送往 /pos，HttpOnly、SameSite Strict、HTTPS Secure。HTML／API 包含禁止索引、防 MIME 嗅探、同源嵌入及限定相機權限標頭。robots 與 noindex 只降低索引，資料保護以伺服器授權為準。

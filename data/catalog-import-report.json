@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-02",
+  "sourceRevision": "a2ecb7bc590415457cb73b3d59837655709e5201a4db18a0d0fc264a620325c0",
+  "encoding": "Big5",
+  "imported": 2138,
+  "total": 2151,
+  "newProducts": [
+    "0926",
+    "PG48-6",
+    "PG48-7",
+    "PG48-8",
+    "PG48-9",
+    "PG48-10",
+    "PG48-11",
+    "OIJ206",
+    "MBB103",
+    "MBB104",
+    "MBB105",
+    "MBB106",
+    "GAW101",
+    "GAW102",
+    "GAW103",
+    "GAW104",
+    "C298",
+    "C297",
+    "MBE004",
+    "PG11B",
+    "LFS-007"
+  ],
+  "skipped": [
+    {
+      "line": 401,
+      "code": "GS013",
+      "reason": "名稱空白，保留原資料"
+    },
+    {
+      "line": 573,
+      "code": "絕版",
+      "reason": "名稱空白，保留原資料"
+    },
+    {
+      "line": 625,
+      "code": "FTZ2501-06",
+      "reason": "名稱空白，保留原資料"
+    },
+    {
+      "line": 1387,
+      "code": "W899E09",
+      "reason": "名稱空白，保留原資料"
+    }
+  ],
+  "classes": 35,
+  "units": 23,
+  "kinds": 1
+}

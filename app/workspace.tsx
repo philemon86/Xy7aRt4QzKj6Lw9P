@@ -1,4 +1,6 @@
 'use client';
+
+import { POS_BASE } from '@/lib/paths';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,7 +84,7 @@ async function requestAPI(
   body?: any,
 ): Promise<any> {
   const r = await fetch(
-    '/api/' + path,
+    POS_BASE + '/api/' + path,
     body === undefined
       ? { headers: { 'X-POS-Portal': portal } }
       : {
@@ -216,18 +218,6 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
         .then(([churches, job]) => {
           setChurches(churches);
           setSync(job);
-          const last =
-            job.finished ||
-            cat.products
-              .filter((p: any) => p.syncedAt)
-              .map((p: any) => p.syncedAt)
-              .sort()
-              .at(-1);
-          if (!last || Date.now() - new Date(last).getTime() > 24 * 3600000)
-            setTimeout(
-              () => syncShop(!job.total || job.cursor >= job.total),
-              1500,
-            );
         })
         .catch((e) => setError(e.message));
     }
@@ -413,6 +403,8 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       let result = await api('sync-shop', { restart });
       setSync(result);
       while (!result.finished && !stopSync.current) {
+        if (result.busy)
+          await new Promise((resolve) => setTimeout(resolve, 1500));
         result = await api('sync-shop', {});
         setSync(result);
       }
@@ -821,6 +813,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 ref={frame}
                 title="書展收銀台"
                 src={
+                  POS_BASE +
                   '/register.html?event=' +
                   active.id +
                   '&portal=' +
@@ -1280,7 +1273,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                         onClick={() =>
                           run(async () => {
                             await navigator.clipboard.writeText(
-                              location.origin + '/' + c.code,
+                              location.origin + POS_BASE + '/' + c.code,
                             );
                             setNotice('入口網址已複製');
                           })
@@ -1346,7 +1339,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
               setNotice(
                 '待存資料已保留在此裝置，請由書房登入後開啟原場次處理。',
               );
-              window.location.assign('/');
+              window.location.assign(POS_BASE);
             })
           }
         />

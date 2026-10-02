@@ -3,12 +3,32 @@ import assert from 'node:assert/strict';
 import {
   parseProductCSV,
   mergeProducts,
+  rebaseCatalogProducts,
   composeCatalogProduct,
   defaultPricing,
   validatePriceRule,
 } from '../lib/catalog.mjs';
 import { resolveProductPricing } from '../lib/pos-core.mjs';
 import { validateOrder } from '../lib/state.mjs';
+
+test('New shipped CSV replaces older imports while retaining unlisted products and separately stored discounts', () => {
+  const rows = rebaseCatalogProducts(
+    [
+      { code: 'A', name: '舊匯入', price: 100, specialDiscount: 79 },
+      { code: 'KEEP', name: '保留' },
+    ],
+    [
+      { code: 'A', name: '新CSV', price: 120 },
+      { code: 'SKIP', name: '空白列舊值' },
+    ],
+    ['A'],
+  );
+  assert.equal(rows[0].name, '新CSV');
+  assert.equal(rows[0].price, 120);
+  assert.equal(rows[0].specialDiscount, 79);
+  assert.equal(rows[1].code, 'KEEP');
+  assert.equal(rows.length, 2);
+});
 test('PRODUCT CSV preserves quoted names, negative adjustment products and reports blank names', () => {
   const p = parseProductCSV(
     'CODE,CNAME,PRICE1,CLAS,NTAXFLAG\r\nA,"約翰<上>,第二版",100,01,1\r\nR,折抵,-1,POS,0\r\nEMPTY,,0,01,1',

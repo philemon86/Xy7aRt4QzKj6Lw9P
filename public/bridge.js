@@ -9,7 +9,7 @@ window.makeCloud = async function () {
   }
   const api = async (path, body) => {
     const r = await fetch(
-      '/api/' + path,
+      '/pos/api/' + path,
       body === undefined
         ? { headers: portalHeaders }
         : {

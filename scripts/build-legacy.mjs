@@ -13,7 +13,9 @@ fs.writeFileSync(
   path.join(root, 'public/pos-core.js'),
   `window.POSCore=(()=>{${core}\nreturn {formatDiscount,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate};})();\n`,
 );
-html = html.replaceAll('折扣 %', '折數').replace('`${item.discount}%`', 'POSCore.formatDiscount(item.discount)');
+html = html
+  .replaceAll('折扣 %', '折數')
+  .replace('`${item.discount}%`', 'POSCore.formatDiscount(item.discount)');
 const start = html.indexOf('(function (root, factory)');
 const end = html.indexOf('</script>', start);
 fs.mkdirSync(path.join(root, 'legacy'), { recursive: true });
@@ -33,11 +35,14 @@ fs.writeFileSync(
 );
 html = html.replace(
   '<title>腓利門雲POS</title>',
-  '<title>腓利門 POS V2 收銀台</title><link rel="stylesheet" href="/checkout.css"><script src="/bridge.js"></script><script src="/pos-core.js"></script>',
+  '<title>腓利門 POS V2 收銀台</title><link rel="stylesheet" href="/pos/checkout.css"><script src="/pos/bridge.js"></script><script src="/pos/pos-core.js"></script>',
 );
 html = html
-  .replace('<link rel="stylesheet" href="/checkout.css">', '')
-  .replace('</head>', '<link rel="stylesheet" href="/checkout.css"></head>');
+  .replace('<link rel="stylesheet" href="/pos/checkout.css">', '')
+  .replace(
+    '</head>',
+    '<link rel="stylesheet" href="/pos/checkout.css"></head>',
+  );
 html = html.replace(
   "document.addEventListener('DOMContentLoaded', () => {",
   "document.addEventListener('DOMContentLoaded', async () => {\n      let cloud; try { cloud=await window.makeCloud(); } catch(error) { document.body.textContent=error.message; parent.postMessage({type:'register-error'},location.origin); return; }\n      const localStorage=cloud.storage;\n      const isBookstore=cloud.me.role==='admin';\n      const displayOrderNumber=order=>cloud.numbers[order?.id] || '正在編號';\n",
