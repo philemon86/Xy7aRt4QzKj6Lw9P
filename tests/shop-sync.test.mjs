@@ -4,7 +4,14 @@ import {
   sitemapProducts,
   syncStatus,
   syncShopStep,
+  dailySyncDue,
 } from '../lib/shop-sync.mjs';
+
+test('Taiwan daily sync does not skip the next morning after a late finish', () => {
+  const job = { finished: '2026-10-02T04:00:00Z' };
+  assert.equal(dailySyncDue(job, Date.parse('2026-10-02T19:00:00Z')), true);
+  assert.equal(dailySyncDue(job, Date.parse('2026-10-02T06:00:00Z')), false);
+});
 
 test('Sync only accepts official product URLs and rejects empty/incomplete sitemaps', () => {
   assert.deepEqual(
@@ -93,6 +100,7 @@ test('Concurrent worker returns busy without fetching; completed fresh daily run
     true,
   );
   const fresh = database({
+    promotionsAttempted: true,
     finished: new Date().toISOString(),
     urls: ['https://www.pbooks.com.tw/products/a'],
     cursor: 1,
