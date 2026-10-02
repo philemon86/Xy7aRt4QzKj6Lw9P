@@ -1,6 +1,11 @@
 import { churchInventory, parseStock } from './church-stock.mjs';
 import { churchPasswordHash } from './church-auth.mjs';
 import { validatePromotion } from './promotions.mjs';
+import {
+  mergePricingRules,
+  deletePricingRule,
+  deletePromotion,
+} from './pricing-rules.mjs';
 import initialPromotions from '../data/shop-promotions.json';
 import { env } from 'cloudflare:workers';
 import catalog from '../data/catalog.json';
@@ -265,16 +270,7 @@ async function catalogSettings() {
     saved = settings['global-pricing'];
   return {
     products,
-    rules: {
-      products: { ...defaults.products, ...saved?.products },
-      classes: { ...defaults.classes, ...saved?.classes },
-      groups: [
-        ...initialPromotions.filter(
-          (g) => !(saved?.groups || []).some((x: any) => x.id === g.id),
-        ),
-        ...(saved?.groups || []),
-      ],
-    },
+    rules: mergePricingRules(defaults, initialPromotions, saved),
     catalogRevision: settings['catalog-products']?.revision || '',
     pricingRevision: saved?.revision || '',
   };
@@ -589,15 +585,16 @@ export async function handle(req: Request, parts: string[]) {
     if (id === 'sync-promotions') {
       if (config.pricingRevision !== (b.revision || ''))
         throw error('資料已更新，請重新載入後再操作', 409);
-      return json(await syncPromotions(db(), config));
+      return json(
+        await syncPromotions(db(), config, fetch, {
+          restoreDeleted: b.restoreDeleted === true,
+        }),
+      );
     }
     if (id === 'group') {
       const rules = config.rules;
       const id = String(b.group?.id || crypto.randomUUID());
-      if (b.remove)
-        rules.groups = rules.groups.map((g: any) =>
-          g.id === id ? { ...g, disabled: true, origin: 'custom' } : g,
-        );
+      if (b.remove) deletePromotion(rules, id);
       else {
         const group = validatePromotion(
           { ...b.group, id, origin: 'custom' },
@@ -647,9 +644,9 @@ export async function handle(req: Request, parts: string[]) {
         )
       )
         throw error('找不到商品或類別');
-      const rule = validatePriceRule(b.rule);
       const rules = config.rules as any;
-      rules[b.scope][b.code] = rule;
+      if (b.remove) deletePricingRule(rules, b.scope, b.code);
+      else rules[b.scope][b.code] = validatePriceRule(b.rule);
       const revision = crypto.randomUUID();
       await writeCatalogSetting(
         'global-pricing',

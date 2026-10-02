@@ -55,6 +55,48 @@ export default function PriceManager({
     groups = rules.groups || [];
   const name = (code: string) =>
     catalog.products.find((p: any) => p.code === code)?.name || code;
+  function removeRule(scope: string, code: string) {
+    const title = scope === 'products' ? name(code) : catalog.classes[code];
+    if (
+      !window.confirm(
+        '刪除「' +
+          title +
+          '」的折扣設定？各教會將同步採用下一順位價格，已完成的訂單不變。',
+      )
+    )
+      return;
+    run(async () => {
+      await request('catalog/pricing', {
+        scope,
+        code,
+        revision: catalog.pricingRevision,
+        remove: true,
+      });
+      await onUpdated();
+      setEdit(null);
+      setMessage('折扣已刪除，全教會同步採用下一順位價格');
+    });
+  }
+  function removeGroup(g: any) {
+    if (
+      !window.confirm(
+        '刪除「' +
+          g.name +
+          '」？各教會將同步移除；官網同步不會自動加回，已完成的訂單不變。',
+      )
+    )
+      return;
+    run(async () => {
+      await request('catalog/group', {
+        revision: catalog.pricingRevision,
+        group: { id: g.id },
+        remove: true,
+      });
+      await onUpdated();
+      setGroup(null);
+      setMessage('活動已刪除，全教會同步');
+    });
+  }
   async function run(fn: () => Promise<void>) {
     setBusy(true);
     setMessage('');
@@ -258,6 +300,16 @@ export default function PriceManager({
           >
             停用此特價
           </Button>
+          {rules[scope]?.[code] && !rules[scope][code].deleted && (
+            <Button
+              variant="destructive"
+              type="button"
+              disabled={busy}
+              onClick={() => removeRule(scope, code)}
+            >
+              刪除折扣
+            </Button>
+          )}
           <Button variant="ghost" type="button" onClick={() => setEdit(null)}>
             取消
           </Button>
@@ -399,6 +451,18 @@ export default function PriceManager({
                         修改
                       </Button>
                     )}
+                    {!readOnly &&
+                      rules.products[p.code] &&
+                      !rules.products[p.code].deleted && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => removeRule('products', p.code)}
+                        >
+                          刪除單品折扣
+                        </Button>
+                      )}
                   </div>
                   {(matched.length > 1 ||
                     (matched.length > 0 && ruleActive(p.productRule))) && (
@@ -452,6 +516,17 @@ export default function PriceManager({
                       修改
                     </Button>
                   )}
+                  {!readOnly &&
+                    rules.classes[code] &&
+                    !rules.classes[code].deleted && (
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => removeRule('classes', code)}
+                      >
+                        刪除折扣
+                      </Button>
+                    )}
                 </div>
               </div>
               {inline('classes', code)}
@@ -477,12 +552,47 @@ export default function PriceManager({
                         revision: catalog.pricingRevision,
                       });
                       await onUpdated();
-                      setMessage('已同步官網 ' + r.count + ' 件買一送一商品');
+                      setMessage(
+                        '已同步官網 ' +
+                          r.count +
+                          ' 件買一送一商品' +
+                          (r.suppressed
+                            ? '，保留 ' + r.suppressed + ' 件刪除設定'
+                            : ''),
+                      );
                     })
                   }
                 >
                   同步官網買一送一
                 </Button>
+                {rules.deletedGroupIds?.some((id: string) =>
+                  id.startsWith('website-bogo-'),
+                ) && (
+                  <Button
+                    disabled={busy}
+                    variant="ghost"
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          '重新同步並還原已刪除的官網買一送一活動？',
+                        )
+                      )
+                        return;
+                      run(async () => {
+                        const r = await request('catalog/sync-promotions', {
+                          revision: catalog.pricingRevision,
+                          restoreDeleted: true,
+                        });
+                        await onUpdated();
+                        setMessage(
+                          '已還原並同步官網 ' + r.count + ' 件買一送一商品',
+                        );
+                      });
+                    }}
+                  >
+                    還原已刪除官網活動
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -701,6 +811,16 @@ export default function PriceManager({
                 <Button type="submit" disabled={busy}>
                   確認儲存
                 </Button>
+                {group.id && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={busy}
+                    onClick={() => removeGroup(group)}
+                  >
+                    刪除活動
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="ghost"
@@ -738,6 +858,13 @@ export default function PriceManager({
                     <div className="heading-actions">
                       <Button variant="outline" onClick={() => openGroup(g)}>
                         修改
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        disabled={busy}
+                        onClick={() => removeGroup(g)}
+                      >
+                        刪除
                       </Button>
                       <Button
                         variant="ghost"
