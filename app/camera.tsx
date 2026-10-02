@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { ScanBarcode, Flashlight, CheckCircle2, SearchX } from 'lucide-react';
 import { createScanGate } from '@/lib/pos-core.mjs';
 import { loadBarcodeDecoder } from '@/lib/barcode-loader.mjs';
+import { captureScanFrame, decodeScanFrame, scanFrame } from '@/lib/camera-scan.mjs';
 export default function Camera({
   onScan,
   onClose,
@@ -28,6 +29,8 @@ export default function Camera({
   const [added, setAdded] = useState(0);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [zoomRange, setZoomRange] = useState<{min: number; max: number; step: number} | null>(null);
+  const [zoom, setZoom] = useState(1);
   scan.current = onScan;
   useEffect(() => {
     if (!feedback) return;
@@ -43,7 +46,6 @@ export default function Camera({
     setTorch(false);
     setMessage('正在開啟相機…');
     let stopped = false,
-      controls: any,
       stream: MediaStream | undefined;
     const scanGate = createScanGate();
     let timer: ReturnType<typeof setTimeout>;
@@ -54,11 +56,25 @@ export default function Camera({
     };
     (async () => {
       try {
+        // Warm the fallback while the browser opens the camera. A load failure
+        // must not prevent native scanning on devices that support it.
+        let reader: any = null;
+        let thoroughReader: any = null;
+        let fallbackError: any;
+        const fallback = loadBarcodeDecoder().then(({ BrowserMultiFormatReader, DecodeHintType, BarcodeFormat }: any) => {
+          const hints = new Map();
+          hints.set(DecodeHintType.TRY_HARDER, true);
+          hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.ITF]);
+          reader = new BrowserMultiFormatReader(hints);
+          thoroughReader = reader;
+          reader = new BrowserMultiFormatReader(new Map(hints).set(DecodeHintType.TRY_HARDER, false));
+        }).catch((e: any) => { fallbackError = e; });
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: 'environment' },
             width: { ideal: 1920 },
             height: { ideal: 1080 },
+            frameRate: { ideal: 30, max: 30 },
           },
           audio: false,
         });
@@ -67,9 +83,12 @@ export default function Camera({
           return;
         }
         track.current = stream.getVideoTracks()[0];
+        const capabilities = track.current.getCapabilities?.() as any;
+        setZoomRange(capabilities?.zoom || null);
+        setZoom((track.current.getSettings() as any).zoom || 1);
         try {
           await track.current.applyConstraints({
-            advanced: [{ focusMode: 'continuous' } as any],
+            advanced: [{ focusMode: 'continuous', exposureMode: 'continuous', whiteBalanceMode: 'continuous' } as any],
           });
         } catch {}
         const el = video.current!;
@@ -87,49 +106,43 @@ export default function Camera({
           'upc_e',
           'itf',
         ];
-        if (Native && (await Native.getSupportedFormats()).includes('ean_13')) {
-          const supported = await Native.getSupportedFormats();
-          const detector = new Native({
-            formats: formats.filter((f) => supported.includes(f)),
-          });
-          const tick = async () => {
-            if (stopped) return;
-            try {
-              const results = await detector.detect(el);
-              if (results[0]) accept(results[0].rawValue);
-            } catch {}
-            timer = setTimeout(tick, 90);
-          };
-          tick();
-        } else {
-          const { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } =
-            await loadBarcodeDecoder();
-          if (stopped) return;
-          const hints = new Map();
-          hints.set(DecodeHintType.TRY_HARDER, true);
-          hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-            BarcodeFormat.EAN_13,
-            BarcodeFormat.EAN_8,
-            BarcodeFormat.CODE_128,
-            BarcodeFormat.CODE_39,
-            BarcodeFormat.UPC_A,
-            BarcodeFormat.UPC_E,
-            BarcodeFormat.ITF,
-          ]);
-          const reader = new BrowserMultiFormatReader(hints, {
-            delayBetweenScanAttempts: 80,
-            delayBetweenScanSuccess: 120,
-          });
-          controls = await reader.decodeFromVideoElement(
-            el,
-            (result: { getText(): string } | undefined) => {
-              if (result) accept(result.getText());
-            },
-          );
-          if (stopped) controls.stop();
+        let detector: any = null;
+        if (Native) {
+          try {
+            const supported = await Native.getSupportedFormats();
+            const usable = formats.filter(f => supported.includes(f));
+            if (usable.length) detector = new Native({ formats: usable });
+          } catch {}
         }
+        if (!detector) {
+          await fallback;
+          if (!reader) throw fallbackError;
+        }
+        if (stopped) return;
+        const canvas = document.createElement('canvas');
+        let pass = 0;
+        const tick = async () => {
+          if (stopped) return;
+          const start = performance.now();
+          if (el.readyState >= 2 && el.videoWidth && el.videoHeight) {
+            let code: string | null = null;
+            if (detector) {
+              captureScanFrame(canvas, el, el.videoWidth, el.videoHeight, 5);
+              code = await decodeScanFrame(canvas, detector, null);
+            }
+            for (let i = 0; !code && reader && i < 2; i++) {
+              const current = pass++;
+              captureScanFrame(canvas, el, el.videoWidth, el.videoHeight, current);
+              const detailed = scanFrame(el.videoWidth, el.videoHeight, current).tryHarder;
+              code = await decodeScanFrame(canvas, null, detailed ? thoroughReader : reader);
+              if (detailed || performance.now() - start >= 35) break;
+            }
+            if (code) accept(code);
+          }
+          if (!stopped) timer = setTimeout(tick, Math.max(20, 55 - (performance.now() - start)));
+        };
+        void tick();
       } catch (e: any) {
-        controls?.stop();
         stream?.getTracks().forEach((t) => t.stop());
         track.current = null;
         if (stopped) return;
@@ -144,7 +157,6 @@ export default function Camera({
     return () => {
       stopped = true;
       clearTimeout(timer);
-      controls?.stop();
       stream?.getTracks().forEach((t) => t.stop());
       track.current = null;
     };
@@ -179,6 +191,19 @@ export default function Camera({
         <p className="camera-status" role="status">
           {message}
         </p>
+        <p className="camera-tip">條碼模糊時，先稍微拉遠，讓鏡頭對焦。</p>
+        {zoomRange && zoomRange.max > zoomRange.min && (
+          <label className="camera-zoom">鏡頭放大 {zoom.toFixed(1)}×
+            <input aria-label="鏡頭放大" type="range" min={zoomRange.min} max={Math.min(zoomRange.max, 3)} step={zoomRange.step || 0.1} value={zoom}
+              onChange={async e => {
+                const value = Number(e.target.value);
+                try {
+                  await track.current?.applyConstraints({advanced:[{zoom:value} as any]});
+                  setZoom(value);
+                } catch { setMessage('此相機無法調整放大倍率'); }
+              }} />
+          </label>
+        )}
         {failed && (
           <Button onClick={() => setAttempt((n) => n + 1)}>重試啟動相機</Button>
         )}

@@ -168,7 +168,7 @@ html = html.replace(
 );
 html = html.replace(
   '<td>${Math.round(client.amount)}</td>',
-  '<td>${client.createdAt?new Date(client.createdAt).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",hour12:false}):String(client.id).slice(0,8)}</td><td>${Math.round(client.amount)}</td>',
+  '<td>${client.importSource?.datePrecision==="day"?new Date(client.createdAt).toLocaleDateString("zh-TW",{timeZone:"Asia/Taipei"}):client.createdAt?new Date(client.createdAt).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",hour12:false}):String(client.id).slice(0,8)}</td><td>${Math.round(client.amount)}</td>',
 );
 html = html.replace('(作廢 / 刪除 / 修改付款)', '(刪除 / 修改內容)');
 html = html.replace(
