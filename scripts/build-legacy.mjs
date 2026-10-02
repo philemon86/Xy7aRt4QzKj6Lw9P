@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { POS_RELEASE, REGISTER_FILE } from '../lib/release.mjs';
 const root = path.resolve(import.meta.dirname, '..');
 let html = fs.readFileSync(path.join(root, 'legacy/index.html'), 'utf8');
 const read = (name) => fs.readFileSync(path.join(root, name), 'utf8');
@@ -301,7 +302,12 @@ for (const name of [
 ])
   if (!fs.existsSync(path.join(root, 'public', name)))
     throw Error('缺少原收款圖片 ' + name);
+html = html
+  .replaceAll('/pos/bridge.js', '/pos/bridge.js?v=' + POS_RELEASE)
+  .replaceAll('/pos/pos-core.js', '/pos/pos-core.js?v=' + POS_RELEASE)
+  .replaceAll('/pos/checkout.css', '/pos/checkout.css?v=' + POS_RELEASE);
 fs.writeFileSync(path.join(root, 'public/register.html'), html);
+fs.writeFileSync(path.join(root, 'public', REGISTER_FILE), html);
 console.log(
   'Legacy calculation and Pilot export core retained; cloud adapter generated.',
 );

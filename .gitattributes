@@ -1,0 +1,2 @@
+# Preserve the bytes of previously deployed immutable camera modules.
+public/_next/static/chunks/esm-*.js -text

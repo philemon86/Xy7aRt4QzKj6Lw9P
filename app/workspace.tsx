@@ -1,6 +1,7 @@
 'use client';
 
 import { POS_BASE } from '@/lib/paths';
+import { REGISTER_FILE } from '@/lib/release.mjs';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -836,7 +837,8 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 title="書展收銀台"
                 src={
                   POS_BASE +
-                  '/register.html?event=' +
+                  REGISTER_FILE +
+                  '?event=' +
                   active.id +
                   '&portal=' +
                   encodeURIComponent(tenant || 'admin')

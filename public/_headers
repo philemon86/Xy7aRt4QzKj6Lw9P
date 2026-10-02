@@ -1,0 +1,10 @@
+/register*
+  Cache-Control: no-store
+/pos/register*
+  Cache-Control: no-store
+/pos/bridge.js
+  Cache-Control: no-cache
+/pos/pos-core.js
+  Cache-Control: no-cache
+/pos/checkout.css
+  Cache-Control: no-cache
