@@ -69,6 +69,7 @@ import ChurchInventory from './church-inventory';
 import PriceManager from './price-manager';
 import { stats } from '@/lib/state.mjs';
 import { resolveProductPricing } from '@/lib/pos-core.mjs';
+import { loadRegisterBootstrap } from '@/lib/register-bootstrap.mjs';
 const money = (v: number) =>
   new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 }).format(v || 0);
 const today = () =>
@@ -180,23 +181,23 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     viewRef = useRef(view),
     activeRef = useRef(active),
     stopSync = useRef(false),
-    eventRecord = useRef<Promise<any> | null>(null),
+    eventRecord = useRef<{ id: string; record: Promise<any> } | null>(null),
     catalogRef = useRef(catalog),
     meRef = useRef(me);
   catalogRef.current = catalog;
   meRef.current = me;
   useEffect(() => {
-    (window as any).POSRegisterBootstrap = async (eventId: string) => {
-      if (activeRef.current?.id !== eventId || !meRef.current)
-        throw Error('請從書展清單開啟收銀台');
-      return {
-        event: await eventRecord.current,
-        catalog: catalogRef.current,
-        me: meRef.current,
-      };
-    };
+    const bootstrap = (eventId: string) =>
+      loadRegisterBootstrap(
+        eventId,
+        eventRecord.current,
+        { catalog: catalogRef.current, me: meRef.current },
+        api,
+      );
+    (window as any).POSRegisterBootstrap = bootstrap;
     return () => {
-      delete (window as any).POSRegisterBootstrap;
+      if ((window as any).POSRegisterBootstrap === bootstrap)
+        delete (window as any).POSRegisterBootstrap;
     };
   }, []);
   viewRef.current = view;
@@ -325,21 +326,25 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       setBusy(false);
     }
   };
-  async function openEvent(e: any, nextView = 'checkout') {
+  async function openEvent(e: any, nextView = 'checkout', prepared?: any) {
+    if (!e) return;
     if (
       me.role === 'admin' &&
       e.organizer === 'church' &&
       nextView === 'checkout'
     )
       nextView = 'history';
-    if (!e) return;
     await flushFrame();
+    activeRef.current = e;
+    viewRef.current = nextView;
     setRegisterLoading(true);
     setRecoveryError('');
     setState({});
     setCurrentCash(0);
-    eventRecord.current = api('events/' + e.id);
-    eventRecord.current
+    const record =
+      prepared?.id === e.id ? Promise.resolve(prepared) : api('events/' + e.id);
+    eventRecord.current = { id: e.id, record };
+    record
       .then((record) => {
         if (activeRef.current?.id === e.id) {
           setState(record.state);
@@ -370,6 +375,8 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
   }
   async function goHome() {
     await flushFrame();
+    eventRecord.current = null;
+    activeRef.current = null;
     setActive(null);
     setEvents(await api('events'));
   }
@@ -391,10 +398,17 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     });
     setNewEvent(false);
     setEventName('');
-    const all = await api('events');
-    setEvents(all);
     setSection('events');
-    await openEvent(all.find((e: any) => e.id === result.id));
+    if (result.event) {
+      const record = result.event;
+      setEvents((list) => [{ ...record, ...stats(record.state) }, ...list]);
+      await openEvent(record, 'checkout', record);
+    } else {
+      // Compatibility while a previous Worker version is finishing deployment.
+      const all = await api('events');
+      setEvents(all);
+      await openEvent(all.find((e: any) => e.id === result.id));
+    }
   }
   async function syncShop(restart = false) {
     setSyncing(true);
@@ -618,6 +632,8 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
               run(async () => {
                 await flushFrame();
                 await api('logout', {});
+                eventRecord.current = null;
+                meRef.current = null;
                 setMe(null);
                 setActive(null);
               })
@@ -718,7 +734,10 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                             });
                             const all = await api('events');
                             setEvents(all);
-                            eventRecord.current = api('events/' + active.id);
+                            eventRecord.current = {
+                              id: active.id,
+                              record: api('events/' + active.id),
+                            };
                             setActive(all.find((e: any) => e.id === active.id));
                             if (frame.current)
                               frame.current.src = frame.current.src;
@@ -810,6 +829,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 </div>
               )}
               <iframe
+                key={active.id}
                 ref={frame}
                 title="書展收銀台"
                 src={
@@ -1250,7 +1270,9 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                             )?.name
                           }
                         </b>
-                        <small>{POS_BASE}/{c.code}</small>
+                        <small>
+                          {POS_BASE}/{c.code}
+                        </small>
                       </div>
                       <Button
                         variant="outline"

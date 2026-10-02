@@ -1,15 +1,16 @@
 window.POSCore=(()=>{// Shared by the register and React tools. Existing orders keep their saved prices.
+const pricingDayFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Taipei',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
 function formatDiscount(value) {
   const n = Number(value);
   return n === 100 ? '原價' : n === 0 ? '免費' : Number(n.toFixed(1)) + ' 折';
 }
 function resolveProductPricing(product, now = new Date()) {
-  const day = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Taipei',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now);
+  const day = pricingDayFormatter.format(now);
   const active = (r) =>
     r &&
     !r.disabled &&
@@ -152,13 +153,14 @@ function createScanGate(delay = 1000) {
 }
 
 
+const promotionDayFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Taipei',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
 const promotionDay = (now = new Date()) =>
-  new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Taipei',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now);
+  promotionDayFormatter.format(now);
 const ruleActive = (rule, day = promotionDay()) =>
   !!rule &&
   !rule.disabled &&

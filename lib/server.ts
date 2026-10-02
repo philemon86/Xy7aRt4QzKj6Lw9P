@@ -442,7 +442,11 @@ export async function handle(req: Request, parts: string[]) {
   // Checkout reads fresh authorization and its event in one database round trip.
   let preloadedEvent: any;
   let s: Session;
-  if (route === 'events' && id && action === 'sync') {
+  if (
+    route === 'events' &&
+    id &&
+    (action === 'sync' || (req.method === 'GET' && !action))
+  ) {
     const token = portalCookie(req).token;
     if (!token) throw error('請先登入', 401);
     const reads = await db().batch([
@@ -764,9 +768,9 @@ export async function handle(req: Request, parts: string[]) {
     )
       throw error('請填寫有效的書展名稱與日期');
     const eid = crypto.randomUUID();
-    await db()
+    const created = await db()
       .prepare(
-        'INSERT INTO events(id,name,tenant,date,pricing,updated,actor,organizer) VALUES(?,?,?,?,?,?,?,?)',
+        'INSERT INTO events(id,name,tenant,date,pricing,updated,actor,organizer) VALUES(?,?,?,?,?,?,?,?) RETURNING *',
       )
       .bind(
         eid,
@@ -778,8 +782,21 @@ export async function handle(req: Request, parts: string[]) {
         s.tenant || 'admin',
         s.role === 'admin' ? 'bookstore' : 'church',
       )
-      .run();
-    return json({ id: eid });
+      .first<any>();
+    if (!created) throw error('書展未建立成功，請重試', 500);
+    return json({
+      id: eid,
+      event: {
+        ...created,
+        state: JSON.parse(created.state),
+        numbers: {},
+        permissions: {
+          manageStock: s.role === 'admin',
+          export: s.role === 'admin',
+          role: s.role,
+        },
+      },
+    });
   }
   if (route === 'events' && id) {
     const e = preloadedEvent || (await event(id, s));
