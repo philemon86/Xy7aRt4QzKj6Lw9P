@@ -1,6 +1,12 @@
 window.makeCloud = async function () {
-  const eid = new URLSearchParams(location.search).get('event');
-  const portal = new URLSearchParams(location.search).get('portal');
+  const parameters = new URLSearchParams(location.search);
+  // Production HTML canonicalization can discard the query string. The host
+  // iframe carries the authoritative identity through same-origin redirects.
+  const hostFrame = window.frameElement;
+  const eid =
+    hostFrame?.getAttribute('data-event-id') || parameters.get('event');
+  const portal =
+    hostFrame?.getAttribute('data-portal') || parameters.get('portal');
   const portalHeaders = portal ? { 'X-POS-Portal': portal } : {};
   let device = window.localStorage.getItem('pos-device');
   if (!device) {

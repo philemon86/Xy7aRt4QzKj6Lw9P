@@ -830,6 +830,8 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
               )}
               <iframe
                 key={active.id}
+                data-event-id={active.id}
+                data-portal={tenant || 'admin'}
                 ref={frame}
                 title="書展收銀台"
                 src={
