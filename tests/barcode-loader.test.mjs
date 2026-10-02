@@ -19,7 +19,7 @@ test('Old open registers keep their exact camera imports across a deployment', a
     assert.equal(
       crypto
         .createHash('sha256')
-        .update(fs.readFileSync('public/_next/static/chunks/' + file))
+        .update(fs.readFileSync('public/pos/_next/static/chunks/' + file))
         .digest('hex'),
       hash,
     );
@@ -27,9 +27,9 @@ test('Old open registers keep their exact camera imports across a deployment', a
   globalThis.window = { BigInt };
   try {
     const library =
-      await import('../public/_next/static/chunks/esm-BIEdAo5f.js');
+      await import('../public/pos/_next/static/chunks/esm-BIEdAo5f.js');
     const browser =
-      await import('../public/_next/static/chunks/esm-CozMJoCa.js');
+      await import('../public/pos/_next/static/chunks/esm-CozMJoCa.js');
     assert.equal(typeof browser.BrowserMultiFormatReader, 'function');
     assert.equal(typeof library.DecodeHintType.TRY_HARDER, 'number');
     assert.equal(typeof library.BarcodeFormat.EAN_13, 'number');
