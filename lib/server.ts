@@ -1,4 +1,5 @@
 import { churchInventory, parseStock } from './church-stock.mjs';
+import { churchPasswordHash } from './church-auth.mjs';
 import { validatePromotion } from './promotions.mjs';
 import initialPromotions from '../data/shop-promotions.json';
 import { env } from 'cloudflare:workers';
@@ -410,7 +411,11 @@ export async function handle(req: Request, parts: string[]) {
           .first()
       : null;
     const expected = tenant
-      ? c?.password
+      ? churchPasswordHash(
+          c,
+          (env as any).CHURCH_DEFAULT_PASSWORD_HASH ||
+            process.env.CHURCH_DEFAULT_PASSWORD_HASH,
+        )
       : (env as any).ADMIN_PASSWORD_HASH || process.env.ADMIN_PASSWORD_HASH;
     if (!expected)
       throw error(tenant ? '此教會入口尚未啟用' : '書房登入尚未設定', 401);

@@ -1250,7 +1250,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                             )?.name
                           }
                         </b>
-                        <small>/{c.code}</small>
+                        <small>{POS_BASE}/{c.code}</small>
                       </div>
                       <Button
                         variant="outline"
