@@ -477,6 +477,12 @@ details[open] > summary {
 .cart-edit {
   text-align: right;
 }
+.cart-row-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
 .cart-edit button {
   background: transparent;
   border: 0;
@@ -484,6 +490,17 @@ details[open] > summary {
   min-width: 44px;
   padding: 0;
   font-size: 12px;
+}
+.cart-edit .cart-remove {
+  min-width: 36px;
+  min-height: 36px;
+  font-size: 23px;
+  line-height: 1;
+  border-radius: 6px;
+}
+.cart-remove:hover, .cart-remove:focus-visible {
+  background: var(--surface-secondary, #eee7df);
+  color: var(--text-color);
 }
 #cart-table .cart-empty {
   display: block;

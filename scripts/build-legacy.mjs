@@ -14,7 +14,7 @@ fs.writeFileSync(
   `window.POSCore=(()=>{${core}\nreturn {formatDiscount,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate};})();\n`,
 );
 html = html
-  .replaceAll('折扣 %', '折數')
+  .replaceAll('折扣 %', '售價比例 %')
   .replace('`${item.discount}%`', 'POSCore.formatDiscount(item.discount)');
 const start = html.indexOf('(function (root, factory)');
 const end = html.indexOf('</script>', start);

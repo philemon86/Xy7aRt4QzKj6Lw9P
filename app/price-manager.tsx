@@ -203,12 +203,12 @@ export default function PriceManager({
               value={edit.mode}
               onChange={(e) => setEdit({ ...edit, mode: e.target.value })}
             >
-              <option value="discount">折數</option>
+              <option value="discount">折扣（售價比例 %）</option>
               <option value="price">固定單價 $</option>
             </select>
           </label>
           <label>
-            數值
+            {edit.mode === 'price' ? '每件單價（元）' : '售價比例（%）'}
             <Input
               type="number"
               required
@@ -218,6 +218,11 @@ export default function PriceManager({
               value={edit.value}
               onChange={(e) => setEdit({ ...edit, value: e.target.value })}
             />
+            <small>
+              {edit.mode === 'price'
+                ? `每件 $${edit.value}`
+                : `${edit.value}%＝${formatDiscount(edit.value)}；九折請輸入 90`}
+            </small>
           </label>
         </div>
         <details>
@@ -715,15 +720,18 @@ export default function PriceManager({
                             })
                           }
                         >
-                          <option value="discount">折數</option>
+                          <option value="discount">折扣（售價比例 %）</option>
                           <option value="price">每件單價 $</option>
                         </select>
                       </label>
                       <label>
-                        數值
+                        {t.mode === 'price'
+                          ? '每件單價（元）'
+                          : '售價比例（%）'}
                         <Input
                           type="number"
                           min="0"
+                          max={t.mode === 'price' ? 9999999 : 100}
                           step="0.1"
                           required
                           value={t.value}
@@ -738,6 +746,11 @@ export default function PriceManager({
                             })
                           }
                         />
+                        <small>
+                          {t.mode === 'price'
+                            ? `每件 $${t.value}`
+                            : `${t.value}%＝${formatDiscount(t.value)}；九折請輸入 90`}
+                        </small>
                       </label>
                       <Button
                         variant="ghost"

@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScanBarcode, Flashlight, CheckCircle2, SearchX } from 'lucide-react';
 import { createScanGate } from '@/lib/pos-core.mjs';
+import { loadBarcodeDecoder } from '@/lib/barcode-loader.mjs';
 export default function Camera({
   onScan,
   onClose,
@@ -25,6 +26,8 @@ export default function Camera({
   const scan = useRef(onScan);
   const [flash, setFlash] = useState(false);
   const [added, setAdded] = useState(0);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   scan.current = onScan;
   useEffect(() => {
     if (!feedback) return;
@@ -36,13 +39,16 @@ export default function Camera({
     return () => clearTimeout(timer);
   }, [feedback]);
   useEffect(() => {
+    setFailed(false);
+    setTorch(false);
+    setMessage('正在開啟相機…');
     let stopped = false,
       controls: any,
-      stream: MediaStream;
+      stream: MediaStream | undefined;
     const scanGate = createScanGate();
     let timer: ReturnType<typeof setTimeout>;
     const accept = (code: string) => {
-      if (!scanGate(code)) return;
+      if (stopped || !scanGate(code)) return;
       scan.current(code);
       setMessage('正在比對 ' + code);
     };
@@ -69,6 +75,7 @@ export default function Camera({
         const el = video.current!;
         el.srcObject = stream;
         await el.play();
+        if (stopped) return;
         setMessage('將條碼放進畫面，辨識後移開再掃下一件');
         const Native = (window as any).BarcodeDetector;
         const formats = [
@@ -95,13 +102,8 @@ export default function Camera({
           };
           tick();
         } else {
-          const [
-            { BrowserMultiFormatReader },
-            { DecodeHintType, BarcodeFormat },
-          ] = await Promise.all([
-            import('@zxing/browser'),
-            import('@zxing/library'),
-          ]);
+          const { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } =
+            await loadBarcodeDecoder();
           if (stopped) return;
           const hints = new Map();
           hints.set(DecodeHintType.TRY_HARDER, true);
@@ -118,12 +120,20 @@ export default function Camera({
             delayBetweenScanAttempts: 80,
             delayBetweenScanSuccess: 120,
           });
-          controls = await reader.decodeFromVideoElement(el, (result) => {
-            if (result) accept(result.getText());
-          });
+          controls = await reader.decodeFromVideoElement(
+            el,
+            (result: { getText(): string } | undefined) => {
+              if (result) accept(result.getText());
+            },
+          );
           if (stopped) controls.stop();
         }
       } catch (e: any) {
+        controls?.stop();
+        stream?.getTracks().forEach((t) => t.stop());
+        track.current = null;
+        if (stopped) return;
+        setFailed(true);
         setMessage(
           e.name === 'NotAllowedError'
             ? '相機權限尚未允許。請在瀏覽器開啟相機權限後重試。'
@@ -138,7 +148,7 @@ export default function Camera({
       stream?.getTracks().forEach((t) => t.stop());
       track.current = null;
     };
-  }, []);
+  }, [attempt]);
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="camera-dialog">
@@ -169,8 +179,12 @@ export default function Camera({
         <p className="camera-status" role="status">
           {message}
         </p>
+        {failed && (
+          <Button onClick={() => setAttempt((n) => n + 1)}>重試啟動相機</Button>
+        )}
         <Button
           variant="outline"
+          disabled={failed}
           onClick={async () => {
             try {
               await track.current?.applyConstraints({

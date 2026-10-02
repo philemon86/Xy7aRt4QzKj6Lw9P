@@ -213,9 +213,11 @@ test('Official cached promotion mappings contain all seven website products and 
 
 import { formatDiscount } from '../lib/pos-core.mjs';
 test('Taiwan discount labels preserve one decimal and shipment totals round to integer', () => {
-  assert.equal(formatDiscount(79), '79 折');
-  assert.equal(formatDiscount(88), '88 折');
-  assert.equal(formatDiscount(79.5), '79.5 折');
+  assert.equal(formatDiscount(90), '9 折');
+  assert.equal(formatDiscount(9), '0.9 折');
+  assert.equal(formatDiscount(79), '7.9 折');
+  assert.equal(formatDiscount(88), '8.8 折');
+  assert.equal(formatDiscount(79.5), '7.95 折');
   assert.equal(formatDiscount(100), '原價');
   const rows = applyPromotions([item()], products, [
     { ...tiers, tiers: [{ quantity: 1, mode: 'discount', value: 79.5 }] },

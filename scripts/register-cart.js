@@ -7,9 +7,9 @@ editDialog.innerHTML = `<form id="item-edit-form">
   <div class="editor-fields">
     <label>單價<input id="edit-price" type="number" step="any" inputmode="decimal" required></label>
     <label>數量<input id="edit-quantity" type="number" step="1" inputmode="numeric" required></label>
-    <label>折數<input id="edit-discount" type="number" min="0" max="100" step="0.1" inputmode="decimal" required></label>
+    <label>售價比例（%）<input id="edit-discount" type="number" min="0" max="100" step="0.1" inputmode="decimal" required><small id="edit-discount-label"></small></label>
   </div>
-  <p class="editor-help">79 表示 79 折，支援 79.5；100 為原價，0 為免費。出貨單總額四捨五入至整元。退貨可輸入負數數量。</p>
+  <p class="editor-help">九折請輸入 90；79%＝7.9 折，79.5%＝7.95 折。100 為原價，0 為免費。出貨單總額四捨五入至整元。退貨可輸入負數數量。</p>
   <label class="editor-sync"><input type="checkbox" id="edit-sync"> 同時設定本場同分類的折扣</label>
   <p id="edit-error" role="status"></p>
   <div class="editor-preview">此項小計 <strong id="edit-subtotal"></strong></div>
@@ -28,6 +28,10 @@ const closeEditor = () => {
 };
 editField('cancel').onclick = closeEditor;
 function previewEdit() {
+  editField('discount-label').textContent =
+    editField('discount').value +
+    '%＝' +
+    POSCore.formatDiscount(editField('discount').value);
   try {
     const item = POSCore.editCartItem(
       {},
@@ -138,6 +142,22 @@ editDialog.querySelector('form').onsubmit = (e) => {
     editField('error').textContent = error.message;
   }
 };
+// Promotion lines can share a scanned source. Remove only this displayed quantity,
+// then recalculate eligibility so a remaining book never keeps an unearned gift price.
+function removeCartLine(item) {
+  if (cloud.event.status !== 'open' || checkoutBusy) return;
+  const original = cart[item.promotionSourceIndex];
+  if (!original) return;
+  original.quantity -= item.quantity;
+  if (!original.quantity) cart.splice(item.promotionSourceIndex, 1);
+  if (!cart.some((i) => i.code === original.code)) {
+    delete priceOverrides[original.code];
+    localStorage.setItem('priceOverrides', JSON.stringify(priceOverrides));
+  }
+  updateCartDisplay();
+  calculateTotal();
+  saveCart();
+}
 const updateCartDisplay = () => {
   const displayItems = pricedCart();
   cartTableBody.replaceChildren();
@@ -164,7 +184,11 @@ const updateCartDisplay = () => {
     row.dataset.code = item.code;
     row.innerHTML = `<td class="cart-product"><b></b><small></small><span class="cart-price-note"></span></td>
       <td class="cart-quantity"><div class="quantity-stepper"><button type="button" aria-label="減少一件">−</button><button type="button" class="quantity-value" aria-label="編輯數量"></button><button type="button" aria-label="增加一件">＋</button></div></td>
-      <td class="cart-subtotal"><strong></strong></td><td class="cart-edit"><button type="button">編輯</button></td>`;
+      <td class="cart-subtotal"><strong></strong></td><td class="cart-edit"><div class="cart-row-actions"><button type="button" class="cart-remove" aria-label="移除此筆商品" title="移除此筆商品">×</button><button type="button" class="cart-edit-item">編輯</button></div></td>`;
+    row
+      .querySelector('.cart-remove')
+      .setAttribute('aria-label', '移除 ' + item.name);
+    row.querySelector('.cart-remove').onclick = () => removeCartLine(item);
     row.querySelector('b').textContent = item.name;
     row.querySelector('small').textContent =
       item.code +
@@ -197,7 +221,7 @@ const updateCartDisplay = () => {
         }),
     );
     buttons[1].onclick = () => openItemEditor(item.code);
-    row.querySelector('.cart-edit button').onclick = () =>
+    row.querySelector('.cart-edit-item').onclick = () =>
       openItemEditor(item.code);
     row.querySelector('.cart-product').ondblclick = () =>
       openItemEditor(item.code, 'price');
@@ -226,8 +250,10 @@ const updateCartDisplay = () => {
         };
         row.querySelector('.cart-product').append(select);
       }
-      row.querySelector('.cart-edit button').textContent = '贈品';
-      row.querySelectorAll('button').forEach((b) => (b.disabled = true));
+      row.querySelector('.cart-edit-item').textContent = '贈品';
+      row
+        .querySelectorAll('.quantity-stepper button, .cart-edit-item')
+        .forEach((b) => (b.disabled = true));
       row.querySelector('.cart-product').ondblclick = null;
       row.querySelector('.cart-subtotal').ondblclick = null;
     }
