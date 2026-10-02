@@ -71,6 +71,7 @@ import PriceManager from './price-manager';
 import { stats } from '@/lib/state.mjs';
 import { resolveProductPricing } from '@/lib/pos-core.mjs';
 import { loadRegisterBootstrap } from '@/lib/register-bootstrap.mjs';
+import { readWorkspaceRoute, workspaceRouteHref } from '@/lib/workspace-route.mjs';
 const money = (v: number) =>
   new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 }).format(v || 0);
 const today = () =>
@@ -214,6 +215,14 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     setEvents(es);
     setCatalog(cat);
     setMe(user);
+    catalogRef.current = cat;
+    meRef.current = user;
+    const restored = readWorkspaceRoute(location.href, es, user);
+    if (restored) {
+      await openEvent(restored.event, restored.view);
+    } else {
+      rememberScreen();
+    }
     setLoaded(true);
     if (user.role === 'admin') {
       Promise.all([api('churches'), api('sync-shop')])
@@ -330,7 +339,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
   async function openEvent(e: any, nextView = 'checkout', prepared?: any) {
     if (!e) return;
     if (
-      me.role === 'admin' &&
+      meRef.current?.role === 'admin' &&
       e.organizer === 'church' &&
       nextView === 'checkout'
     )
@@ -358,9 +367,19 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       });
     setActive(e);
     setView(nextView);
+    setSection(e.organizer === 'church' ? 'church-events' : 'events');
+    rememberScreen(e.id, nextView);
+  }
+  function rememberScreen(eventId?: string, nextView = 'checkout') {
+    history.replaceState(
+      history.state,
+      '',
+      workspaceRouteHref(location.href, eventId, nextView),
+    );
   }
   function tab(v: any) {
     setView(v);
+    rememberScreen(active?.id, v);
     frame.current?.contentWindow?.postMessage(
       { type: 'view', view: v },
       location.origin,
@@ -379,6 +398,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     eventRecord.current = null;
     activeRef.current = null;
     setActive(null);
+    rememberScreen();
     setEvents(await api('events'));
   }
   function beginEvent() {
@@ -637,6 +657,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                 meRef.current = null;
                 setMe(null);
                 setActive(null);
+                rememberScreen();
               })
             }
           >
