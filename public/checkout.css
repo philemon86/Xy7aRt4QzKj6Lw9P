@@ -8,6 +8,9 @@
   --text-color: #3f352b;
   --text-muted: #827362;
   --soft: #eee6db;
+  --checkout-summary-bg: #f6f1e9;
+  --checkout-summary-border: #e8ddcf;
+  --checkout-summary-divider: #e3d7c8;
   --focus: #c9b290;
   --radius-card: 12px;
   --radius-input: 8px;
@@ -23,6 +26,9 @@ body[data-audience='church'] {
   --text-color: #303b43;
   --text-muted: #757f85;
   --soft: #eceff0;
+  --checkout-summary-bg: #eef2f4;
+  --checkout-summary-border: #dce4e8;
+  --checkout-summary-divider: #d6dfe4;
   --focus: #b7c3ca;
 }
 * {
@@ -584,9 +590,11 @@ details[open] > summary {
   grid-template-columns: minmax(0, 1.1fr) minmax(110px, 1fr) minmax(0, 1fr);
   gap: 16px;
   align-items: center;
-  padding: 16px 0 20px;
+  padding: 18px 20px;
   margin-bottom: 18px;
-  border-bottom: 2px solid var(--text-color);
+  background: var(--checkout-summary-bg);
+  border: 1px solid var(--checkout-summary-border);
+  border-radius: 10px;
 }
 .checkout-summary .total {
   text-align: left !important;
@@ -594,8 +602,8 @@ details[open] > summary {
 .checkout-summary .amount-label {
   display: block;
   font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
+  font-weight: 600;
+  color: var(--primary-btn);
 }
 .checkout-summary .amount-value {
   display: flex;
@@ -615,7 +623,10 @@ details[open] > summary {
 .checkout-summary .paid-field {
   display: block;
   font-size: 13px;
-  color: var(--text-muted);
+  font-weight: 600;
+  color: var(--primary-btn);
+  padding-left: 20px;
+  border-left: 1px solid var(--checkout-summary-divider);
 }
 .checkout-summary #paid-amount {
   display: block;
@@ -628,6 +639,9 @@ details[open] > summary {
 .checkout-summary .change-field {
   justify-self: end;
   text-align: right;
+  width: 100%;
+  padding-left: 20px;
+  border-left: 1px solid var(--checkout-summary-divider);
 }
 .checkout-summary .change-field .amount-value {
   justify-content: flex-end;
@@ -656,7 +670,7 @@ details[open] > summary {
   .checkout-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-    padding-top: 4px;
+    padding: 16px;
   }
   .checkout-summary .total {
     grid-column: 1;
@@ -665,6 +679,7 @@ details[open] > summary {
   .checkout-summary .change-field {
     grid-column: 2;
     grid-row: 1;
+    padding-left: 12px;
   }
   .checkout-summary .paid-field {
     grid-column: 1 / -1;
@@ -672,6 +687,9 @@ details[open] > summary {
     display: flex;
     align-items: center;
     gap: 12px;
+    padding: 12px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--checkout-summary-divider);
   }
   .checkout-summary #paid-amount {
     margin: 0;
