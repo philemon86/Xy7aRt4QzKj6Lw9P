@@ -31,7 +31,12 @@ const feedback = (ok, text, code = '', camera = false) => {
     );
 };
 function addScannedProduct(raw, camera = false) {
-  if (cloud.event.status !== 'open' || checkoutBusy || editDialog.open) {
+  if (
+    cloud.event.status !== 'open' ||
+    checkoutBusy ||
+    editDialog.open ||
+    (typeof cultureDialog !== 'undefined' && cultureDialog.open)
+  ) {
     feedback(false, '請先完成目前操作再掃描', raw, camera);
     return false;
   }

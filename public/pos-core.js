@@ -13,6 +13,37 @@ function formatDiscount(value) {
       ? '免費'
       : Number((n / 10).toFixed(2)) + ' 折';
 }
+function suggestCashAmount(total) {
+  const amount = Number(total);
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  if (amount <= 100) return 100;
+  if (amount <= 500) return 500;
+  return Math.ceil(amount / 1000) * 1000;
+}
+
+function culturalCoinPayment(total, coin, remainderMethod, role) {
+  total = Number(total);
+  coin = Number(coin);
+  if (
+    !Number.isSafeInteger(total) ||
+    total <= 0 ||
+    !Number.isSafeInteger(coin) ||
+    coin < 0 ||
+    coin > total
+  )
+    throw Error('文化幣金額請填 0 至訂單總額的整數');
+  const allowed =
+    role === 'church' ? ['LINE PAY', '現金'] : ['信用卡', 'LINE PAY', '現金'];
+  const remainder = total - coin;
+  if (remainder && !allowed.includes(remainderMethod))
+    throw Error('請選擇可用的補款方式');
+  return [
+    coin ? `文化幣(${coin})` : '',
+    remainder ? `${remainderMethod}(${remainder})` : '',
+  ]
+    .filter(Boolean)
+    .join(' + ');
+}
 function resolveProductPricing(product, now = new Date()) {
   const day = pricingDayFormatter.format(now);
   const active = (r) =>
@@ -386,4 +417,4 @@ function applyPromotions(items, products, groups, now = new Date()) {
   return lines.filter((i) => i.quantity !== 0);
 }
 
-return {formatDiscount,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();
+return {formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();

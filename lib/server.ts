@@ -19,6 +19,7 @@ import {
   validatePriceRule,
 } from './catalog.mjs';
 import initialShop from '../data/shop-cache.json';
+import { mergeShopCache } from './shop.mjs';
 import { mergeChanges, validateOrder, stats } from './state.mjs';
 import { syncShopStep, syncStatus, syncPromotions } from './shop-sync.mjs';
 import { formatOrderNumber, orderDay, validateRoleChange } from './orders.mjs';
@@ -303,12 +304,10 @@ async function getCatalog(s: Session) {
     db().prepare('SELECT code,data FROM shop').all<any>(),
     catalogSettings(),
   ]);
-  const web = {
-    ...initialShop,
-    ...Object.fromEntries(
-      rows.results.map((r) => [r.code, JSON.parse(r.data)]),
-    ),
-  };
+  const web = mergeShopCache(
+    initialShop,
+    Object.fromEntries(rows.results.map((r) => [r.code, JSON.parse(r.data)])),
+  );
   return {
     ...catalog,
     pricingRules: config.rules,

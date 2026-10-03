@@ -15,7 +15,7 @@ const core =
     .replace(/^export /gm, '');
 fs.writeFileSync(
   path.join(root, 'public/pos-core.js'),
-  `window.POSCore=(()=>{${core}\nreturn {formatDiscount,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
+  `window.POSCore=(()=>{${core}\nreturn {formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
 );
 html = html
   .replaceAll('折扣 %', '售價比例 %')
@@ -79,7 +79,7 @@ const visibilityEnd = html.indexOf(
 html =
   html.slice(0, visibilityStart) +
   `      const checkoutFieldIds=['paid-amount','invoice-customer','invoice-donate-carrier','invoice-tax-id'];
-      const saveCheckoutFields=()=>localStorage.setItem('checkoutFields',JSON.stringify(Object.fromEntries(checkoutFieldIds.map(id=>[id,document.getElementById(id)?.value||'']))));
+      const saveCheckoutFields=()=>localStorage.setItem('checkoutFields',JSON.stringify({...Object.fromEntries(checkoutFieldIds.map(id=>[id,document.getElementById(id)?.value||''])),cashAuto}));
       const syncInvoiceCustomerVisibility = () => {
         const taxId = String(invoiceTaxIdInput?.value || '').trim();
         const churchInvoice = POSCore.requiresChurchCustomer(taxId);
@@ -167,6 +167,22 @@ html = html.replace(
   'items: cart.map(i => ({ ...i })),',
   'items: pricedCart().map(i => ({ ...i })),',
 );
+html = html.replace(
+  '        if (cart.length > 0 && total <= 0) paidAmountInput.value = total;',
+  '        updateCashSuggestion(total);',
+);
+html = html.replace(
+  '        paidAmountInput.value = 1000;',
+  '        resetCashSuggestion();',
+);
+const cultureStart = html.indexOf('const handleCulturalCoinCheckout = () => {');
+const cultureEnd = html.indexOf('      const formatMoney =', cultureStart);
+if (cultureStart < 0 || cultureEnd < 0) throw Error('找不到文化幣收款接點');
+html =
+  html.slice(0, cultureStart) +
+  read('scripts/register-culture.js') +
+  '\n' +
+  html.slice(cultureEnd);
 // Preset specials remain automatic; manual edits always take precedence.
 html = html.replace(
   /          if \(getSpecialDiscount\(newItem\) !== undefined\) \{[\s\S]*?\n          \}/g,
@@ -179,6 +195,7 @@ html =
   read('scripts/register-cart.js') +
   '\n' +
   html.slice(cartEnd);
+html = html.replace('      const pricedCart=', read('scripts/register-cash.js') + '\n      const pricedCart=');
 const scanStart = html.indexOf("      scanForm.addEventListener('submit'");
 const scanEnd = html.indexOf('      const parseBulkLine', scanStart);
 html = html.slice(0, scanStart) + html.slice(scanEnd);
@@ -209,7 +226,7 @@ html = html.replace(
 );
 html = html.replace(
   '      const performCheckout = (paymentMethod, isComposite = false) => {',
-  "      let checkoutBusy=false,checkoutChecking=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy || checkoutChecking || cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;\n        checkoutChecking=true;try { await cloud.ensureSession(); } catch { return; } finally { checkoutChecking=false; }\n        if(checkoutBusy)return;\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡/.test(paymentMethod)){alert('教會未開放信用卡');return;}",
+  "      let checkoutBusy=false,checkoutChecking=false;\n      const performCheckout = async (paymentMethod, isComposite = false, tenderedAmount = Number(paidAmountInput.value || 0)) => {\n        if(checkoutBusy || checkoutChecking || cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;\n        checkoutChecking=true;try { await cloud.ensureSession(); } catch { return; } finally { checkoutChecking=false; }\n        if(checkoutBusy)return;\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡/.test(paymentMethod)){alert('教會未開放信用卡');return;}",
 );
 html = html.replace(
   /        POSAudio.success\(\);\s*(?=clients\[clientId\] = \{)/,
@@ -217,7 +234,15 @@ html = html.replace(
 );
 html = html.replace(
   '          transactionId: clientId,',
-  '          transactionId: clientId,\n          createdAt: new Date().toISOString(),',
+  '          transactionId: clientId,\n          tenderedAmount,\n          createdAt: new Date().toISOString(),',
+);
+html = html.replace(
+  'const paid = Number(paidAmountInput.value || 0);',
+  'const paid = Number(client.tenderedAmount ?? paidAmountInput.value ?? 0);',
+);
+html = html.replace(
+  'const change = Math.max(0, Math.round(paid - total));',
+  "const cashPart = (client.paymentRecords || []).filter(p => p.method === '現金').reduce((sum,p) => sum + p.amount,0);\n        const change = Math.max(0, Math.round(paid - (client.paymentMethod.includes(' + ') ? cashPart : total)));",
 );
 const checkoutMarker = '        cart.forEach(item => {';
 const pos = html.indexOf(checkoutMarker, html.indexOf('const performCheckout'));
@@ -293,19 +318,6 @@ html = html.replace(
   "exportCsvBtn.addEventListener('click', async () => {",
   "exportCsvBtn.addEventListener('click', async () => {\n  if(!isBookstore){alert('請由書房匯出');return;}",
 );
-// Church split payments use LINE PAY for the remainder, while bookstore keeps its cash flow.
-html = html.replace(
-  '  const cashAmount = totalAmount - coinAmount;',
-  "  const cashAmount = totalAmount - coinAmount;\n  const remainderMethod=isBookstore?'現金':'LINE PAY';",
-);
-html = html.replace(
-  '`文化幣(${coinAmount}) + 現金(${cashAmount})`',
-  '`文化幣(${coinAmount}) + ${remainderMethod}(${cashAmount})`',
-);
-html = html.replace(
-  'else methodStr = `現金(${totalAmount})`;',
-  'else methodStr = `${remainderMethod}(${totalAmount})`;',
-);
 // Import remains available, but await durable storage before reload.
 html = html.replace(
   'reader.onload = (event) => {',
@@ -374,15 +386,15 @@ html = html.replace(
   document.querySelector('.cart-table-shell .table-title').innerHTML='<span>本次結帳</span><small id="cart-count"></small>';
   const cartShell=document.querySelector('.cart-table-shell');
   const checkoutSummary=document.createElement('section');checkoutSummary.className='checkout-summary';checkoutSummary.setAttribute('aria-label','結帳金額與找零');
-  const total=document.querySelector('.total');total.innerHTML='<span class="amount-label">應付金額</span><span class="amount-value"><span id="total-amount">0</span><small>元</small></span>';
+  const total=document.querySelector('.total');total.innerHTML='<span class="amount-label">應收金額</span><span class="amount-value"><span id="total-amount">0</span><small>元</small></span>';
   const paymentDetails=document.querySelector('.payment-details');const [paid,change]=paymentDetails.children;
-  paid.className='paid-field';paid.querySelector('input').setAttribute('aria-label','實付金額');
+  paid.className='paid-field';const paidLabel=document.createElement('label');paidLabel.htmlFor='paid-amount';paidLabel.textContent='實收金額';paid.replaceChildren(paidLabel,paidAmountInput);paidAmountInput.setAttribute('aria-label','實收金額');
   change.className='change-field';change.innerHTML='<span class="amount-label">找零</span><span class="amount-value"><span id="change-amount">0</span><small>元</small></span>';
   // Keep the original amount nodes: existing calculation handlers hold references.
   total.querySelector('#total-amount').replaceWith(totalAmountElement);change.querySelector('#change-amount').replaceWith(changeAmountElement);
-  checkoutSummary.append(total,paid,change);cartShell.insertBefore(checkoutSummary,document.querySelector('.cart-table-scroll'));
+  const settlement=document.createElement('div');settlement.className='cash-settlement';settlement.append(paid,change);checkoutSummary.append(total,settlement);cartShell.insertBefore(checkoutSummary,document.querySelector('.cart-table-scroll'));
   cartShell.querySelector('.table-title').append(document.querySelector('#clear-cart-btn'));document.querySelector('.total-row').remove();paymentDetails.remove();
-  document.querySelector('#cart-table thead').innerHTML='<tr><th>商品 / 單價</th><th>數量</th><th>小計</th><th></th></tr>';
+  document.querySelector('#cart-table thead').innerHTML='<tr><th>商品 / 單價</th><th>數量 / 折扣</th><th>小計</th><th></th></tr>';
   const cartHint=document.createElement('p');cartHint.className='cart-help';cartHint.textContent='點編輯或連點商品兩下，調整單價、數量與折扣。';document.querySelector('.cart-table-shell').append(cartHint);
   const invoice=document.querySelector('.invoice-input-row');const invoiceDetails=document.createElement('section');invoiceDetails.className='invoice-details';const invoiceSummary=document.createElement('h3');invoiceSummary.textContent='發票資訊 · 載具 / 捐贈 / 統編';invoiceDetails.append(invoiceSummary);invoice.parentNode.insertBefore(invoiceDetails,invoice);invoiceDetails.append(invoice,document.querySelector('.invoice-hint'));
   const invoiceStatus=document.createElement('p');invoiceStatus.id='invoice-customer-status';invoiceStatus.className='invoice-customer-status';invoiceStatus.setAttribute('role','status');invoiceDetails.append(invoiceStatus);

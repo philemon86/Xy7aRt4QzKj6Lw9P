@@ -182,8 +182,8 @@ const updateCartDisplay = () => {
     const row = document.createElement('tr');
     row.className = 'cart-item';
     row.dataset.code = item.code;
-    row.innerHTML = `<td class="cart-product"><b></b><small></small><span class="cart-price-note"></span></td>
-      <td class="cart-quantity"><div class="quantity-stepper"><button type="button" aria-label="減少一件">−</button><button type="button" class="quantity-value" aria-label="編輯數量"></button><button type="button" aria-label="增加一件">＋</button></div></td>
+    row.innerHTML = `<td class="cart-product"><b></b><div class="cart-meta"><small></small><span class="cart-price-note"></span></div></td>
+      <td class="cart-quantity"><div class="cart-line-controls"><div class="quantity-stepper"><button type="button" aria-label="減少一件">−</button><button type="button" class="quantity-value" aria-label="編輯數量"></button><button type="button" aria-label="增加一件">＋</button></div><label class="cart-discount"><input type="number" min="0" max="10" step="0.01" inputmode="decimal" aria-label="本筆折數，9 表示九折" title="9＝九折，7.9＝七九折；10＝原價，0＝免費"><span>折</span></label></div></td>
       <td class="cart-subtotal"><strong></strong></td><td class="cart-edit"><div class="cart-row-actions"><button type="button" class="cart-remove" aria-label="移除此筆商品" title="移除此筆商品">×</button><button type="button" class="cart-edit-item">編輯</button></div></td>`;
     row
       .querySelector('.cart-remove')
@@ -206,6 +206,35 @@ const updateCartDisplay = () => {
         Math.round((item.price * item.quantity * item.discount) / 100),
       );
     const buttons = row.querySelectorAll('.quantity-stepper button');
+    const discountInput = row.querySelector('.cart-discount input');
+    discountInput.value = Number((item.discount / 10).toFixed(2));
+    discountInput.onchange = () => {
+      if (cloud.event.status !== 'open' || checkoutBusy || item.promotionGift)
+        return;
+      try {
+        const original = cart[item.promotionSourceIndex];
+        if (!original || discountInput.value.trim() === '')
+          throw Error('請輸入折數，例如 9 表示九折');
+        cart[item.promotionSourceIndex] = POSCore.editCartItem(original, {
+          price: item.price,
+          quantity: original.quantity,
+          discount: Number((Number(discountInput.value) * 10).toFixed(1)),
+        });
+        updateCartDisplay();
+        calculateTotal();
+        saveCart();
+      } catch (error) {
+        discountInput.setCustomValidity(error.message);
+        discountInput.reportValidity();
+      }
+    };
+    discountInput.oninput = () => discountInput.setCustomValidity('');
+    discountInput.onkeydown = (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        discountInput.blur();
+      }
+    };
     buttons[1].textContent = item.quantity;
     [buttons[0], buttons[2]].forEach(
       (button, i) =>
@@ -252,13 +281,15 @@ const updateCartDisplay = () => {
       }
       row.querySelector('.cart-edit-item').textContent = '贈品';
       row
-        .querySelectorAll('.quantity-stepper button, .cart-edit-item')
+        .querySelectorAll(
+          '.quantity-stepper button, .cart-edit-item, .cart-discount input',
+        )
         .forEach((b) => (b.disabled = true));
       row.querySelector('.cart-product').ondblclick = null;
       row.querySelector('.cart-subtotal').ondblclick = null;
     }
     if (cloud.event.status !== 'open')
-      row.querySelectorAll('button').forEach((b) => (b.disabled = true));
+      row.querySelectorAll('button,input').forEach((b) => (b.disabled = true));
     cartTableBody.append(row);
   });
   resetIdleTimer();

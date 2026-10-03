@@ -77,6 +77,7 @@ function make({ amount = 899, quantity = 1, fail = false } = {}) {
     invoiceTaxIdInput: input(),
     invoiceCustomerInput: input(),
     calculateChange: no,
+    resetCashSuggestion: no,
     syncInvoiceCustomerVisibility: no,
     saveCheckoutFields: no,
     productInfoElement: {},
@@ -168,6 +169,8 @@ test('Refund, zero amount, and cultural coin composite retain legacy payments', 
     [100, -2, '信用卡', -200],
     [0, 1, '現金', 0],
     [100, 1, '文化幣(30) + 現金(70)', 100],
+    [100, 1, '文化幣(30) + 信用卡(70)', 100],
+    [100, 1, '文化幣(30) + LINE PAY(70)', 100],
   ]) {
     const x = make({ amount, quantity });
     await x.checkout(method, true);
@@ -178,6 +181,20 @@ test('Refund, zero amount, and cultural coin composite retain legacy payments', 
       total,
     );
   }
+});
+
+test('Mixed culture/cash saves the cash tendered independently of the full order amount', async () => {
+  const x = make({ amount: 899 });
+  await x.checkout('文化幣(400) + 現金(499)', true, 500);
+  const order = Object.values(x.saved)[0];
+  assert.equal(order.tenderedAmount, 500);
+  assert.deepEqual(
+    order.paymentRecords.map((p) => [p.method, p.amount]),
+    [
+      ['文化幣', 400],
+      ['現金', 499],
+    ],
+  );
 });
 test('Other tax IDs save as personal customer 305, retaining the tax ID and ignoring an old church selection', async () => {
   for (const customer of [null, { code: 'AA01', name: '台北教會' }]) {

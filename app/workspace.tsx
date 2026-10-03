@@ -322,6 +322,19 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
         frame.current.style.height =
           Math.max(460, Number(m.height) || 0) + 'px';
       if (m.type === 'scan-result') setScanFeedback(m);
+      if (
+        m.type === 'checkout-summary' &&
+        frame.current &&
+        Number.isFinite(m.top) &&
+        m.top >= 0
+      ) {
+        const top =
+          frame.current.getBoundingClientRect().top +
+          window.scrollY +
+          m.top -
+          88;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+      }
       if (m.type === 'cash-total' && Number.isFinite(m.amount))
         setCurrentCash(m.amount);
       if (m.type === 'open-camera' && activeRef.current?.status === 'open') {

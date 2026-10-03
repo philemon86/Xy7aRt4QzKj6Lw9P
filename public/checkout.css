@@ -11,6 +11,9 @@
   --checkout-summary-bg: #f6f1e9;
   --checkout-summary-border: #e8ddcf;
   --checkout-summary-divider: #e3d7c8;
+  --cash-bg: #f1f5f3;
+  --cash-text: #44635c;
+  --cash-border: #dce6e1;
   --focus: #c9b290;
   --radius-card: 12px;
   --radius-input: 8px;
@@ -29,6 +32,9 @@ body[data-audience='church'] {
   --checkout-summary-bg: #eef2f4;
   --checkout-summary-border: #dce4e8;
   --checkout-summary-divider: #d6dfe4;
+  --cash-bg: #f5f6f7;
+  --cash-text: #536773;
+  --cash-border: #dde3e6;
   --focus: #b7c3ca;
 }
 * {
@@ -406,7 +412,7 @@ details[open] > summary {
 }
 #cart-table tr {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 128px 78px 44px;
+  grid-template-columns: minmax(0, 1fr) 198px 68px 36px;
   gap: 8px;
   align-items: center;
 }
@@ -441,17 +447,49 @@ details[open] > summary {
   font-weight: 650;
   overflow-wrap: anywhere;
 }
-.cart-product small {
-  display: block;
-  color: var(--text-muted);
-  font-size: 11px;
+.cart-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
   margin-top: 4px;
 }
-.cart-price-note {
-  display: block;
+.cart-product small {
+  display: inline;
   color: var(--text-muted);
+  font-size: 11px;
+  margin: 0;
+}
+.cart-price-note {
+  display: inline;
+  color: var(--text-muted);
+  font-size: 11px;
+  margin: 0;
+}
+.cart-price-note::before {
+  content: '· ';
+}
+.cart-line-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cart-discount {
+  display: flex;
+  align-items: center;
+  gap: 3px;
   font-size: 12px;
-  margin-top: 3px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.cart-discount input {
+  width: 58px;
+  padding: 8px 3px !important;
+  text-align: center;
+  font-size: 14px !important;
+  appearance: textfield;
+}
+.cart-discount input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
 }
 .quantity-stepper {
   display: flex;
@@ -464,13 +502,13 @@ details[open] > summary {
   border: 0;
   background: transparent;
   color: var(--primary-btn);
-  width: 40px;
+  width: 32px;
   min-height: 44px;
   padding: 0;
   font-size: 18px;
 }
 .quantity-stepper .quantity-value {
-  min-width: 44px;
+  min-width: 36px;
   width: auto;
   padding: 0 4px;
   font-size: 15px;
@@ -504,7 +542,8 @@ details[open] > summary {
   line-height: 1;
   border-radius: 6px;
 }
-.cart-remove:hover, .cart-remove:focus-visible {
+.cart-remove:hover,
+.cart-remove:focus-visible {
   background: var(--surface-secondary, #eee7df);
   color: var(--text-color);
 }
@@ -587,16 +626,20 @@ details[open] > summary {
 }
 .checkout-summary {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(110px, 1fr) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: 14px;
   align-items: center;
-  padding: 18px 20px;
+  padding: 0;
   margin-bottom: 18px;
-  background: var(--checkout-summary-bg);
-  border: 1px solid var(--checkout-summary-border);
-  border-radius: 10px;
+  background: transparent;
+  border: 0;
 }
 .checkout-summary .total {
+  padding: 14px 18px !important;
+  align-self: stretch;
+  background: var(--checkout-summary-bg) !important;
+  border: 1px solid var(--checkout-summary-border);
+  border-radius: 10px;
   text-align: left !important;
 }
 .checkout-summary .amount-label {
@@ -617,37 +660,52 @@ details[open] > summary {
 }
 .checkout-summary #total-amount {
   padding: 0;
-  font-size: clamp(30px, 3.2vw, 40px);
-  line-height: 1.3;
+  font-size: clamp(40px, 4.3vw, 54px);
+  line-height: 1.25;
+}
+.cash-settlement {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--cash-border);
+  border-radius: 10px;
+  background: var(--cash-bg);
+}
+.cash-settlement .amount-label {
+  color: var(--cash-text);
 }
 .checkout-summary .paid-field {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: var(--primary-btn);
-  padding-left: 20px;
-  border-left: 1px solid var(--checkout-summary-divider);
+  color: var(--cash-text);
+  padding: 0;
 }
 .checkout-summary #paid-amount {
   display: block;
   width: 100%;
-  max-width: 150px;
+  max-width: 145px;
   margin: 7px 0 0;
-  font-weight: 650;
+  font-weight: 700;
+  font-size: 21px !important;
+  color: var(--cash-text);
   text-align: center;
 }
 .checkout-summary .change-field {
   justify-self: end;
   text-align: right;
   width: 100%;
-  padding-left: 20px;
-  border-left: 1px solid var(--checkout-summary-divider);
+  padding-left: 12px;
+  border-left: 1px solid var(--cash-border);
 }
 .checkout-summary .change-field .amount-value {
   justify-content: flex-end;
 }
 .checkout-summary #change-amount {
-  font-size: clamp(24px, 2.6vw, 32px);
+  color: var(--cash-text);
+  font-size: clamp(24px, 2.6vw, 30px);
   line-height: 1.3;
 }
 .invoice-details {
@@ -668,32 +726,66 @@ details[open] > summary {
 }
 @media (max-width: 600px) {
   .checkout-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    padding: 16px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 0;
   }
   .checkout-summary .total {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .checkout-summary .change-field {
-    grid-column: 2;
-    grid-row: 1;
-    padding-left: 12px;
-  }
-  .checkout-summary .paid-field {
-    grid-column: 1 / -1;
-    grid-row: 2;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
-    padding: 12px 0 0;
-    border-left: 0;
-    border-top: 1px solid var(--checkout-summary-divider);
+    padding: 12px 16px !important;
   }
-  .checkout-summary #paid-amount {
-    margin: 0;
+  .checkout-summary .change-field {
+    padding-left: 12px;
   }
+  .cash-settlement {
+    padding: 12px 16px;
+  }
+}
+.culture-total {
+  font-size: 16px;
+}
+.culture-total strong {
+  font-size: 28px;
+  color: var(--primary-btn);
+}
+.culture-editor label {
+  display: block;
+  margin-bottom: 12px;
+}
+.culture-editor label input,
+.culture-editor select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+}
+#culture-remainder {
+  padding: 14px;
+  border: 1px solid var(--cash-border);
+  background: var(--cash-bg);
+  border-radius: 8px;
+}
+.culture-remainder-heading {
+  margin-bottom: 12px;
+}
+.culture-cash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  color: var(--cash-text);
+}
+.culture-cash label {
+  margin: 0;
+}
+.culture-cash strong {
+  font-size: 24px;
+}
+#culture-error {
+  color: #a43538;
+  font-size: 13px;
 }
 .invoice-input-row {
   display: grid;
@@ -1322,8 +1414,22 @@ body[data-checkout='saving'] .checkout-btn {
 }
 
 /* Church cash spans the same width as the two electronic-payment buttons. */
-body[data-role='church'] .checkout-buttons-area { grid-template-columns: repeat(2,minmax(0,1fr)); }
-body[data-role='church'] #btn-f8 { grid-column: 1; grid-row: 1; }
-body[data-role='church'] #btn-f9 { grid-column: 2; grid-row: 1; }
-body[data-role='church'] #btn-f10 { grid-column: 1 / -1; grid-row: 2; }
-body[data-role='church'][data-checkout='saving'] .checkout-buttons-area::before { grid-row: 3; }
+body[data-role='church'] .checkout-buttons-area {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+body[data-role='church'] #btn-f8 {
+  grid-column: 1;
+  grid-row: 1;
+}
+body[data-role='church'] #btn-f9 {
+  grid-column: 2;
+  grid-row: 1;
+}
+body[data-role='church'] #btn-f10 {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+body[data-role='church'][data-checkout='saving']
+  .checkout-buttons-area::before {
+  grid-row: 3;
+}
