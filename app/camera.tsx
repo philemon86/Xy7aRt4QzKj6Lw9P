@@ -12,6 +12,7 @@ import { createScanGate } from '@/lib/pos-core.mjs';
 import { loadBarcodeDecoder } from '@/lib/barcode-loader.mjs';
 import { captureScanFrame, decodeScanFrame, scanFrame } from '@/lib/camera-scan.mjs';
 import { configureScanTrack, exposureRange, exposureValue } from '@/lib/glare-scan.mjs';
+import { createCameraWorker } from '@/lib/scan-worker.mjs';
 export default function Camera({
   onScan,
   onClose,
@@ -55,6 +56,7 @@ export default function Camera({
       stream: MediaStream | undefined;
     const scanGate = createScanGate();
     let timer: ReturnType<typeof setTimeout>;
+    let angleWorker: ReturnType<typeof createCameraWorker> = null;
     const accept = (code: string) => {
       if (stopped || !scanGate(code)) return;
       scan.current(code);
@@ -62,6 +64,7 @@ export default function Camera({
     };
     (async () => {
       try {
+        angleWorker = createCameraWorker({onCode:accept});
         // Warm the fallback while the browser opens the camera. A load failure
         // must not prevent native scanning on devices that support it.
         let reader: any = null;
@@ -139,7 +142,17 @@ export default function Camera({
               captureScanFrame(canvas, el, el.videoWidth, el.videoHeight, 5);
               code = await decodeScanFrame(canvas, detector, null);
             }
-            for (let i = 0; !code && reader && i < 2; i++) {
+            if (!code && angleWorker?.ready) {
+              if (!angleWorker.busy) {
+                // Keep full resolution for narrow bars; heavy work stays off the UI thread.
+                const scale=Math.min(1,1920/el.videoWidth);
+                canvas.width=Math.round(el.videoWidth*scale);canvas.height=Math.round(el.videoHeight*scale);
+                const ctx=canvas.getContext('2d',{willReadFrequently:true})!;
+                ctx.drawImage(el,0,0,canvas.width,canvas.height);
+                angleWorker.submit(ctx.getImageData(0,0,canvas.width,canvas.height));
+              }
+            }
+            for (let i = 0; !code && !angleWorker?.ready && reader && i < 2; i++) {
               const current = pass++;
               captureScanFrame(canvas, el, el.videoWidth, el.videoHeight, current);
               const detailed = scanFrame(el.videoWidth, el.videoHeight, current).tryHarder;
@@ -170,6 +183,7 @@ export default function Camera({
     return () => {
       stopped = true;
       clearTimeout(timer);
+      angleWorker?.close();
       stream?.getTracks().forEach((t) => t.stop());
       track.current = null;
     };
@@ -180,7 +194,7 @@ export default function Camera({
         <DialogTitle>
           <ScanBarcode /> 連續掃描
         </DialogTitle>
-        <DialogDescription>整個畫面都能辨識，無須對準細線。</DialogDescription>
+        <DialogDescription>支援橫向、直向與斜放條碼，無須對準細線。</DialogDescription>
         <div
           className="camera-viewport"
           data-result={flash ? (feedback?.ok ? 'success' : 'error') : ''}

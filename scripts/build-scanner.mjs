@@ -28,3 +28,11 @@ fs.writeFileSync(path.join(root, 'public/barcode-decoder-v2.js'), bundle.code);
 console.log(
   'Self-contained barcode decoder generated (' + bundle.code.length + ' bytes)',
 );
+const workerResult=await build({configFile:false,root,publicDir:false,build:{write:false,minify:true,
+  lib:{entry:path.join(root,'scripts/barcode-worker.ts'),name:'POSScanWorker',formats:['iife']},
+}});
+const workerBundle=(Array.isArray(workerResult)?workerResult:[workerResult]).flatMap(r=>r.output).find(o=>o.type==='chunk');
+if(!workerBundle||workerBundle.imports.length||workerBundle.dynamicImports.length)throw Error('Worker must be self-contained');
+fs.writeFileSync(path.join(root,'public/barcode-worker-v3.js'),workerBundle.code);
+fs.copyFileSync(path.join(root,'node_modules/zxing-wasm/dist/reader/zxing_reader.wasm'),path.join(root,'public/barcode-reader-v3.wasm'));
+console.log('Multi-angle WASM worker generated');
