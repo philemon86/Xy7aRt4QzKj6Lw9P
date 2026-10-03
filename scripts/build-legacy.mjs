@@ -79,12 +79,14 @@ const visibilityEnd = html.indexOf(
 html =
   html.slice(0, visibilityStart) +
   `      const checkoutFieldIds=['paid-amount','invoice-customer','invoice-donate-carrier','invoice-tax-id'];
-      const saveCheckoutFields=()=>localStorage.setItem('checkoutFields',JSON.stringify({...Object.fromEntries(checkoutFieldIds.map(id=>[id,document.getElementById(id)?.value||''])),cashAuto,donationDefaultInitialized:true}));
+      const saveCheckoutFields=()=>localStorage.setItem('checkoutFields',JSON.stringify({...Object.fromEntries(checkoutFieldIds.map(id=>[id,document.getElementById(id)?.value||''])),cashAuto,donationSuggestionVersion:1}));
       const syncInvoiceCustomerVisibility = () => {
         const taxId = String(invoiceTaxIdInput?.value || '').trim();
         const churchInvoice = POSCore.requiresChurchCustomer(taxId);
         if (invoiceCustomerField) invoiceCustomerField.style.display = churchInvoice ? 'flex' : 'none';
         if (!churchInvoice && invoiceCustomerInput) invoiceCustomerInput.value = '';
+        const suggestion = document.getElementById('donation-suggestion');
+        if (suggestion) suggestion.hidden = !/^29(?:9)?$/.test(invoiceDonateCarrierInput?.value||'');
         const status = document.getElementById('invoice-customer-status');
         if (status) status.textContent = churchInvoice ? '教會發票 · 請選擇教會單位'
           : taxId ? '個人客戶 · 統編 ' + taxId
@@ -176,10 +178,6 @@ html = html.replace(
   '        paidAmountInput.value = 1000;',
   '        resetCashSuggestion();',
 );
-html = html.replace(
-  "        if (invoiceDonateCarrierInput) invoiceDonateCarrierInput.value = '';",
-  "        if (invoiceDonateCarrierInput) invoiceDonateCarrierInput.value = '2995';",
-);
 const cultureStart = html.indexOf('const handleCulturalCoinCheckout = () => {');
 const cultureEnd = html.indexOf('      const formatMoney =', cultureStart);
 if (cultureStart < 0 || cultureEnd < 0) throw Error('找不到文化幣收款接點');
@@ -234,7 +232,7 @@ html = html.replace(
 );
 html = html.replace(
   '      const performCheckout = (paymentMethod, isComposite = false) => {',
-  "      let checkoutBusy=false,checkoutChecking=false;\n      const performCheckout = async (paymentMethod, isComposite = false, tenderedAmount = Number(paidAmountInput.value || 0)) => {\n        if(checkoutBusy || checkoutChecking || cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;\n        checkoutChecking=true;try { await cloud.ensureSession(); } catch { return; } finally { checkoutChecking=false; }\n        if(checkoutBusy)return;\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡/.test(paymentMethod)){alert('教會未開放信用卡');return;}",
+  "      let checkoutBusy=false,checkoutChecking=false;\n      const performCheckout = async (paymentMethod, isComposite = false, tenderedAmount = Number(paidAmountInput.value || 0)) => {\n        if(checkoutBusy || checkoutChecking || cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;\n        checkoutChecking=true;checkoutBtns.forEach(b=>b.disabled=true);document.body.dataset.checkout='checking';try { await cloud.ensureSession(); } catch { return; } finally { checkoutChecking=false;checkoutBtns.forEach(b=>b.disabled=false);document.body.dataset.checkout='idle'; }\n        if(checkoutBusy)return;\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡/.test(paymentMethod)){alert('教會未開放信用卡');return;}",
 );
 html = html.replace(
   /        POSAudio.success\(\);\s*(?=clients\[clientId\] = \{)/,
@@ -413,10 +411,11 @@ html = html.replace(
   const bulk=document.querySelector('.bulk-input');const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent='批次輸入商品';details.append(summary);bulk.parentNode.insertBefore(details,bulk);details.append(bulk);
   window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==parent)return;if(e.data.type==='scan')addScannedProduct(e.data.code,true);});
   if(cloud.event.status!=='open'){document.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=true);document.querySelectorAll('#export-csv-btn,#export-pilot-btn,#backup-btn').forEach(el=>el.disabled=false);}
-  cloud.onUpdate=()=>{clients=JSON.parse(localStorage.getItem('clients'));updateSummaryTable();readFavorites();renderFavorites();renderSearch();};
+  cloud.onUpdate=update=>{if(!update?.keys||update.keys.some(k=>k.startsWith('order:'))){clients=JSON.parse(localStorage.getItem('clients'));if(!checkoutBusy)updateSummaryTable();}if(!update?.keys||update.keys.includes('shared:favorites')){readFavorites();renderFavorites();}if(!update?.keys||update.keys.some(k=>k.startsWith('shared:')))renderSearch();};
   const savedCheckoutFields=JSON.parse(localStorage.getItem('checkoutFields')||'{}');
   for(const id of checkoutFieldIds){const field=document.getElementById(id);if(!field)continue;if(Object.hasOwn(savedCheckoutFields,id))field.value=savedCheckoutFields[id];field.addEventListener('input',saveCheckoutFields);field.addEventListener('change',saveCheckoutFields);}
-  if(!savedCheckoutFields.donationDefaultInitialized && !invoiceTaxIdInput.value.trim() && !invoiceDonateCarrierInput.value.trim())invoiceDonateCarrierInput.value='2995';
+  if(savedCheckoutFields.donationDefaultInitialized && !savedCheckoutFields.donationSuggestionVersion && invoiceDonateCarrierInput.value==='2995')invoiceDonateCarrierInput.value='';
+  ${read('scripts/register-donation.js')}
   saveCheckoutFields();
   syncInvoiceCustomerVisibility();calculateChange();
   const resize=new ResizeObserver(()=>parent.postMessage({type:'height',height:document.body.scrollHeight+24},location.origin));resize.observe(document.body);

@@ -8,6 +8,7 @@ window.makeCloud = async function () {
   const portal =
     hostFrame?.getAttribute('data-portal') || parameters.get('portal');
   const portalHeaders = portal ? { 'X-POS-Portal': portal } : {};
+  let cloud;
   let device = window.localStorage.getItem('pos-device');
   if (!device) {
     device = crypto.randomUUID();
@@ -28,7 +29,11 @@ window.makeCloud = async function () {
     if (r.status === 401) {
       parent.postMessage({ type: 'session-expired' }, location.origin);
     }
-    if (!r.ok) throw Object.assign(Error(j.error || '雲端連線失敗'), { status: r.status });
+    if (!r.ok)
+      throw Object.assign(Error(j.error || '雲端連線失敗'), {
+        status: r.status,
+      });
+    if (cloud) cloud.sessionCheckedAt = Date.now();
     return j;
   };
   const initial =
@@ -44,15 +49,21 @@ window.makeCloud = async function () {
         })();
   const { event, catalog, me } = initial;
   let base = event.state,
+    baseRevision = event.revision ?? null,
     desired = structuredClone(base),
     pending = Promise.resolve(),
     timer,
     busy = false,
     failed = false;
-  let clientSnapshot = {},
-    cloud;
+  let clientSnapshot = {};
   const prefix = (k) =>
-    ['cart', 'priceOverrides', 'clientCounter', 'printEnabled', 'checkoutFields'].includes(k)
+    [
+      'cart',
+      'priceOverrides',
+      'clientCounter',
+      'printEnabled',
+      'checkoutFields',
+    ].includes(k)
       ? 'draft:' + device + ':' + k
       : 'shared:' + k;
   const readOnly = me.role === 'admin' && event.organizer === 'church';
@@ -89,12 +100,12 @@ window.makeCloud = async function () {
         }
         clientSnapshot = structuredClone(clients);
       } else if (k !== 'overallSummary') desired[prefix(k)] = String(v);
-      schedule();
+      schedule(k);
     },
     removeItem(k) {
       if (readOnly) return;
       delete desired[prefix(k)];
-      schedule();
+      schedule(k);
     },
     clear() {
       if (readOnly) return;
@@ -117,16 +128,31 @@ window.makeCloud = async function () {
     }
     parent.postMessage({ type: 'cloud-status', text, error }, location.origin);
   }
-  function schedule() {
+  function schedule(key = '') {
     clearTimeout(timer);
     preserveRecovery();
     status('正在儲存…');
-    timer = setTimeout(() => flush().catch(() => {}), 350);
+    // Recovery is immediate; give rapid scanning/payment time to combine the
+    // draft and order into one authenticated commit instead of two requests.
+    timer = setTimeout(
+      () => flush().catch(() => {}),
+      prefix(key).startsWith('draft:') ? 900 : 350,
+    );
   }
   function preserveRecovery() {
     const key = 'pos-recovery:' + eid + ':' + device;
-    if (JSON.stringify(desired) === JSON.stringify(base)) window.localStorage.removeItem(key);
-    else window.localStorage.setItem(key, JSON.stringify({ base, desired, at: new Date().toISOString() }));
+    if (JSON.stringify(desired) === JSON.stringify(base))
+      window.localStorage.removeItem(key);
+    else
+      window.localStorage.setItem(
+        key,
+        JSON.stringify({
+          base,
+          desired,
+          revision: baseRevision,
+          at: new Date().toISOString(),
+        }),
+      );
   }
   async function save() {
     busy = true;
@@ -146,9 +172,19 @@ window.makeCloud = async function () {
       return;
     }
     try {
-      const result = await api('events/' + eid + '/sync', { changes });
+      const result = await api('events/' + eid + '/sync', {
+        changes,
+        revision: baseRevision,
+      });
+      const savedState = result.state ? result.state : { ...base };
+      if (!result.state) {
+        for (const patch of result.patches) {
+          if (patch.after == null) delete savedState[patch.key];
+          else savedState[patch.key] = patch.after;
+        }
+      }
       const now = desired;
-      desired = { ...result.state };
+      desired = { ...savedState };
       for (const k of new Set([...Object.keys(sent), ...Object.keys(now)])) {
         if (
           JSON.stringify(now[k] ?? null) !== JSON.stringify(sent[k] ?? null)
@@ -157,11 +193,14 @@ window.makeCloud = async function () {
           else desired[k] = now[k];
         }
       }
-      base = result.state;
+      base = savedState;
+      baseRevision = result.revision ?? null;
       cloud.numbers = { ...cloud.numbers, ...result.numbers };
       cloud.recoveryError = '';
       failed = false;
-      cloud?.onUpdate?.();
+      cloud?.onUpdate?.({
+        keys: result.state ? null : result.patches.map((p) => p.key),
+      });
       status('已儲存至雲端');
       preserveRecovery();
       parent.postMessage(
@@ -173,7 +212,12 @@ window.makeCloud = async function () {
       cloud.recoveryError = e.message;
       window.localStorage.setItem(
         'pos-recovery:' + eid + ':' + device,
-        JSON.stringify({ base, desired, at: new Date().toISOString() }),
+        JSON.stringify({
+          base,
+          desired,
+          revision: baseRevision,
+          at: new Date().toISOString(),
+        }),
       );
       status(e.message + ' · 尚未儲存', true);
       throw e;
@@ -304,6 +348,7 @@ window.makeCloud = async function () {
         else nextBase[key] = base[key];
       }
       base = nextBase;
+      baseRevision = latest.revision ?? null;
       desired = nextDesired;
       cloud.numbers = latest.numbers || cloud.numbers;
       cloud.onUpdate?.();
@@ -331,6 +376,7 @@ window.makeCloud = async function () {
     const r = JSON.parse(recover);
     status('正在復原上次未完成的儲存…');
     base = r.base;
+    baseRevision = r.revision ?? null;
     desired = r.desired;
     try {
       await flush();

@@ -21,6 +21,7 @@ import {
 import initialShop from '../data/shop-cache.json';
 import { mergeShopCache } from './shop.mjs';
 import { mergeChanges, validateOrder, stats } from './state.mjs';
+import { syncStateResponse } from './sync-response.mjs';
 import { syncShopStep, syncStatus, syncPromotions } from './shop-sync.mjs';
 import { formatOrderNumber, orderDay, validateRoleChange } from './orders.mjs';
 import { previewPilot, confirmPilot } from './pilot-service';
@@ -938,7 +939,7 @@ export async function handle(req: Request, parts: string[]) {
         if (r.meta.changes)
           return json({
             revision: current.revision + 1,
-            state: next,
+            ...syncStateResponse(next, b.changes, current.revision, b.revision),
             numbers:
               assigned ??
               (await assignNumbers(

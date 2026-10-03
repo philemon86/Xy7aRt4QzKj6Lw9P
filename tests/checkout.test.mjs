@@ -137,16 +137,21 @@ test('Expired authorization preserves the cart and creates no payment or order',
 });
 test('Repeated payment clicks during authorization check create one order', async () => {
   const x = make();
+  const button = { disabled: false };
+  x.context.checkoutBtns.push(button);
   let release;
   x.context.cloud.ensureSession = () =>
     new Promise((resolve) => {
       release = resolve;
     });
   const first = x.checkout('現金');
+  assert.equal(button.disabled, true);
+  assert.equal(x.context.document.body.dataset.checkout, 'checking');
   await x.checkout('現金');
   release();
   await first;
   assert.equal(Object.keys(x.saved).length, 1);
+  assert.equal(button.disabled, false);
 });
 test('No carrier or tax ID is always a book-fair sale even with a selected church or donation', async () => {
   for (const invoiceInfo of [

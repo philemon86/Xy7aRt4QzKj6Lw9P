@@ -1385,14 +1385,25 @@ body[data-role='church'] .checkout-btn {
   color: var(--text-color) !important;
   border-color: var(--border-color) !important;
 }
+body[data-checkout='checking'] .checkout-buttons-area::before,
 body[data-checkout='saving'] .checkout-buttons-area::before {
   content: '正在保存這筆結帳…';
   grid-column: 1 / -1;
   color: var(--primary-btn);
   font-weight: 700;
 }
+body[data-checkout='checking'] .checkout-btn,
 body[data-checkout='saving'] .checkout-btn {
   opacity: 0.6;
+  cursor: progress;
+}
+.donation-suggestion {
+  margin-top: 7px;
+  padding: 8px 12px;
+  text-align: left;
+  color: var(--primary-btn);
+  background: var(--checkout-summary-bg);
+  border: 1px solid var(--checkout-summary-border);
 }
 #summary-table td:nth-child(2) {
   font-size: 13px;
@@ -1430,6 +1441,8 @@ body[data-role='church'] #btn-f10 {
   grid-column: 1 / -1;
   grid-row: 2;
 }
+body[data-role='church'][data-checkout='checking']
+  .checkout-buttons-area::before,
 body[data-role='church'][data-checkout='saving']
   .checkout-buttons-area::before {
   grid-row: 3;
