@@ -400,7 +400,7 @@ html = html.replace(
   change.className='change-field';change.innerHTML='<span class="amount-label">找零</span><span class="amount-value"><span id="change-amount">0</span><small>元</small></span>';
   // Keep the original amount nodes: existing calculation handlers hold references.
   total.querySelector('#total-amount').replaceWith(totalAmountElement);change.querySelector('#change-amount').replaceWith(changeAmountElement);
-  const settlement=document.createElement('div');settlement.className='cash-settlement';settlement.append(paid,change);checkoutSummary.append(total,settlement);cartShell.insertBefore(checkoutSummary,document.querySelector('.cart-table-scroll'));
+  const settlement=document.createElement('div');settlement.className='cash-settlement';settlement.append(paid,change);checkoutSummary.append(settlement,total);cartShell.insertBefore(checkoutSummary,document.querySelector('.cart-table-scroll'));
   cartShell.querySelector('.table-title').append(document.querySelector('#clear-cart-btn'));document.querySelector('.total-row').remove();paymentDetails.remove();
   document.querySelector('#cart-table thead').innerHTML='<tr><th>商品 / 單價</th><th>數量 / 折扣</th><th>小計</th><th></th></tr>';
   const cartHint=document.createElement('p');cartHint.className='cart-help';cartHint.textContent='點編輯或連點商品兩下，調整單價、數量與折扣。';document.querySelector('.cart-table-shell').append(cartHint);
