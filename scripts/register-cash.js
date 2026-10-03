@@ -32,13 +32,23 @@ const returnToCheckoutSummary = () => {
   else window.scrollTo({ top: Math.max(0, top - 16), behavior: 'auto' });
 };
 let invoiceScrollTimer;
-const finishInvoiceEntry = () => {
+const finishInvoiceEntry = (event) => {
   clearTimeout(invoiceScrollTimer);
   const taxId = invoiceTaxIdInput.value.trim();
   const carrier = invoiceDonateCarrierInput.value.trim();
   if (POSCore.requiresChurchCustomer(taxId) && !getSelectedBookFairCustomer())
     return;
-  if (!/^\d{8}$/.test(taxId) && !/^\/[A-Z0-9+.-]{7}$/i.test(carrier)) return;
+  const donationComplete =
+    /^\d+$/.test(carrier) &&
+    (carrier === '2995' ||
+      ['change', 'blur'].includes(event?.type) ||
+      event?.key === 'Enter');
+  if (
+    !/^\d{8}$/.test(taxId) &&
+    !/^\/[A-Z0-9+.-]{7}$/i.test(carrier) &&
+    !donationComplete
+  )
+    return;
   invoiceScrollTimer = setTimeout(() => {
     if (
       [
@@ -59,10 +69,11 @@ for (const field of [
 ]) {
   field.addEventListener('input', finishInvoiceEntry);
   field.addEventListener('change', finishInvoiceEntry);
+  field.addEventListener('blur', finishInvoiceEntry);
   field.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      finishInvoiceEntry();
+      finishInvoiceEntry(event);
     }
   });
 }

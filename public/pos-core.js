@@ -18,7 +18,8 @@ function suggestCashAmount(total) {
   if (!Number.isFinite(amount) || amount <= 0) return 0;
   if (amount <= 100) return 100;
   if (amount <= 500) return 500;
-  return Math.ceil(amount / 1000) * 1000;
+  if (amount <= 1000) return 1000;
+  return Math.ceil(amount / 500) * 500;
 }
 
 function culturalCoinPayment(total, coin, remainderMethod, role) {

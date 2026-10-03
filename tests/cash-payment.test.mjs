@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { suggestCashAmount, culturalCoinPayment } from '../lib/pos-core.mjs';
-test('Tendered cash follows denomination boundaries and rounds above 1000 to a thousand', () => {
+import { requiresChurchCustomer } from '../lib/invoice-customers.mjs';
+test('Tendered cash follows denomination boundaries and rounds above 1000 to five hundred', () => {
   for (const [total, expected] of [
     [0, 0],
     [-100, 0],
@@ -13,12 +14,64 @@ test('Tendered cash follows denomination boundaries and rounds above 1000 to a t
     [500, 500],
     [501, 1000],
     [1000, 1000],
-    [1001, 2000],
+    [1001, 1500],
+    [1500, 1500],
+    [1501, 2000],
     [2000, 2000],
-    [2001, 3000],
-    [3435, 4000],
+    [2001, 2500],
+    [2500, 2500],
+    [2501, 3000],
+    [3435, 3500],
   ])
     assert.equal(suggestCashAmount(total), expected);
+});
+
+test('Donation completion returns to amounts without jumping while an arbitrary code is incomplete', () => {
+  const script = fs.readFileSync('scripts/register-cash.js', 'utf8');
+  let jumps = 0,
+    church = null;
+  const field = () => ({ value: '', addEventListener() {} });
+  const context = {
+    clearTimeout() {},
+    setTimeout(fn) {
+      fn();
+      return 1;
+    },
+    returnToCheckoutSummary() {
+      jumps++;
+    },
+    POSCore: { requiresChurchCustomer },
+    getSelectedBookFairCustomer: () => church,
+    invoiceTaxIdInput: field(),
+    invoiceDonateCarrierInput: field(),
+    invoiceCustomerInput: field(),
+    document: { activeElement: null },
+  };
+  vm.createContext(context);
+  vm.runInContext(
+    script.slice(script.indexOf('let invoiceScrollTimer;')) +
+      '\nglobalThis.finish=finishInvoiceEntry;',
+    context,
+  );
+  context.invoiceDonateCarrierInput.value = '299';
+  context.finish({ type: 'input' });
+  assert.equal(jumps, 0);
+  context.invoiceDonateCarrierInput.value = '2995';
+  context.finish({ type: 'input' });
+  assert.equal(jumps, 1);
+  context.invoiceDonateCarrierInput.value = '12345';
+  context.finish({ type: 'input' });
+  assert.equal(jumps, 1);
+  context.finish({ key: 'Enter' });
+  assert.equal(jumps, 2);
+  context.finish({ type: 'blur' });
+  assert.equal(jumps, 3);
+  context.invoiceTaxIdInput.value = '52399254';
+  context.finish({ type: 'change' });
+  assert.equal(jumps, 3);
+  church = { code: 'AA01' };
+  context.finish({ type: 'change' });
+  assert.equal(jumps, 4);
 });
 test('Culture split payments balance and church payment options reject credit', () => {
   for (const method of ['現金', 'LINE PAY', '信用卡'])

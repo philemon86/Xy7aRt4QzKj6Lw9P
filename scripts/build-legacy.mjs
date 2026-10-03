@@ -79,7 +79,7 @@ const visibilityEnd = html.indexOf(
 html =
   html.slice(0, visibilityStart) +
   `      const checkoutFieldIds=['paid-amount','invoice-customer','invoice-donate-carrier','invoice-tax-id'];
-      const saveCheckoutFields=()=>localStorage.setItem('checkoutFields',JSON.stringify({...Object.fromEntries(checkoutFieldIds.map(id=>[id,document.getElementById(id)?.value||''])),cashAuto}));
+      const saveCheckoutFields=()=>localStorage.setItem('checkoutFields',JSON.stringify({...Object.fromEntries(checkoutFieldIds.map(id=>[id,document.getElementById(id)?.value||''])),cashAuto,donationDefaultInitialized:true}));
       const syncInvoiceCustomerVisibility = () => {
         const taxId = String(invoiceTaxIdInput?.value || '').trim();
         const churchInvoice = POSCore.requiresChurchCustomer(taxId);
@@ -89,6 +89,7 @@ html =
         if (status) status.textContent = churchInvoice ? '教會發票 · 請選擇教會單位'
           : taxId ? '個人客戶 · 統編 ' + taxId
           : isCarrierValue(invoiceDonateCarrierInput?.value) ? '個人客戶 · 載具'
+          : /^\\d+$/.test(invoiceDonateCarrierInput?.value||'') ? '書展發票 · 捐贈 ' + invoiceDonateCarrierInput.value
           : '書展發票';
       };
 
@@ -175,6 +176,10 @@ html = html.replace(
   '        paidAmountInput.value = 1000;',
   '        resetCashSuggestion();',
 );
+html = html.replace(
+  "        if (invoiceDonateCarrierInput) invoiceDonateCarrierInput.value = '';",
+  "        if (invoiceDonateCarrierInput) invoiceDonateCarrierInput.value = '2995';",
+);
 const cultureStart = html.indexOf('const handleCulturalCoinCheckout = () => {');
 const cultureEnd = html.indexOf('      const formatMoney =', cultureStart);
 if (cultureStart < 0 || cultureEnd < 0) throw Error('找不到文化幣收款接點');
@@ -195,7 +200,10 @@ html =
   read('scripts/register-cart.js') +
   '\n' +
   html.slice(cartEnd);
-html = html.replace('      const pricedCart=', read('scripts/register-cash.js') + '\n      const pricedCart=');
+html = html.replace(
+  '      const pricedCart=',
+  read('scripts/register-cash.js') + '\n      const pricedCart=',
+);
 const scanStart = html.indexOf("      scanForm.addEventListener('submit'");
 const scanEnd = html.indexOf('      const parseBulkLine', scanStart);
 html = html.slice(0, scanStart) + html.slice(scanEnd);
@@ -388,7 +396,7 @@ html = html.replace(
   const checkoutSummary=document.createElement('section');checkoutSummary.className='checkout-summary';checkoutSummary.setAttribute('aria-label','結帳金額與找零');
   const total=document.querySelector('.total');total.innerHTML='<span class="amount-label">應收金額</span><span class="amount-value"><span id="total-amount">0</span><small>元</small></span>';
   const paymentDetails=document.querySelector('.payment-details');const [paid,change]=paymentDetails.children;
-  paid.className='paid-field';const paidLabel=document.createElement('label');paidLabel.htmlFor='paid-amount';paidLabel.textContent='實收金額';paid.replaceChildren(paidLabel,paidAmountInput);paidAmountInput.setAttribute('aria-label','實收金額');
+  paid.className='paid-field';const paidLabel=document.createElement('label');paidLabel.htmlFor='paid-amount';paidLabel.textContent='預估實收金額';paid.replaceChildren(paidLabel,paidAmountInput);paidAmountInput.setAttribute('aria-label','預估實收金額');
   change.className='change-field';change.innerHTML='<span class="amount-label">找零</span><span class="amount-value"><span id="change-amount">0</span><small>元</small></span>';
   // Keep the original amount nodes: existing calculation handlers hold references.
   total.querySelector('#total-amount').replaceWith(totalAmountElement);change.querySelector('#change-amount').replaceWith(changeAmountElement);
@@ -408,6 +416,8 @@ html = html.replace(
   cloud.onUpdate=()=>{clients=JSON.parse(localStorage.getItem('clients'));updateSummaryTable();readFavorites();renderFavorites();renderSearch();};
   const savedCheckoutFields=JSON.parse(localStorage.getItem('checkoutFields')||'{}');
   for(const id of checkoutFieldIds){const field=document.getElementById(id);if(!field)continue;if(Object.hasOwn(savedCheckoutFields,id))field.value=savedCheckoutFields[id];field.addEventListener('input',saveCheckoutFields);field.addEventListener('change',saveCheckoutFields);}
+  if(!savedCheckoutFields.donationDefaultInitialized && !invoiceTaxIdInput.value.trim() && !invoiceDonateCarrierInput.value.trim())invoiceDonateCarrierInput.value='2995';
+  saveCheckoutFields();
   syncInvoiceCustomerVisibility();calculateChange();
   const resize=new ResizeObserver(()=>parent.postMessage({type:'height',height:document.body.scrollHeight+24},location.origin));resize.observe(document.body);
   parent.postMessage({type:'register-ready'},location.origin);
