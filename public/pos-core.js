@@ -156,6 +156,20 @@ function createScanGate(delay = 1000) {
   };
 }
 
+const CHURCH_TAX_ID = '52399254';
+
+function requiresChurchCustomer(taxId) {
+  return String(taxId || '').trim() === CHURCH_TAX_ID;
+}
+
+function invoiceCustomerCode(invoice = {}, churchCode = '') {
+  if (requiresChurchCustomer(invoice.taxId)) return churchCode;
+  return String(invoice.taxId || '').trim() ||
+    String(invoice.carrier || '').trim()
+    ? '305'
+    : '0002';
+}
+
 
 const promotionDayFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Taipei',
@@ -372,4 +386,4 @@ function applyPromotions(items, products, groups, now = new Date()) {
   return lines.filter((i) => i.quantity !== 0);
 }
 
-return {formatDiscount,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate};})();
+return {formatDiscount,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();

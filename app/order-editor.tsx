@@ -18,6 +18,10 @@ import {
 import { Plus, Search, Trash2, ArrowLeftRight } from 'lucide-react';
 import { resolveProductPricing, editCartItem } from '@/lib/pos-core.mjs';
 import { orderTotal, makePayments, paymentLabel } from '@/lib/orders.mjs';
+import {
+  invoiceCustomerCode,
+  requiresChurchCustomer,
+} from '@/lib/invoice-customers.mjs';
 type Target = { eventId: string; orderId: string };
 export default function OrderEditor({
   target,
@@ -146,10 +150,10 @@ export default function OrderEditor({
         (c: any) => c.code === customerCode,
       );
       if (
-        taxId.trim() &&
+        requiresChurchCustomer(taxId) &&
         (!selectedCustomer || ['0002', '305'].includes(customerCode))
       )
-        throw Error('輸入統編時請選擇發票教會');
+        throw Error('統編 52399254 請選擇教會單位');
       const invoiceInfo = taxId.trim()
         ? { taxId: taxId.trim(), carrier: '', donationCode: '' }
         : {
@@ -167,12 +171,12 @@ export default function OrderEditor({
         paymentMethod: paymentLabel(paymentRecords, amount),
         note,
         invoiceInfo,
-        bookFairCustomerCode: invoiceInfo.taxId ? customerCode : '',
-        accountingCustomer: invoiceInfo.taxId
-          ? selectedCustomer
-          : catalog.customers.find(
-              (c: any) => c.code === (invoiceInfo.carrier ? '305' : '0002'),
-            ),
+        bookFairCustomerCode: requiresChurchCustomer(invoiceInfo.taxId)
+          ? customerCode
+          : '',
+        accountingCustomer: catalog.customers.find(
+          (c: any) => c.code === invoiceCustomerCode(invoiceInfo, customerCode),
+        ),
         modifiedAt: new Date().toISOString(),
       };
       await request('events/' + target.eventId + '/sync', {
@@ -391,8 +395,8 @@ export default function OrderEditor({
                   </label>
                 )}
               </div>
-              <details className="order-invoice-fields">
-                <summary>發票與客戶資料</summary>
+              <section className="order-invoice-fields">
+                <h3>發票與客戶資料</h3>
                 <label>
                   載具／捐贈碼
                   <Input
@@ -408,9 +412,9 @@ export default function OrderEditor({
                     onChange={(e) => setTaxId(e.target.value)}
                   />
                 </label>
-                {taxId && (
+                {requiresChurchCustomer(taxId) && (
                   <label>
-                    發票教會
+                    教會單位（統編 52399254）
                     <Select
                       value={customerCode}
                       onValueChange={(v) => v && setCustomerCode(v)}
@@ -430,7 +434,10 @@ export default function OrderEditor({
                     </Select>
                   </label>
                 )}
-              </details>
+                {taxId.trim() && !requiresChurchCustomer(taxId) && (
+                  <p className="muted">個人客戶 · 統編 {taxId.trim()}</p>
+                )}
+              </section>
               <label htmlFor="order-note">備註</label>
               <Input
                 id="order-note"

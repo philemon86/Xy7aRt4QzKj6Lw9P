@@ -1,18 +1,21 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { POS_RELEASE, REGISTER_FILE } from '../lib/release.mjs';
+import { CHURCH_TAX_ID } from '../lib/invoice-customers.mjs';
 const root = path.resolve(import.meta.dirname, '..');
 let html = fs.readFileSync(path.join(root, 'legacy/index.html'), 'utf8');
 const read = (name) => fs.readFileSync(path.join(root, name), 'utf8');
 const core =
   read('lib/pos-core.mjs').replace(/^export /gm, '') +
   '\n' +
+  read('lib/invoice-customers.mjs').replace(/^export /gm, '') +
+  '\n' +
   read('lib/promotions.mjs')
     .replace(/^import .*;$/gm, '')
     .replace(/^export /gm, '');
 fs.writeFileSync(
   path.join(root, 'public/pos-core.js'),
-  `window.POSCore=(()=>{${core}\nreturn {formatDiscount,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate};})();\n`,
+  `window.POSCore=(()=>{${core}\nreturn {formatDiscount,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
 );
 html = html
   .replaceAll('折扣 %', '售價比例 %')
@@ -25,13 +28,29 @@ fs.writeFileSync(
   html.slice(start, end),
 );
 const legacyPilot = html.slice(start, end);
-const factoryStart =
-  legacyPilot.indexOf('function () {') + 'function () {'.length;
-const factoryEnd = legacyPilot.lastIndexOf('});');
+// Preserve every tax, payment and amount rule. Only the invoice customer changes:
+// 52399254 needs a church; other tax IDs use personal customer 305.
+const churchRouting =
+  `        customerCode = String(client.bookFairCustomerCode || '').trim();
+        if (!customerCode || customerCode === BOOK_FAIR_CODE || customerCode === PERSONAL_CODE) {
+          customerResolverFailed = true;
+        }`.replaceAll('\n', legacyPilot.includes('\r\n') ? '\r\n' : '\n');
+if (!legacyPilot.includes(churchRouting)) throw Error('找不到統編客戶判斷接點');
+const v2Pilot = legacyPilot.replace(
+  churchRouting,
+  `        if (taxId !== '${CHURCH_TAX_ID}') {
+          customerCode = PERSONAL_CODE;
+        } else {
+${churchRouting}
+        }`,
+);
+html = html.slice(0, start) + v2Pilot + html.slice(end);
+const factoryStart = v2Pilot.indexOf('function () {') + 'function () {'.length;
+const factoryEnd = v2Pilot.lastIndexOf('});');
 fs.writeFileSync(
   path.join(root, 'lib/pilot-core.mjs'),
   'export default (function () {' +
-    legacyPilot.slice(factoryStart, factoryEnd) +
+    v2Pilot.slice(factoryStart, factoryEnd) +
     '})();\n',
 );
 html = html.replace(
@@ -39,11 +58,83 @@ html = html.replace(
   '<title>腓利門 POS V2 收銀台</title><link rel="stylesheet" href="/pos/checkout.css"><script src="/pos/bridge.js"></script><script src="/pos/pos-core.js"></script>',
 );
 html = html
+  .replace(
+    '<link rel="icon" href="favicon-cloud.svg" type="image/svg+xml" />',
+    '<link rel="icon" href="/pos/favicon-bookstore-32.png" type="image/png" sizes="32x32" />\n  <link rel="icon" href="/pos/favicon-bookstore.svg" type="image/svg+xml" sizes="any" />',
+  )
   .replace('<link rel="stylesheet" href="/pos/checkout.css">', '')
   .replace(
     '</head>',
     '<link rel="stylesheet" href="/pos/checkout.css"></head>',
   );
+// The legacy snapshot remains intact; V2 applies the same invoice rule in checkout
+// and edits. Hidden church selections must never carry over to a personal invoice.
+const visibilityStart = html.indexOf(
+  '      const syncInvoiceCustomerVisibility = () => {',
+);
+const visibilityEnd = html.indexOf(
+  '      const persistSelectedCustomer',
+  visibilityStart,
+);
+html =
+  html.slice(0, visibilityStart) +
+  `      const checkoutFieldIds=['paid-amount','invoice-customer','invoice-donate-carrier','invoice-tax-id'];
+      const saveCheckoutFields=()=>localStorage.setItem('checkoutFields',JSON.stringify(Object.fromEntries(checkoutFieldIds.map(id=>[id,document.getElementById(id)?.value||'']))));
+      const syncInvoiceCustomerVisibility = () => {
+        const taxId = String(invoiceTaxIdInput?.value || '').trim();
+        const churchInvoice = POSCore.requiresChurchCustomer(taxId);
+        if (invoiceCustomerField) invoiceCustomerField.style.display = churchInvoice ? 'flex' : 'none';
+        if (!churchInvoice && invoiceCustomerInput) invoiceCustomerInput.value = '';
+        const status = document.getElementById('invoice-customer-status');
+        if (status) status.textContent = churchInvoice ? '教會發票 · 請選擇教會單位'
+          : taxId ? '個人客戶 · 統編 ' + taxId
+          : isCarrierValue(invoiceDonateCarrierInput?.value) ? '個人客戶 · 載具'
+          : '書展發票';
+      };
+
+` +
+  html.slice(visibilityEnd);
+html = html.replace(
+  '      const persistSelectedCustomer = () => {',
+  '      const persistSelectedCustomer = () => {\n        if (!POSCore.requiresChurchCustomer(invoiceTaxIdInput?.value)) { syncInvoiceCustomerVisibility(); return true; }',
+);
+html = html.replace(
+  '        applyCarrierCustomerRule(invoiceDonateCarrierInput, invoiceTaxIdInput);',
+  '        applyCarrierCustomerRule(invoiceDonateCarrierInput, invoiceTaxIdInput);\n        syncInvoiceCustomerVisibility();',
+);
+html = html.replace(
+  'if (/^\\d{8}$/.test(taxId) && !getSelectedBookFairCustomer())',
+  'if (POSCore.requiresChurchCustomer(taxId) && !getSelectedBookFairCustomer())',
+);
+html = html.replaceAll(
+  'if (invoiceInfo.taxId) {',
+  'if (POSCore.requiresChurchCustomer(invoiceInfo.taxId)) {',
+);
+html = html.replace(
+  /        const accountingCustomer = invoiceInfo\.carrier\r?\n          \? getPersonalCustomer\(\)\r?\n          : \(invoiceInfo\.taxId \? bookFairCustomer : BOOK_FAIR_CUSTOMER\);/,
+  "        const accountingCode = POSCore.invoiceCustomerCode(invoiceInfo, bookFairCustomer?.code || '');\n        const accountingCustomer = accountingCode === '305' ? getPersonalCustomer() : bookFairCustomer || BOOK_FAIR_CUSTOMER;",
+);
+html = html.replace(
+  '這筆有輸入統編，請選擇「要開哪個教會」後再結帳。',
+  '統編 52399254 請選擇教會單位後再結帳。',
+);
+html = html.replace(
+  '        // 只有這筆有統編時，才要求選擇要開哪個教會。',
+  '        // 只有統編 52399254 才需教會；其他統編與載具均用個人客戶 305。',
+);
+html = html
+  .replace(
+    ': (invoiceInfo.taxId && isBookFairChurchCustomer(bookFairCustomer)',
+    ': (POSCore.requiresChurchCustomer(invoiceInfo.taxId) && isBookFairChurchCustomer(bookFairCustomer)',
+  )
+  .replace(
+    '              : BOOK_FAIR_CUSTOMER);',
+    '              : invoiceInfo.taxId ? getPersonalCustomer() : BOOK_FAIR_CUSTOMER);',
+  );
+html = html.replace(
+  /          \} else if \(isBookFairChurchCustomer\(bookFairCustomer\)\) \{\r?\n            \/\/ 若舊單有補選教會[^\n]*\r?\n            clients\[detailClientId\]\.bookFairCustomerCode = bookFairCustomer\.code;\r?\n          \}/,
+  "          } else {\n            clients[detailClientId].bookFairCustomerCode = '';\n          }",
+);
 html = html.replace(
   "document.addEventListener('DOMContentLoaded', () => {",
   "document.addEventListener('DOMContentLoaded', async () => {\n      let cloud; try { cloud=await window.makeCloud(); } catch(error) { document.body.textContent=error.message; parent.postMessage({type:'register-error'},location.origin); return; }\n      const localStorage=cloud.storage;\n      const isBookstore=cloud.me.role==='admin';\n      const displayOrderNumber=order=>cloud.numbers[order?.id] || '正在編號';\n",
@@ -265,6 +356,7 @@ html = html.replace(
   `loadMasterData().then(() => {
   const groups=[...document.querySelectorAll('body > .flex-container')];groups.forEach((el,i)=>el.dataset.section=['checkout','history','accounting','exports'][i]);
   document.body.dataset.audience=cloud.me.role==='church'||cloud.event.organizer==='church'?'church':'bookstore';
+  document.querySelectorAll('link[rel="icon"]').forEach(link=>{link.href='/pos/favicon-'+document.body.dataset.audience+(link.type==='image/svg+xml'?'.svg':'-32.png');});
   document.body.dataset.role=cloud.me.role;
   if(!isBookstore){btnF7.hidden=true;document.querySelector('[data-section="exports"]').hidden=true;document.querySelector('#pay-credit').closest('.pay-badge').hidden=true;}
   document.querySelector('#title').textContent='加入商品';
@@ -280,18 +372,28 @@ html = html.replace(
   scanForm.closest('.container-half').insertBefore(favoritesSection,document.querySelector('.bulk-input'));
   readFavorites();renderFavorites();
   document.querySelector('.cart-table-shell .table-title').innerHTML='<span>本次結帳</span><small id="cart-count"></small>';
+  const cartShell=document.querySelector('.cart-table-shell');
+  const checkoutSummary=document.createElement('section');checkoutSummary.className='checkout-summary';checkoutSummary.setAttribute('aria-label','結帳金額與找零');
+  const total=document.querySelector('.total');total.innerHTML='<span class="amount-label">應付金額</span><span class="amount-value"><span id="total-amount">0</span><small>元</small></span>';
+  const paymentDetails=document.querySelector('.payment-details');const [paid,change]=paymentDetails.children;
+  paid.className='paid-field';paid.querySelector('input').setAttribute('aria-label','實付金額');
+  change.className='change-field';change.innerHTML='<span class="amount-label">找零</span><span class="amount-value"><span id="change-amount">0</span><small>元</small></span>';
+  // Keep the original amount nodes: existing calculation handlers hold references.
+  total.querySelector('#total-amount').replaceWith(totalAmountElement);change.querySelector('#change-amount').replaceWith(changeAmountElement);
+  checkoutSummary.append(total,paid,change);cartShell.insertBefore(checkoutSummary,document.querySelector('.cart-table-scroll'));
+  cartShell.querySelector('.table-title').append(document.querySelector('#clear-cart-btn'));document.querySelector('.total-row').remove();paymentDetails.remove();
   document.querySelector('#cart-table thead').innerHTML='<tr><th>商品 / 單價</th><th>數量</th><th>小計</th><th></th></tr>';
   const cartHint=document.createElement('p');cartHint.className='cart-help';cartHint.textContent='點編輯或連點商品兩下，調整單價、數量與折扣。';document.querySelector('.cart-table-shell').append(cartHint);
-  const invoice=document.querySelector('.invoice-input-row');const invoiceDetails=document.createElement('details');invoiceDetails.className='invoice-details';const invoiceSummary=document.createElement('summary');invoiceSummary.textContent='發票資訊 · 載具 / 捐贈 / 統編';invoiceDetails.append(invoiceSummary);invoice.parentNode.insertBefore(invoiceDetails,invoice);invoiceDetails.append(invoice,document.querySelector('.invoice-hint'));
+  const invoice=document.querySelector('.invoice-input-row');const invoiceDetails=document.createElement('section');invoiceDetails.className='invoice-details';const invoiceSummary=document.createElement('h3');invoiceSummary.textContent='發票資訊 · 載具 / 捐贈 / 統編';invoiceDetails.append(invoiceSummary);invoice.parentNode.insertBefore(invoiceDetails,invoice);invoiceDetails.append(invoice,document.querySelector('.invoice-hint'));
+  const invoiceStatus=document.createElement('p');invoiceStatus.id='invoice-customer-status';invoiceStatus.className='invoice-customer-status';invoiceStatus.setAttribute('role','status');invoiceDetails.append(invoiceStatus);
+  document.querySelector('label[for="invoice-customer"]').textContent='教會單位（統編 52399254）';
   const printOption=document.querySelector('#print-enabled').closest('div');document.querySelector('.payment-qr-actions').append(printOption);
-  document.querySelector('.invoice-hint').textContent='一般結帳可留白；輸入統編時請選擇發票教會。';
+  document.querySelector('.invoice-hint').textContent='統編 52399254 才需選擇教會；其他統編自動使用個人客戶並保留統編。一般結帳可留白。';
   document.querySelector('.payment-info').append(document.querySelector('.checkout-buttons-area'));
   const bulk=document.querySelector('.bulk-input');const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent='批次輸入商品';details.append(summary);bulk.parentNode.insertBefore(details,bulk);details.append(bulk);
   window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==parent)return;if(e.data.type==='scan')addScannedProduct(e.data.code,true);});
   if(cloud.event.status!=='open'){document.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=true);document.querySelectorAll('#export-csv-btn,#export-pilot-btn,#backup-btn').forEach(el=>el.disabled=false);}
   cloud.onUpdate=()=>{clients=JSON.parse(localStorage.getItem('clients'));updateSummaryTable();readFavorites();renderFavorites();renderSearch();};
-  const checkoutFieldIds=['paid-amount','invoice-customer','invoice-donate-carrier','invoice-tax-id'];
-  const saveCheckoutFields=()=>localStorage.setItem('checkoutFields',JSON.stringify(Object.fromEntries(checkoutFieldIds.map(id=>[id,document.getElementById(id)?.value||'']))));
   const savedCheckoutFields=JSON.parse(localStorage.getItem('checkoutFields')||'{}');
   for(const id of checkoutFieldIds){const field=document.getElementById(id);if(!field)continue;if(Object.hasOwn(savedCheckoutFields,id))field.value=savedCheckoutFields[id];field.addEventListener('input',saveCheckoutFields);field.addEventListener('change',saveCheckoutFields);}
   syncInvoiceCustomerVisibility();calculateChange();
@@ -299,7 +401,10 @@ html = html.replace(
   parent.postMessage({type:'register-ready'},location.origin);
 `,
 );
-html=html.replace("        if (invoiceCustomerInput) invoiceCustomerInput.value = '';\n        localStorage.removeItem('bookFairCustomerCode');", "        if (invoiceCustomerInput) invoiceCustomerInput.value = '';\n        saveCheckoutFields();\n        localStorage.removeItem('bookFairCustomerCode');");
+html = html.replace(
+  /        if \(invoiceCustomerInput\) invoiceCustomerInput.value = '';\r?\n        localStorage.removeItem\('bookFairCustomerCode'\);/,
+  "        if (invoiceCustomerInput) invoiceCustomerInput.value = '';\n        saveCheckoutFields();\n        localStorage.removeItem('bookFairCustomerCode');",
+);
 for (const name of [
   'LINEPAY.jpg',
   '文化幣.jpg',
@@ -312,6 +417,10 @@ html = html
   .replaceAll('/pos/bridge.js', '/pos/bridge.js?v=' + POS_RELEASE)
   .replaceAll('/pos/pos-core.js', '/pos/pos-core.js?v=' + POS_RELEASE)
   .replaceAll('/pos/checkout.css', '/pos/checkout.css?v=' + POS_RELEASE);
+html = html
+  .split(/\r?\n/)
+  .map((line) => line.trimEnd())
+  .join('\n');
 fs.writeFileSync(path.join(root, 'public/register.html'), html);
 fs.writeFileSync(path.join(root, 'public', REGISTER_FILE), html);
 console.log(

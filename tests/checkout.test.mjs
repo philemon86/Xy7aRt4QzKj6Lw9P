@@ -3,6 +3,10 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createRequire } from 'node:module';
+import {
+  requiresChurchCustomer,
+  invoiceCustomerCode,
+} from '../lib/invoice-customers.mjs';
 const Pilot = createRequire(import.meta.url)('../legacy/pilot-exporter.cjs');
 const html = fs.readFileSync('public/register.html', 'utf8');
 const start = html.indexOf('      let checkoutBusy=false'),
@@ -43,6 +47,7 @@ function make({ amount = 899, quantity = 1, fail = false } = {}) {
     getSelectedBookFairCustomer: () => null,
     BOOK_FAIR_CUSTOMER: { code: '0002', name: '書展' },
     getPersonalCustomer: () => ({ code: '305' }),
+    POSCore: { requiresChurchCustomer, invoiceCustomerCode },
     POSAudio: { success: no, error: no },
     PilotExporter: Pilot,
     localStorage: {
@@ -120,7 +125,9 @@ test('Checkout persists a full order and clears the draft before printing', asyn
 });
 test('Expired authorization preserves the cart and creates no payment or order', async () => {
   const x = make();
-  x.context.cloud.ensureSession = async () => { throw Error('登入已到期'); };
+  x.context.cloud.ensureSession = async () => {
+    throw Error('登入已到期');
+  };
   await x.checkout('現金');
   assert.equal(x.context.cart.length, 1);
   assert.equal(Object.keys(x.context.clients).length, 0);
@@ -130,7 +137,10 @@ test('Expired authorization preserves the cart and creates no payment or order',
 test('Repeated payment clicks during authorization check create one order', async () => {
   const x = make();
   let release;
-  x.context.cloud.ensureSession = () => new Promise(resolve => { release = resolve; });
+  x.context.cloud.ensureSession = () =>
+    new Promise((resolve) => {
+      release = resolve;
+    });
   const first = x.checkout('現金');
   await x.checkout('現金');
   release();
@@ -168,6 +178,39 @@ test('Refund, zero amount, and cultural coin composite retain legacy payments', 
       total,
     );
   }
+});
+test('Other tax IDs save as personal customer 305, retaining the tax ID and ignoring an old church selection', async () => {
+  for (const customer of [null, { code: 'AA01', name: '台北教會' }]) {
+    const x = make();
+    x.context.getInvoiceInfoFromInputs = () => ({
+      taxId: '12345678',
+      carrier: '',
+      donationCode: '',
+    });
+    x.context.getSelectedBookFairCustomer = () => customer;
+    await x.checkout('信用卡');
+    const o = Object.values(x.saved)[0];
+    assert.equal(o.accountingCustomer.code, '305');
+    assert.equal(o.invoiceInfo.taxId, '12345678');
+    assert.equal(o.bookFairCustomerCode, '');
+    assert.equal(o.amount, 899);
+  }
+});
+test('52399254 requires a church and saves that church once selected', async () => {
+  const x = make();
+  x.context.getInvoiceInfoFromInputs = () => ({ taxId: '52399254' });
+  await x.checkout('現金');
+  assert.equal(Object.keys(x.saved).length, 0);
+  assert.equal(x.context.cart.length, 1);
+  x.context.getSelectedBookFairCustomer = () => ({
+    code: 'AA01',
+    name: '台北教會',
+  });
+  await x.checkout('現金');
+  const o = Object.values(x.saved)[0];
+  assert.equal(o.accountingCustomer.code, 'AA01');
+  assert.equal(o.bookFairCustomerCode, 'AA01');
+  assert.equal(o.invoiceInfo.taxId, '52399254');
 });
 test('A failed commit keeps the original order ID for retry and does not print', async () => {
   const x = make({ fail: true });

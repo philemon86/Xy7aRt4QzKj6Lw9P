@@ -159,7 +159,7 @@ test('Finalization preserves carrier, customer, INVQTY, negative lines, payment 
       ],
     }),
     b: order('b', [item('E', 60, -1)], {
-      invoiceInfo: { taxId: '12345678' },
+      invoiceInfo: { taxId: '52399254' },
       bookFairCustomerCode: 'AA01',
     }),
     c: order('c', [item('T', 0)]),
@@ -368,17 +368,89 @@ test('Exempt-only consolidated sales use the base number and empty or invalid re
   );
 });
 
-test('Server module factory is byte-identical to the legacy business logic', () => {
+test('Server module preserves the legacy core apart from the approved tax-ID customer routing', () => {
   const legacy = fs.readFileSync('legacy/pilot-exporter.cjs', 'utf8');
   const body = legacy.slice(
     legacy.indexOf('function () {') + 'function () {'.length,
     legacy.lastIndexOf('});'),
   );
+  const originalRouting =
+    /        customerCode = String\(client\.bookFairCustomerCode \|\| ''\)\.trim\(\);\r?\n        if \(!customerCode \|\| customerCode === BOOK_FAIR_CODE \|\| customerCode === PERSONAL_CODE\) \{\r?\n          customerResolverFailed = true;\r?\n        \}/;
+  const revised = fs.readFileSync('lib/pilot-core.mjs', 'utf8');
+  const original = 'export default (function () {' + body + '})();\n';
+  const approvedRouting =
+    /        if \(taxId !== '52399254'\) \{\r?\n          customerCode = PERSONAL_CODE;\r?\n        \} else \{\r?\n[\s\S]*?\r?\n        \}(?=\r?\n      \} else if \(carrier\))/;
+  assert.ok(originalRouting.test(original));
+  assert.ok(approvedRouting.test(revised));
   assert.equal(
-    fs.readFileSync('lib/pilot-core.mjs', 'utf8'),
-    'export default (function () {' + body + '})();\n',
+    revised
+      .replace(approvedRouting, original.match(originalRouting)[0])
+      .replaceAll('\r\n', '\n'),
+    original.replaceAll('\r\n', '\n'),
   );
   assert.ok(collectEris({ eri: '0H50010LU0000001' }).has('0H50010LU0000001'));
+});
+
+test('Personal tax invoices retain CMPID and separate mixed-tax slices with customer 305', () => {
+  const clients = {
+    personal: order('personal', [item('T'), item('E')], {
+      invoiceInfo: { taxId: '12345678' },
+      bookFairCustomerCode: 'AA01', // Old selection must not route a personal invoice to church.
+    }),
+    general: order('general', [item('E')]),
+  };
+  const before = JSON.stringify(clients);
+  const final = finalizePilotExport(prepare(clients), {
+    generateERI: generator(),
+  });
+  const personal = objects(final.rows.stkSale1).filter(
+    (m) => m.CMPID === '12345678',
+  );
+  assert.equal(personal.length, 2);
+  assert.deepEqual(
+    personal.map((m) => m.TAXCATE),
+    [0, 1],
+  );
+  assert.ok(
+    personal.every(
+      (m) =>
+        m.CUST === '305' && m.BILCUST === '305' && m.INVNAME === 'POS 現銷',
+    ),
+  );
+  assert.ok(
+    objects(final.rows.stkSale2)
+      .filter((d) => personal.some((m) => m.ERI === d.MASTERI))
+      .every((d) => d.CUST === '305'),
+  );
+  assert.equal(final.preview.filter((m) => m.customerCode === '305').length, 2);
+  assert.equal(JSON.stringify(clients), before);
+});
+
+test('52399254 cannot export without a valid church customer; other tax IDs need no church', () => {
+  assert.throws(
+    () =>
+      prepare({
+        a: order('a', [item('T')], { invoiceInfo: { taxId: '52399254' } }),
+      }),
+    /客戶 resolver/,
+  );
+  assert.doesNotThrow(() =>
+    prepare({
+      a: order('a', [item('T')], { invoiceInfo: { taxId: '12345678' } }),
+    }),
+  );
+  const final = finalizePilotExport(
+    prepare({
+      a: order('a', [item('T')], {
+        invoiceInfo: { taxId: '52399254' },
+        bookFairCustomerCode: 'AA01',
+      }),
+    }),
+    { generateERI: generator() },
+  );
+  const master = objects(final.rows.stkSale1)[0];
+  assert.equal(master.CUST, 'AA01');
+  assert.equal(master.CMPID, '52399254');
 });
 
 test('Formal invoices always check POS cash sale and electronic invoice without changing source defaults', () => {

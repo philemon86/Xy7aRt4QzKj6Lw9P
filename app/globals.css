@@ -1927,8 +1927,9 @@ html[data-audience] .stage {
   background: var(--muted);
   border-radius: 8px;
 }
-.order-invoice-fields summary {
-  cursor: pointer;
+.order-invoice-fields h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 html.dark[data-audience='bookstore'] {

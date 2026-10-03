@@ -196,6 +196,7 @@ export default function PilotExportDialog({
                       <TableCell>
                         {row.customerCode} · {row.customer}
                         {row.carrier && <small>{row.carrier}</small>}
+                        {row.taxId && <small>統編：{row.taxId}</small>}
                       </TableCell>
                       <TableCell>
                         {row.taxCate} ·{' '}
