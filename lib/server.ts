@@ -1,5 +1,6 @@
 import { churchInventory, parseStock } from './church-stock.mjs';
 import { churchPasswordHash } from './church-auth.mjs';
+import { SESSION_TTL, shouldRenewSession, sessionCookie } from './session-policy.mjs';
 import { validatePromotion } from './promotions.mjs';
 import {
   mergePricingRules,
@@ -22,7 +23,7 @@ import { mergeChanges, validateOrder, stats } from './state.mjs';
 import { syncShopStep, syncStatus, syncPromotions } from './shop-sync.mjs';
 import { formatOrderNumber, orderDay, validateRoleChange } from './orders.mjs';
 import { previewPilot, confirmPilot } from './pilot-service';
-type Session = { role: string; tenant: string; token: string };
+type Session = { role: string; tenant: string; token: string; expires: number };
 const db = () => env.DB;
 const enc = new TextEncoder();
 export const error = (message: string, status = 400) =>
@@ -367,7 +368,7 @@ export async function handle(req: Request, parts: string[]) {
   guard(req);
   if (
     req.method === 'GET' &&
-    (['login', 'logout'].includes(route) ||
+    (['login', 'logout', 'session-renew'].includes(route) ||
       [
         'sync',
         'rename',
@@ -432,11 +433,11 @@ export async function handle(req: Request, parts: string[]) {
         await sha(token),
         tenant ? 'church' : 'admin',
         tenant,
-        Date.now() + 8 * 3600000,
+        Date.now() + SESSION_TTL,
       )
       .run();
     return json({ ok: true }, 200, {
-      'Set-Cookie': `pos_session_${tenant || 'admin'}=${token}; Path=/pos; HttpOnly; SameSite=Strict; Max-Age=28800${new URL(req.url).protocol === 'https:' ? '; Secure' : ''}`,
+      'Set-Cookie': sessionCookie(tenant, token, new URL(req.url).protocol === 'https:'),
     });
   }
   // Checkout reads fresh authorization and its event in one database round trip.
@@ -466,6 +467,18 @@ export async function handle(req: Request, parts: string[]) {
       throw error('找不到書展', 404);
     if (!preloadedEvent.organizer) preloadedEvent = await event(id, s);
   } else s = await session(req);
+  if (route === 'session-renew') {
+    const now = Date.now();
+    if (shouldRenewSession(s.expires, now)) {
+      const updated = await db().prepare('UPDATE sessions SET expires=? WHERE token=? AND expires>? RETURNING expires')
+        .bind(now + SESSION_TTL, s.token, now).first<{ expires: number }>();
+      if (!updated) throw error('登入已到期，請重新登入', 401);
+      s.expires = updated.expires;
+    }
+    return json({ ok: true, expires: s.expires }, 200, {
+      'Set-Cookie': sessionCookie(s.tenant, portalCookie(req).token, new URL(req.url).protocol === 'https:'),
+    });
+  }
   if (route === 'bootstrap') {
     const [events, catalog] = await Promise.all([listEvents(s), getCatalog(s)]);
     return json({ me: userInfo(s), events, catalog });

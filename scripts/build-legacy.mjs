@@ -118,7 +118,7 @@ html = html.replace(
 );
 html = html.replace(
   '      const performCheckout = (paymentMethod, isComposite = false) => {',
-  "      let checkoutBusy=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy || cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡/.test(paymentMethod)){alert('教會未開放信用卡');return;}",
+  "      let checkoutBusy=false,checkoutChecking=false;\n      const performCheckout = async (paymentMethod, isComposite = false) => {\n        if(checkoutBusy || checkoutChecking || cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;\n        checkoutChecking=true;try { await cloud.ensureSession(); } catch { return; } finally { checkoutChecking=false; }\n        if(checkoutBusy)return;\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡/.test(paymentMethod)){alert('教會未開放信用卡');return;}",
 );
 html = html.replace(
   /        POSAudio.success\(\);\s*(?=clients\[clientId\] = \{)/,
@@ -290,10 +290,16 @@ html = html.replace(
   window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==parent)return;if(e.data.type==='scan')addScannedProduct(e.data.code,true);});
   if(cloud.event.status!=='open'){document.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=true);document.querySelectorAll('#export-csv-btn,#export-pilot-btn,#backup-btn').forEach(el=>el.disabled=false);}
   cloud.onUpdate=()=>{clients=JSON.parse(localStorage.getItem('clients'));updateSummaryTable();readFavorites();renderFavorites();renderSearch();};
+  const checkoutFieldIds=['paid-amount','invoice-customer','invoice-donate-carrier','invoice-tax-id'];
+  const saveCheckoutFields=()=>localStorage.setItem('checkoutFields',JSON.stringify(Object.fromEntries(checkoutFieldIds.map(id=>[id,document.getElementById(id)?.value||'']))));
+  const savedCheckoutFields=JSON.parse(localStorage.getItem('checkoutFields')||'{}');
+  for(const id of checkoutFieldIds){const field=document.getElementById(id);if(!field)continue;if(Object.hasOwn(savedCheckoutFields,id))field.value=savedCheckoutFields[id];field.addEventListener('input',saveCheckoutFields);field.addEventListener('change',saveCheckoutFields);}
+  syncInvoiceCustomerVisibility();calculateChange();
   const resize=new ResizeObserver(()=>parent.postMessage({type:'height',height:document.body.scrollHeight+24},location.origin));resize.observe(document.body);
   parent.postMessage({type:'register-ready'},location.origin);
 `,
 );
+html=html.replace("        if (invoiceCustomerInput) invoiceCustomerInput.value = '';\n        localStorage.removeItem('bookFairCustomerCode');", "        if (invoiceCustomerInput) invoiceCustomerInput.value = '';\n        saveCheckoutFields();\n        localStorage.removeItem('bookFairCustomerCode');");
 for (const name of [
   'LINEPAY.jpg',
   '文化幣.jpg',

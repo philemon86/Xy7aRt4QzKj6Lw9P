@@ -100,6 +100,8 @@ async function requestAPI(
         },
   );
   const j: any = await r.json();
+  if (r.status === 401 && path !== 'login')
+    window.dispatchEvent(new Event('pos-session-expired'));
   if (!r.ok) throw new Error(j.error || '連線失敗');
   return j;
 }
@@ -137,6 +139,10 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false),
+    [resumePassword, setResumePassword] = useState(''),
+    [resumeError, setResumeError] = useState(''),
+    [resuming, setResuming] = useState(false);
   const [events, setEvents] = useState<any[]>([]),
     [catalog, setCatalog] = useState<any>(null),
     [section, setSection] = useState('events'),
@@ -188,6 +194,37 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     meRef = useRef(me);
   catalogRef.current = catalog;
   meRef.current = me;
+  useEffect(() => {
+    const expired = () => {
+      if (!meRef.current) return;
+      setSessionExpired(true);
+      setCamera(false);
+      setCloudStatus('登入已到期 · 輸入內容已保留');
+      setCloudError(true);
+    };
+    window.addEventListener('pos-session-expired', expired);
+    return () => window.removeEventListener('pos-session-expired', expired);
+  }, []);
+  useEffect(() => {
+    if (!me) return;
+    let checking = false;
+    const renew = async () => {
+      if (checking || document.hidden) return;
+      checking = true;
+      try {
+        await api('session-renew', {});
+        const cloud = (frame.current?.contentWindow as any)?.POSCloud;
+        if (cloud) cloud.sessionCheckedAt = Date.now();
+      } catch { /* 401 opens the re-login dialog; network errors retain the draft. */ }
+      finally { checking = false; }
+    };
+    const visible = () => { if (!document.hidden) void renew(); };
+    void renew();
+    const timer = setInterval(renew, 60000);
+    window.addEventListener('focus', renew);
+    document.addEventListener('visibilitychange', visible);
+    return () => { clearInterval(timer); window.removeEventListener('focus', renew); document.removeEventListener('visibilitychange', visible); };
+  }, [me]);
   useEffect(() => {
     const bootstrap = (eventId: string) =>
       loadRegisterBootstrap(
@@ -277,6 +314,8 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       )
         return;
       const m = e.data;
+      if (m.type === 'session-expired')
+        window.dispatchEvent(new Event('pos-session-expired'));
       if (m.type === 'height' && frame.current)
         frame.current.style.height =
           Math.max(460, Number(m.height) || 0) + 'px';
@@ -1349,6 +1388,37 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           onClose={() => setPilotEvent(null)}
         />
       )}
+      <Dialog open={sessionExpired} onOpenChange={() => {}}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>重新登入，繼續這筆結帳</DialogTitle>
+            <DialogDescription>登入已到期。購物車與已輸入的發票資料已保留，登入後可繼續操作，不必重打。</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={async (e) => {
+            e.preventDefault(); setResuming(true); setResumeError('');
+            try {
+              await api('login', { tenant, password: resumePassword });
+              setResumePassword('');
+              setSessionExpired(false); setCloudError(false); setCloudStatus('已連接雲端');
+              const cloud = (frame.current?.contentWindow as any)?.POSCloud;
+              if (cloud) {
+                try { await cloud.flush(); await cloud.refresh(); }
+                catch (e: any) { setRecoveryError(e.message); setError(e.message); }
+              } else if (activeRef.current) {
+                eventRecord.current = null;
+                await openEvent(activeRef.current, viewRef.current);
+                if (frame.current) frame.current.src = frame.current.src;
+              }
+            } catch (e: any) { setResumeError(e.message); }
+            finally { setResuming(false); }
+          }}>
+            <label htmlFor="resume-password">{tenant ? '教會入口密碼' : '書房管理密碼'}</label>
+            <Input id="resume-password" type="password" autoComplete="current-password" autoFocus required value={resumePassword} onChange={(e) => setResumePassword(e.target.value)} />
+            {resumeError && <p className="error" role="alert">{resumeError}</p>}
+            <Button type="submit" className="primary wide" disabled={resuming}>{resuming ? '正在恢復…' : '登入並繼續結帳'}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={!!inventoryChurch}
         onOpenChange={(v) => !v && setInventoryChurch('')}

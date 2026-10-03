@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { createRequire } from 'node:module';
 const Pilot = createRequire(import.meta.url)('../legacy/pilot-exporter.cjs');
 const html = fs.readFileSync('public/register.html', 'utf8');
-const start = html.indexOf('      let checkoutBusy=false;'),
+const start = html.indexOf('      let checkoutBusy=false'),
   end = html.indexOf("      btnF7.addEventListener('click'", start);
 const source =
   html.slice(start, end) + '\nglobalThis.checkout=performCheckout;';
@@ -57,6 +57,7 @@ function make({ amount = 899, quantity = 1, fail = false } = {}) {
     },
     cloud: {
       event: { status: 'open' },
+      ensureSession: async () => {},
       flush: async () => {
         if (fail) throw Error('offline');
         saved = JSON.parse(mem.clients);
@@ -72,6 +73,8 @@ function make({ amount = 899, quantity = 1, fail = false } = {}) {
     invoiceCustomerInput: input(),
     calculateChange: no,
     syncInvoiceCustomerVisibility: no,
+    saveCheckoutFields: no,
+    productInfoElement: {},
     alert: no,
     document: {
       createElement: (tag) => {
@@ -114,6 +117,25 @@ test('Checkout persists a full order and clears the draft before printing', asyn
   assert.equal(o.paymentRecords[0].amount, 899);
   assert.equal(x.context.cart.length, 0);
   assert.equal(x.prints, 1);
+});
+test('Expired authorization preserves the cart and creates no payment or order', async () => {
+  const x = make();
+  x.context.cloud.ensureSession = async () => { throw Error('登入已到期'); };
+  await x.checkout('現金');
+  assert.equal(x.context.cart.length, 1);
+  assert.equal(Object.keys(x.context.clients).length, 0);
+  assert.equal(Object.keys(x.saved).length, 0);
+  assert.equal(x.prints, 0);
+});
+test('Repeated payment clicks during authorization check create one order', async () => {
+  const x = make();
+  let release;
+  x.context.cloud.ensureSession = () => new Promise(resolve => { release = resolve; });
+  const first = x.checkout('現金');
+  await x.checkout('現金');
+  release();
+  await first;
+  assert.equal(Object.keys(x.saved).length, 1);
 });
 test('No carrier or tax ID is always a book-fair sale even with a selected church or donation', async () => {
   for (const invoiceInfo of [

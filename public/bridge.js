@@ -25,7 +25,10 @@ window.makeCloud = async function () {
           },
     );
     const j = await r.json();
-    if (!r.ok) throw Error(j.error || '雲端連線失敗');
+    if (r.status === 401) {
+      parent.postMessage({ type: 'session-expired' }, location.origin);
+    }
+    if (!r.ok) throw Object.assign(Error(j.error || '雲端連線失敗'), { status: r.status });
     return j;
   };
   const initial =
@@ -49,7 +52,7 @@ window.makeCloud = async function () {
   let clientSnapshot = {},
     cloud;
   const prefix = (k) =>
-    ['cart', 'priceOverrides', 'clientCounter', 'printEnabled'].includes(k)
+    ['cart', 'priceOverrides', 'clientCounter', 'printEnabled', 'checkoutFields'].includes(k)
       ? 'draft:' + device + ':' + k
       : 'shared:' + k;
   const readOnly = me.role === 'admin' && event.organizer === 'church';
@@ -116,8 +119,14 @@ window.makeCloud = async function () {
   }
   function schedule() {
     clearTimeout(timer);
+    preserveRecovery();
     status('正在儲存…');
     timer = setTimeout(() => flush().catch(() => {}), 350);
+  }
+  function preserveRecovery() {
+    const key = 'pos-recovery:' + eid + ':' + device;
+    if (JSON.stringify(desired) === JSON.stringify(base)) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, JSON.stringify({ base, desired, at: new Date().toISOString() }));
   }
   async function save() {
     busy = true;
@@ -154,7 +163,7 @@ window.makeCloud = async function () {
       failed = false;
       cloud?.onUpdate?.();
       status('已儲存至雲端');
-      window.localStorage.removeItem('pos-recovery:' + eid + ':' + device);
+      preserveRecovery();
       parent.postMessage(
         { type: 'saved', event: eid, state: structuredClone(desired) },
         location.origin,
@@ -210,6 +219,7 @@ window.makeCloud = async function () {
     event,
     catalog,
     me,
+    sessionCheckedAt: Date.now(),
     numbers: event.numbers || {},
     storage,
     flush,
@@ -225,6 +235,11 @@ window.makeCloud = async function () {
       const r = await api('events/' + eid + '/eri', { count });
       cloud.eri = r.start;
       cloud.eriEnd = r.end;
+    },
+    async ensureSession() {
+      if (Date.now() - (cloud.sessionCheckedAt || 0) < 60000) return;
+      await api('session-renew', {});
+      cloud.sessionCheckedAt = Date.now();
     },
     nextEri() {
       if (cloud.eri >= cloud.eriEnd) throw Error('ERI 配額不足');
