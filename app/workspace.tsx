@@ -1,6 +1,7 @@
 'use client';
 
 import { POS_BASE } from '@/lib/paths';
+import { setPOSFavicon } from '@/lib/branding';
 import { REGISTER_FILE } from '@/lib/release.mjs';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -184,6 +185,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       : 'bookstore';
   useEffect(() => {
     document.documentElement.dataset.audience = audience;
+    setPOSFavicon(audience);
   }, [audience]);
   const frame = useRef<HTMLIFrameElement>(null),
     viewRef = useRef(view),

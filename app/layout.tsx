@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { portalIcons } from '@/lib/branding';
 import './globals.css';
 
 const geistSans = Geist({
@@ -14,6 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: '腓利門 POS V2 · 書展工作台',
+  icons: portalIcons('bookstore'),
   robots: { index: false, follow: false },
 };
 
