@@ -60,9 +60,10 @@ test('Published decoder is self-contained and exports the reader and hint enums'
     'number',
   );
   assert.equal(typeof context.POSBarcodeDecoder.BarcodeFormat.EAN_13, 'number');
+  assert.equal(typeof context.POSBarcodeDecoder.createGlareReader, 'function');
 });
 test('Failed scanner loads retry automatically, permit another attempt and share one successful load', async () => {
-  const host = {};
+  const host = {POSBarcodeDecoder: {BrowserMultiFormatReader() {}}};
   let requests = 0,
     failures = true;
   const document = {
@@ -70,11 +71,11 @@ test('Failed scanner loads retry automatically, permit another attempt and share
     head: {
       append(script) {
         requests++;
-        assert.match(script.src, /^\/pos\/barcode-decoder\.js\?v=1/);
+        assert.match(script.src, /^\/pos\/barcode-decoder-v2\.js\?v=2/);
         queueMicrotask(() => {
           if (failures) script.onerror();
           else {
-            host.POSBarcodeDecoder = { BrowserMultiFormatReader() {} };
+            host.POSBarcodeDecoder = { BrowserMultiFormatReader() {}, createGlareReader() {} };
             script.onload();
           }
         });

@@ -11,6 +11,7 @@ import { ScanBarcode, Flashlight, CheckCircle2, SearchX } from 'lucide-react';
 import { createScanGate } from '@/lib/pos-core.mjs';
 import { loadBarcodeDecoder } from '@/lib/barcode-loader.mjs';
 import { captureScanFrame, decodeScanFrame, scanFrame } from '@/lib/camera-scan.mjs';
+import { configureScanTrack, exposureRange, exposureValue } from '@/lib/glare-scan.mjs';
 export default function Camera({
   onScan,
   onClose,
@@ -23,6 +24,9 @@ export default function Camera({
   const video = useRef<HTMLVideoElement>(null);
   const [message, setMessage] = useState('正在開啟相機…');
   const [torch, setTorch] = useState(false);
+  const [torchAvailable, setTorchAvailable] = useState(false);
+  const [exposure, setExposure] = useState(0);
+  const [exposureLimits, setExposureLimits] = useState<{min: number; max: number; step: number; value: number} | null>(null);
   const track = useRef<MediaStreamTrack | null>(null);
   const scan = useRef(onScan);
   const [flash, setFlash] = useState(false);
@@ -44,6 +48,8 @@ export default function Camera({
   useEffect(() => {
     setFailed(false);
     setTorch(false);
+    setTorchAvailable(false);
+    setExposureLimits(null);
     setMessage('正在開啟相機…');
     let stopped = false,
       stream: MediaStream | undefined;
@@ -60,14 +66,16 @@ export default function Camera({
         // must not prevent native scanning on devices that support it.
         let reader: any = null;
         let thoroughReader: any = null;
+        let glareReader: any = null;
         let fallbackError: any;
-        const fallback = loadBarcodeDecoder().then(({ BrowserMultiFormatReader, DecodeHintType, BarcodeFormat }: any) => {
+        const fallback = loadBarcodeDecoder().then(({ BrowserMultiFormatReader, DecodeHintType, BarcodeFormat, createGlareReader }: any) => {
           const hints = new Map();
           hints.set(DecodeHintType.TRY_HARDER, true);
           hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.ITF]);
           reader = new BrowserMultiFormatReader(hints);
           thoroughReader = reader;
           reader = new BrowserMultiFormatReader(new Map(hints).set(DecodeHintType.TRY_HARDER, false));
+          glareReader = createGlareReader?.(hints);
         }).catch((e: any) => { fallbackError = e; });
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -83,14 +91,15 @@ export default function Camera({
           return;
         }
         track.current = stream.getVideoTracks()[0];
-        const capabilities = track.current.getCapabilities?.() as any;
+        const activeTrack = track.current;
+        const capabilities = await configureScanTrack(activeTrack) as any;
+        if (stopped) return;
+        setTorchAvailable(Boolean(capabilities?.torch));
         setZoomRange(capabilities?.zoom || null);
         setZoom((track.current.getSettings() as any).zoom || 1);
-        try {
-          await track.current.applyConstraints({
-            advanced: [{ focusMode: 'continuous', exposureMode: 'continuous', whiteBalanceMode: 'continuous' } as any],
-          });
-        } catch {}
+        const limits = exposureRange(capabilities, activeTrack.getSettings());
+        setExposureLimits(limits);
+        setExposure(limits?.value || 0);
         const el = video.current!;
         el.srcObject = stream;
         await el.play();
@@ -134,7 +143,11 @@ export default function Camera({
               const current = pass++;
               captureScanFrame(canvas, el, el.videoWidth, el.videoHeight, current);
               const detailed = scanFrame(el.videoWidth, el.videoHeight, current).tryHarder;
-              code = await decodeScanFrame(canvas, null, detailed ? thoroughReader : reader);
+              code = await decodeScanFrame(canvas, null, reader);
+              if (!code && glareReader && (current % 2 === 0 || detailed))
+                code = await decodeScanFrame(canvas, null, glareReader);
+              if (!code && detailed && performance.now() - start < 35)
+                code = await decodeScanFrame(canvas, null, thoroughReader);
               if (detailed || performance.now() - start >= 35) break;
             }
             if (code) accept(code);
@@ -191,7 +204,22 @@ export default function Camera({
         <p className="camera-status" role="status">
           {message}
         </p>
-        <p className="camera-tip">條碼模糊時，先稍微拉遠，讓鏡頭對焦。</p>
+        <p className="camera-tip">反光時先關閉補光，將書本稍微傾斜，避開白色亮斑；模糊時稍微拉遠。</p>
+        {exposureLimits && (
+          <label className="camera-zoom">曝光 {exposure > 0 ? '+' : ''}{exposure.toFixed(1)}
+            <input aria-label="相機曝光" type="range" min={exposureLimits.min} max={exposureLimits.max} step={exposureLimits.step} value={exposure}
+              onChange={async e => {
+                const value = exposureValue(exposureLimits, Number(e.target.value));
+                const currentTrack = track.current;
+                if (value === null || !currentTrack) return;
+                try {
+                  await currentTrack.applyConstraints({advanced:[{exposureCompensation:value} as any]});
+                  if (track.current === currentTrack) setExposure(value);
+                } catch { setMessage('此相機無法調整曝光，請稍微傾斜書本避開反光'); }
+              }} />
+            <span>反光時調低</span>
+          </label>
+        )}
         {zoomRange && zoomRange.max > zoomRange.min && (
           <label className="camera-zoom">鏡頭放大 {zoom.toFixed(1)}×
             <input aria-label="鏡頭放大" type="range" min={zoomRange.min} max={Math.min(zoomRange.max, 3)} step={zoomRange.step || 0.1} value={zoom}
@@ -207,7 +235,7 @@ export default function Camera({
         {failed && (
           <Button onClick={() => setAttempt((n) => n + 1)}>重試啟動相機</Button>
         )}
-        <Button
+        {torchAvailable && <Button
           variant="outline"
           disabled={failed}
           onClick={async () => {
@@ -222,7 +250,7 @@ export default function Camera({
           }}
         >
           <Flashlight /> {torch ? '關閉補光' : '開啟補光'}
-        </Button>
+        </Button>}
       </DialogContent>
     </Dialog>
   );

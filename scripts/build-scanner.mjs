@@ -24,6 +24,7 @@ const bundle = (Array.isArray(result) ? result : [result])
 if (!bundle || bundle.imports.length || bundle.dynamicImports.length)
   throw Error('Scanner must be self-contained');
 fs.writeFileSync(path.join(root, 'public/barcode-decoder.js'), bundle.code);
+fs.writeFileSync(path.join(root, 'public/barcode-decoder-v2.js'), bundle.code);
 console.log(
   'Self-contained barcode decoder generated (' + bundle.code.length + ' bytes)',
 );
