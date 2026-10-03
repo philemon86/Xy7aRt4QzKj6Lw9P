@@ -15,7 +15,7 @@ const core =
     .replace(/^export /gm, '');
 fs.writeFileSync(
   path.join(root, 'public/pos-core.js'),
-  `window.POSCore=(()=>{${core}\nreturn {formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
+  `window.POSCore=(()=>{${core}\nreturn {searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
 );
 html = html
   .replaceAll('折扣 %', '售價比例 %')

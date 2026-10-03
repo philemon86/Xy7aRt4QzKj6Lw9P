@@ -137,17 +137,7 @@ function renderSearch() {
   const query = productCodeInput.value.trim().toLowerCase();
   searchResultsElement.replaceChildren();
   if (!query) return;
-  const terms = query.split(/\s+/).filter(Boolean);
-  const matches = [...new Set(Object.values(products))].filter((p) =>
-    terms.every((k) =>
-      [p.name, p.csvName, p.webName, p.code, p.barcode, p.webBarcode].some(
-        (v) =>
-          String(v || '')
-            .toLowerCase()
-            .includes(k),
-      ),
-    ),
-  );
+  const matches = POSCore.searchProducts(Object.values(products), query);
   const label = document.createElement('p');
   label.className = 'search-count';
   label.textContent = matches.length
