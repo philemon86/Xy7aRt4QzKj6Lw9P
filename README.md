@@ -1,5 +1,17 @@
 # 腓利門 POS V2 staging
 
+## PILOT 正式匯出 V35（2026-10-08）
+
+正式匯出先沿用原核心的商品分稅、成交價格、整元與尾差計算，再由 `pilot-bookfair.mjs` 處理一般書展彙整付款。空白發票資訊及捐贈 2995 的同一書展群組，所有非現金付款加減項連到免稅主單；應稅 PLUSSUB 為 0，免稅 TOTAL 可為負值。每筆來源付款保留，不互相沖掉，按 LINE PAY、文化幣、信用卡分組，各組按來源交易時間排序，SERIAL 從 0 連續。載具、統編、其他愛心碼與已開立發票維持獨立交易及原稅別分配。
+
+只有應稅商品且有非現金付款時，另建立 QTY／AMT／TAX／COST 為 0 的免稅加減項主單，經同一正式單號／發票／ERI 映射，不捏造商品。純加減項亦使用此主單。這兩種無商品明細的分支已通過程式關聯與金額測試，但提供的成功樣本沒有這種原生單據，仍需 PILOT 實際匯入驗證。
+
+正式欄位固定 INVCATE=2、EINVFLAG=1、PAYCASH=1、EDITOR=POS，明細 INVNO 留白，其 INVQTY／INVPRC／INVAMT 不變。統編發票以來源 invoiceInfo.invoiceName／title 或本批確認的 invoiceNames[transactionId] 為抬頭；缺少時預覽顯示待確認並禁止確認下载。52399254 沿用既有教會客戶抬頭。若來源已有 invoiceInfo.invoiceNo（單稅）或 invoiceNumbers（稅別 0／1 對應），保留真實發票對應；缺漏、衝突不自動換號。
+
+CSV 在伺服器以嚴格 CP950 表生成實際位元組，無 BOM、CRLF、全欄引號，無法表示的字元回報檔名、列、欄位及原值。瀏覽器只下載已確認快照的位元組。新預覽分配全新三表 ERI，重複下載同一預覽沿用原快照；舊格式預覽要求重生。成功基準的 317 個 ERI 與 50 組 CODE／INVNO 保存為已匯入識別，避免再用；這不是完整 PILOT 占號表。原 POS 訂單、單號及交易識別不改寫。
+
+`tests/pilot-finalize.test.mjs`、`pilot-csv.test.mjs`、`pilot-service.test.mjs` 覆蓋拆稅、付款順序、負值、空白與零、ERIs、發票關係、嚴格編碼、預覽确认及資料變更檢查。提供的三個成功基準 CSV 經新編碼器輸出，逐位元組一致；原始參考文件留在忽略的 work/，不發布客戶內容。程式驗證與 PILOT 實際匯入成功分開紀錄。
+
 獨立測試環境，正式站 `https://pos.pbooks.com.tw/` 及 GitHub Pages 的 main 分支不變。
 
 ## 正式版備份

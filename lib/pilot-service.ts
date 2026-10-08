@@ -1,11 +1,13 @@
 import { env } from 'cloudflare:workers';
-import eriHistory from '../data/pilot-eri-history.json';
+import eriHistory from '../data/pilot-eri-history.json' with { type: 'json' };
+import knownImports from '../data/pilot-known-imports.json' with { type: 'json' };
 import {
   preparePilotSources,
   finalizePilotExport,
   collectEris,
   exportContext,
 } from './pilot-finalize.mjs';
+import { encodePilotFiles, pilotFilesBase64 } from './pilot-csv.mjs';
 const db = () => env.DB;
 export const sourceOrders = (state: any) =>
   Object.fromEntries(
@@ -27,7 +29,7 @@ const digest = async (value: any) =>
 const fail = (message: string) =>
   Object.assign(Error(message), { status: 409 });
 async function historicalEris() {
-  const used = new Set<string>(eriHistory.eris);
+  const used = new Set<string>([...eriHistory.eris, ...knownImports.eris]);
   for (const table of ['events', 'audit'])
     for (let offset = 0; ; offset += 8) {
       const rows = await db()
@@ -65,6 +67,7 @@ export async function previewPilot(
     ),
     unitMap: catalog.units,
     context,
+    invoiceNames: input.invoiceNames || {},
   });
   const used = await historicalEris();
   const total = prepared.batches.reduce(
@@ -98,6 +101,7 @@ export async function previewPilot(
   });
   const id = crypto.randomUUID(),
     created = new Date().toISOString();
+  encodePilotFiles(snapshot.rows); // Fail before saving a preview with invalid text.
   const ledger = snapshot.newEris.map((eri: string) =>
     db()
       .prepare('INSERT INTO pilot_eris(eri,export_id) VALUES(?,?)')
@@ -137,6 +141,8 @@ export async function previewPilot(
     id,
     context,
     preview: snapshot.preview,
+    voucherPreview: snapshot.voucherPreview,
+    invoiceTitles: snapshot.invoiceTitles,
     counts: {
       masters: snapshot.rows.stkSale1.length - 1,
       details: snapshot.rows.stkSale2.length - 1,
@@ -163,6 +169,13 @@ export async function confirmPilot(event: any, id: string) {
   if (parts.results.length !== JSON.parse(record.snapshot).parts)
     throw Error('匯出快照不完整，請重新預覽');
   const snapshot = JSON.parse(parts.results.map((row) => row.data).join(''));
+  if (snapshot.formatVersion !== 2)
+    throw fail('匯出規則已更新，請重新產生預覽');
+  if (
+    snapshot.invoiceTitles?.some((title: { pending: boolean }) => title.pending)
+  )
+    throw fail('統編發票抬頭尚未確認，請補上抬頭後重新預覽');
+  const files = pilotFilesBase64(snapshot.rows);
   await db()
     .prepare(
       'UPDATE pilot_exports SET confirmed=COALESCE(confirmed,?) WHERE id=?',
@@ -174,5 +187,7 @@ export async function confirmPilot(event: any, id: string) {
     context: snapshot.context,
     rows: snapshot.rows,
     mappings: snapshot.mappings,
+    files,
+    encoding: 'CP950',
   };
 }

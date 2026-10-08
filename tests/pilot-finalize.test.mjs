@@ -139,7 +139,7 @@ test('Every export gets new ERIs and all detail/voucher links use the new master
   for (const d of objects(second.rows.stkSale2)) {
     assert.ok(masters.has(d.MASTERI));
     assert.equal(d.CODE, masters.get(d.MASTERI).CODE);
-    assert.equal(d.INVNO, masters.get(d.MASTERI).INVNO);
+    assert.equal(d.INVNO, '');
   }
   for (const v of objects(second.rows.vchrplus)) {
     assert.ok(masters.has(v.SRCERI));
@@ -282,14 +282,19 @@ test('Blank invoices and default donations consolidate exactly like legacy while
   );
   assert.match(masters[0].REMARK, /捐贈：2995/);
   assert.deepEqual(final.preview[0].sourceNumbers, ['PF-A', 'PF-B']);
-  assert.deepEqual(final.preview[1].sourceNumbers, ['PF-A', 'PF-C', 'PF-D']);
+  assert.deepEqual(final.preview[1].sourceNumbers, [
+    'PF-A',
+    'PF-B',
+    'PF-C',
+    'PF-D',
+  ]);
   const mapping = new Map(final.mappings.map((m) => [m.transactionId, m]));
   assert.equal(mapping.size, 10);
   for (const id of ['a', 'b', 'c', 'd'])
     assert.equal(mapping.get(id).baseCode, '1152778');
   assert.deepEqual(
     mapping.get('b').masters.map((m) => m.code),
-    ['1152778'],
+    ['1152778', '11527781'],
   );
   assert.deepEqual(
     mapping.get('c').masters.map((m) => m.code),
@@ -310,8 +315,12 @@ test('Blank invoices and default donations consolidate exactly like legacy while
     'PAYCASH',
     'EINVFLAG',
     'INVCATE',
+    'EDITOR',
+    'PLUSSUB',
+    'TOTAL',
+    'INVNAME',
   ]);
-  for (const key of Object.keys(legacy.rows)) {
+  for (const key of ['stkSale1', 'stkSale2']) {
     const canonical = (rows) =>
       objects(rows)
         .map((row) =>
@@ -332,6 +341,20 @@ test('Blank invoices and default donations consolidate exactly like legacy while
       key + ' retains the full legacy business output',
     );
   }
+  const generalMasters = masters.slice(0, 2);
+  assert.equal(generalMasters[0].PLUSSUB, 0);
+  assert.equal(generalMasters[1].PLUSSUB, -102);
+  const oldPayments = objects(legacy.rows.vchrplus),
+    newPayments = objects(final.rows.vchrplus);
+  for (const code of ['5', '51', '61'])
+    assert.equal(
+      newPayments
+        .filter((v) => v.CODE === code)
+        .reduce((sum, v) => sum + v.AMT, 0),
+      oldPayments
+        .filter((v) => v.CODE === code)
+        .reduce((sum, v) => sum + v.AMT, 0),
+    );
   assert.equal(JSON.stringify(clients), before);
   const again = finalizePilotExport(prepare(clients), {
     generateERI: generator(1000),
@@ -413,8 +436,7 @@ test('Personal tax invoices retain CMPID and separate mixed-tax slices with cust
   );
   assert.ok(
     personal.every(
-      (m) =>
-        m.CUST === '305' && m.BILCUST === '305' && m.INVNAME === 'POS 現銷',
+      (m) => m.CUST === '305' && m.BILCUST === '305' && m.INVNAME === '待確認',
     ),
   );
   assert.ok(
@@ -424,6 +446,7 @@ test('Personal tax invoices retain CMPID and separate mixed-tax slices with cust
   );
   assert.equal(final.preview.filter((m) => m.customerCode === '305').length, 2);
   assert.equal(JSON.stringify(clients), before);
+  assert.equal(final.invoiceTitles[0].pending, true);
 });
 
 test('52399254 cannot export without a valid church customer; other tax IDs need no church', () => {
@@ -483,4 +506,281 @@ test('Formal invoices always check POS cash sale and electronic invoice without 
   assert.ok(history.eris.some((eri) => eri.startsWith('0H50010LU0')));
   final.rows.stkSale1[1][Pilot.STKSALE1_HEADER.indexOf('EINVFLAG')] = 0;
   assert.throws(() => validateFinalExport(final, source), /勾選/);
+});
+
+test('Book-fair adjustments all link to exempt, can exceed its sales and keep taxable math', () => {
+  const clients = {
+    a: order('a', [item('T', 500), item('E', 100)], {
+      paymentRecords: [
+        { method: 'LINE PAY', amount: 300 },
+        { method: '現金', amount: 300 },
+      ],
+    }),
+  };
+  const before = JSON.stringify(clients);
+  const final = finalizePilotExport(prepare(clients), {
+    generateERI: generator(),
+  });
+  const [taxable, exempt] = objects(final.rows.stkSale1);
+  assert.deepEqual(
+    [taxable.AMT, taxable.TAX, taxable.PLUSSUB, taxable.TOTAL],
+    [476, 24, 0, 500],
+  );
+  assert.deepEqual(
+    [exempt.AMT, exempt.TAX, exempt.PLUSSUB, exempt.TOTAL],
+    [100, 0, -300, -200],
+  );
+  assert.equal(objects(final.rows.vchrplus)[0].SRCERI, exempt.ERI);
+  assert.equal(final.preview[1].total, -200);
+  assert.equal(final.voucherPreview[0].code, exempt.CODE);
+  assert.equal(JSON.stringify(clients), before);
+});
+
+test('Book-fair payment methods form separate chronological blocks without netting source records', () => {
+  const clients = {
+    late: order('late', [item('T', 100)], {
+      createdAt: '2026-09-08T03:00:00Z',
+    }),
+    card: order('card', [item('E', 40)], {
+      createdAt: '2026-09-08T01:00:00Z',
+      paymentRecords: [{ method: '信用卡', amount: 40 }],
+    }),
+    culture: order('culture', [item('E', 50)], {
+      createdAt: '2026-09-08T00:30:00Z',
+      paymentRecords: [{ method: '文化幣', amount: 50 }],
+    }),
+    early: order('early', [item('E', 30)], {
+      createdAt: '2026-09-08T10:00:00+08:00',
+    }),
+    refund: order('refund', [item('E', -20)], {
+      createdAt: '2026-09-08T01:00:00Z',
+    }),
+  };
+  const final = finalizePilotExport(prepare(clients), {
+    generateERI: generator(),
+  });
+  const payments = objects(final.rows.vchrplus);
+  assert.deepEqual(
+    final.voucherPreview.map((p) => p.transactionId),
+    ['refund', 'early', 'late', 'culture', 'card'],
+  );
+  assert.deepEqual(
+    payments.map((p) => [p.SERIAL, p.CODE, p.SUBJNO, p.AMT]),
+    [
+      [0, '51', '1144.358', 20],
+      [1, '51', '1144.358', -30],
+      [2, '51', '1144.358', -100],
+      [3, '61', '1144.61', -50],
+      [4, '5', '1144.355', -40],
+    ],
+  );
+  const exempt = objects(final.rows.stkSale1).find((m) => m.TAXCATE === 1);
+  assert.ok(payments.every((p) => p.SRCERI === exempt.ERI));
+});
+
+test('Taxable-only payments use a unique exempt adjustment master, without fabricated goods', () => {
+  const final = finalizePilotExport(
+    prepare({
+      a: order('a', [item('T')]),
+      separate: order('z', [item('E')], {
+        invoiceInfo: { carrier: '/C-43+N2' },
+      }),
+    }),
+    { generateERI: generator() },
+  );
+  const masters = objects(final.rows.stkSale1);
+  assert.deepEqual(
+    masters.map((m) => [m.CODE, m.INVNO]),
+    [
+      ['1152778', 'FR13223935'],
+      ['11527781', 'FR13223936'],
+      ['1152779', 'FR13223937'],
+    ],
+  );
+  assert.deepEqual(
+    [
+      masters[1].TAXCATE,
+      masters[1].AMT,
+      masters[1].QTY,
+      masters[1].COST,
+      masters[1].TOTAL,
+    ],
+    [1, 0, 0, 0, -100],
+  );
+  assert.equal(
+    objects(final.rows.stkSale2).filter((d) => d.MASTERI === masters[1].ERI)
+      .length,
+    0,
+  );
+  assert.equal(final.preview[1].adjustmentOnly, true);
+  assert.match(masters[2].REMARK, /^載具：\/C-43\+N2$/);
+  assert.equal(final.mappings[0].masters.length, 2);
+  const cash = finalizePilotExport(
+    prepare({
+      a: order('a', [item('T')], {
+        paymentRecords: [{ method: '現金', amount: 100 }],
+      }),
+    }),
+    { generateERI: generator() },
+  );
+  assert.equal(cash.rows.stkSale1.length, 2);
+});
+
+test('Adjustment-only and offsetting payments retain every signed nonzero record', () => {
+  for (const [amount, records, expected] of [
+    [300, [{ method: '文化幣', amount: 300 }], -300],
+    [-300, [{ method: '信用卡', amount: -300 }], 300],
+    [
+      0,
+      [
+        { method: 'LINE PAY', amount: 50 },
+        { method: 'LINE PAY', amount: -50 },
+      ],
+      0,
+    ],
+  ]) {
+    const final = finalizePilotExport(
+      prepare({ a: order('a', [], { amount, paymentRecords: records }) }),
+      { generateERI: generator() },
+    );
+    const [master] = objects(final.rows.stkSale1);
+    assert.deepEqual(
+      [
+        master.TAXCATE,
+        master.AMT,
+        master.TAX,
+        master.QTY,
+        master.PLUSSUB,
+        master.TOTAL,
+      ],
+      [1, 0, 0, 0, expected, expected],
+    );
+    assert.equal(final.rows.stkSale2.length, 1);
+    assert.equal(final.rows.vchrplus.length - 1, records.length);
+    assert.equal(master.CODE, context.firstCode);
+  }
+  assert.throws(
+    () =>
+      prepare({
+        a: order('a', [item('E')], {
+          paymentRecords: [{ method: 'LINE PAY', amount: '' }],
+        }),
+      }),
+    /未填寫/,
+  );
+  assert.throws(
+    () =>
+      prepare({
+        a: order('a', [item('E')], {
+          paymentRecords: [{ method: 'LINE PAY', amount: 99 }],
+        }),
+      }),
+    /不一致/,
+  );
+  const zero = finalizePilotExport(
+    prepare({
+      a: order('a', [item('E', 0)], {
+        paymentRecords: [{ method: 'LINE PAY', amount: 0 }],
+      }),
+    }),
+    { generateERI: generator() },
+  );
+  assert.equal(zero.rows.vchrplus.length, 1);
+  assert.equal(objects(zero.rows.stkSale2)[0].INVQTY, 1);
+});
+
+test('Independent carriers, donations and tax invoices keep their original capped tax allocation', () => {
+  const clients = {
+    a: order('a', [item('T'), item('E')], {
+      invoiceInfo: { carrier: '/C-43+N2' },
+    }),
+    b: order('b', [item('T'), item('E')], {
+      invoiceInfo: { donationCode: '12345' },
+    }),
+    c: order('c', [item('T'), item('E')], {
+      invoiceInfo: { taxId: '23101590', invoiceName: '實際買受人' },
+    }),
+  };
+  const prepared = prepare(clients);
+  const final = finalizePilotExport(prepared, { generateERI: generator() });
+  const masters = objects(final.rows.stkSale1);
+  assert.equal(masters.length, 6);
+  assert.ok(masters.every((m) => m.PLUSSUB === -100 && m.TOTAL === 0));
+  assert.equal(final.invoiceTitles[0].pending, false);
+  assert.equal(masters[4].CUST, '305');
+  assert.equal(masters[4].CMPID, '23101590');
+  assert.equal(masters[4].INVNAME, '實際買受人');
+  assert.equal(masters[4].REMARK, '');
+  assert.match(masters[2].REMARK, /捐贈：12345/);
+  const supplied = preparePilotSources({
+    clients: { c: { ...clients.c, invoiceInfo: { taxId: '23101590' } } },
+    products,
+    customerMap,
+    unitMap: { 1: '本' },
+    context,
+    invoiceNames: { c: '確認後的抬頭' },
+  });
+  assert.equal(
+    finalizePilotExport(supplied, { generateERI: generator() }).preview[0]
+      .customer,
+    '確認後的抬頭',
+  );
+});
+
+test('Known imported reference numbers and invoice numbers produce conflicts rather than automatic renumbering', () => {
+  const reference = JSON.parse(
+    fs.readFileSync('data/pilot-known-imports.json', 'utf8'),
+  );
+  assert.equal(reference.eris.length, 317);
+  assert.equal(new Set(reference.eris).size, 317);
+  for (const ctx of [
+    { ...context, firstCode: reference.codes[0] },
+    { ...context, firstInvoice: reference.invoices[0] },
+  ])
+    assert.throws(
+      () =>
+        finalizePilotExport(prepare({ a: order('a', [item('E')]) }, ctx), {
+          generateERI: generator(),
+        }),
+      /已成功匯入 PILOT/,
+    );
+});
+
+test('Already issued invoices preserve their source identities and reject missing mixed-tax mappings or duplicates', () => {
+  const sources = {
+    a: order('a', [item('E')], { invoiceInfo: { invoiceNo: 'AA12345678' } }),
+    b: order('b', [item('E')], { invoiceInfo: { invoiceNo: 'AA12345679' } }),
+  };
+  const final = finalizePilotExport(prepare(sources), {
+    generateERI: generator(),
+  });
+  assert.deepEqual(
+    objects(final.rows.stkSale1).map((m) => m.INVNO),
+    ['AA12345678', 'AA12345679'],
+  );
+  assert.notEqual(final.mappings[0].baseCode, final.mappings[1].baseCode);
+  const mixed = {
+    a: order('a', [item('T'), item('E')], {
+      invoiceInfo: { invoiceNo: 'AA12345678' },
+    }),
+  };
+  assert.throws(
+    () => finalizePilotExport(prepare(mixed), { generateERI: generator() }),
+    /原始發票對應/,
+  );
+  mixed.a.invoiceInfo = {
+    invoiceNumbers: { 0: 'AA12345678', 1: 'AA12345679' },
+  };
+  assert.deepEqual(
+    objects(
+      finalizePilotExport(prepare(mixed), { generateERI: generator() }).rows
+        .stkSale1,
+    ).map((m) => m.INVNO),
+    ['AA12345678', 'AA12345679'],
+  );
+  sources.b.invoiceInfo.invoiceNo = sources.a.invoiceInfo.invoiceNo;
+  assert.throws(
+    () => finalizePilotExport(prepare(sources), { generateERI: generator() }),
+    /重複/,
+  );
 });
