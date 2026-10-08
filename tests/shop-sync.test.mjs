@@ -116,3 +116,39 @@ test('Concurrent worker returns busy without fetching; completed fresh daily run
   );
   assert.ok(fresh.released);
 });
+
+test('Explicit refresh restarts a finished daily job and preserves resumable failure handling', async () => {
+  const oldFinish = new Date().toISOString();
+  const d = database({
+    finished: oldFinish,
+    cursor: 99,
+    matched: 99,
+    failed: 0,
+    urls: ['https://www.pbooks.com.tw/products/old'],
+    promotionsAttempted: true,
+    collectionPricesAttempted: true,
+  });
+  const requests = [];
+  const result = await syncShopStep(
+    d.db,
+    { products: [] },
+    { daily: true, restart: true },
+    async (url) => {
+      requests.push(url);
+      if (url.endsWith('/sitemap.xml'))
+        return new Response(
+          '<loc>https://www.pbooks.com.tw/products/new</loc>',
+        );
+      return new Response('unavailable', { status: 503 });
+    },
+  );
+  assert.equal(result.skipped, undefined);
+  assert.equal(result.cursor, 1);
+  assert.equal(result.matched, 0);
+  assert.equal(result.failed, 1);
+  assert.ok(result.finished);
+  assert.deepEqual(d.saved.urls, ['https://www.pbooks.com.tw/products/new']);
+  assert.ok(requests.includes('https://www.pbooks.com.tw/sitemap.xml'));
+  assert.ok(requests.includes('https://www.pbooks.com.tw/products/new'));
+  assert.ok(d.released);
+});

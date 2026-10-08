@@ -23,13 +23,6 @@ const filenames = {
   stkSale2: 'STKSALE2.csv',
   vchrplus: 'VCHRPLUS_SALE1.csv',
 };
-type InvoiceTitle = {
-  transactionId: string;
-  sourceNumber: string;
-  taxId: string;
-  title: string;
-  pending: boolean;
-};
 type PreviewRow = {
   sourceNumbers: string[];
   sourceIds: string[];
@@ -61,7 +54,6 @@ type ExportPreview = {
   counts: { masters: number; details: number; vouchers: number };
   preview: PreviewRow[];
   voucherPreview: VoucherRow[];
-  invoiceTitles: InvoiceTitle[];
 };
 type ExportResult = { files: Record<string, string> };
 function download(key: string, encoded: string) {
@@ -91,9 +83,6 @@ export default function PilotExportDialog({
     [result, setResult] = useState<ExportResult | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
-  const [invoiceNames, setInvoiceNames] = useState<Record<string, string>>({}),
-    [titleRequests, setTitleRequests] = useState<InvoiceTitle[]>([]),
-    [namesDirty, setNamesDirty] = useState(false);
   const invalidate = () => {
     setPreview(null);
     setResult(null);
@@ -107,7 +96,7 @@ export default function PilotExportDialog({
         </DialogDescription>
         <p className="muted">
           未填發票資料與捐贈碼 2995 合併匯出；載具、統編及其他愛心碼各自成單。
-          書展付款加減項集中於免稅單，依 LINE
+          統編只需填號碼，抬頭不必填。 書展付款加減項集中於免稅單，依 LINE
           PAY、文化幣、信用卡分組，各組按交易時間排序。
         </p>
         {error && (
@@ -158,33 +147,6 @@ export default function PilotExportDialog({
             />
           </label>
         </div>
-        {titleRequests.length > 0 && (
-          <div className="pilot-fields">
-            {titleRequests.map((title) => (
-              <label
-                key={title.transactionId}
-                htmlFor={'pilot-title-' + title.transactionId}
-              >
-                {title.sourceNumber} · 統編 {title.taxId} · 發票抬頭
-                {title.pending ? '（待確認）' : ''}
-                <Input
-                  id={'pilot-title-' + title.transactionId}
-                  value={invoiceNames[title.transactionId] ?? title.title}
-                  placeholder="請輸入實際發票抬頭"
-                  disabled={busy}
-                  onChange={(e) => {
-                    setInvoiceNames((names) => ({
-                      ...names,
-                      [title.transactionId]: e.target.value,
-                    }));
-                    setNamesDirty(true);
-                    setResult(null);
-                  }}
-                />
-              </label>
-            ))}
-          </div>
-        )}
         <div className="pilot-flags" aria-label="正式匯出設定">
           <label htmlFor="pilot-cash-sale">
             <Checkbox id="pilot-cash-sale" checked disabled /> POS 現銷
@@ -208,12 +170,9 @@ export default function PilotExportDialog({
                   date,
                   firstCode,
                   firstInvoice,
-                  invoiceNames,
                 },
               )) as ExportPreview;
               setPreview(generated);
-              setTitleRequests(generated.invoiceTitles || []);
-              setNamesDirty(false);
             } catch (e) {
               setError(e instanceof Error ? e.message : String(e));
             } finally {
@@ -338,20 +297,10 @@ export default function PilotExportDialog({
                 </Table>
               </details>
             )}
-            {(namesDirty ||
-              preview.invoiceTitles?.some((title) => title.pending)) && (
-              <p className="error">
-                請確認統編發票抬頭，再按「重新產生預覽」。
-              </p>
-            )}
             {!result ? (
               <Button
                 className="primary"
-                disabled={
-                  busy ||
-                  namesDirty ||
-                  preview.invoiceTitles?.some((title) => title.pending)
-                }
+                disabled={busy}
                 onClick={async () => {
                   setBusy(true);
                   setError('');

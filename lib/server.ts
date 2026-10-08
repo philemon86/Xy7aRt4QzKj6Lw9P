@@ -1,6 +1,10 @@
 import { churchInventory, parseStock } from './church-stock.mjs';
 import { churchPasswordHash } from './church-auth.mjs';
-import { SESSION_TTL, shouldRenewSession, sessionCookie } from './session-policy.mjs';
+import {
+  SESSION_TTL,
+  shouldRenewSession,
+  sessionCookie,
+} from './session-policy.mjs';
 import { validatePromotion } from './promotions.mjs';
 import {
   mergePricingRules,
@@ -361,8 +365,16 @@ export async function handle(req: Request, parts: string[]) {
       });
     }
     if (req.method !== 'POST') throw error('請使用 POST', 405);
+    const options = req.headers
+      .get('Content-Type')
+      ?.includes('application/json')
+      ? ((await req.json()) as { restart?: boolean })
+      : {};
     return json(
-      await syncShopStep(db(), await catalogSettings(), { daily: true }),
+      await syncShopStep(db(), await catalogSettings(), {
+        daily: true,
+        restart: options?.restart === true,
+      }),
     );
   }
   guard(req);
@@ -437,7 +449,11 @@ export async function handle(req: Request, parts: string[]) {
       )
       .run();
     return json({ ok: true }, 200, {
-      'Set-Cookie': sessionCookie(tenant, token, new URL(req.url).protocol === 'https:'),
+      'Set-Cookie': sessionCookie(
+        tenant,
+        token,
+        new URL(req.url).protocol === 'https:',
+      ),
     });
   }
   // Checkout reads fresh authorization and its event in one database round trip.
@@ -470,13 +486,21 @@ export async function handle(req: Request, parts: string[]) {
   if (route === 'session-renew') {
     const now = Date.now();
     if (shouldRenewSession(s.expires, now)) {
-      const updated = await db().prepare('UPDATE sessions SET expires=? WHERE token=? AND expires>? RETURNING expires')
-        .bind(now + SESSION_TTL, s.token, now).first<{ expires: number }>();
+      const updated = await db()
+        .prepare(
+          'UPDATE sessions SET expires=? WHERE token=? AND expires>? RETURNING expires',
+        )
+        .bind(now + SESSION_TTL, s.token, now)
+        .first<{ expires: number }>();
       if (!updated) throw error('登入已到期，請重新登入', 401);
       s.expires = updated.expires;
     }
     return json({ ok: true, expires: s.expires }, 200, {
-      'Set-Cookie': sessionCookie(s.tenant, portalCookie(req).token, new URL(req.url).protocol === 'https:'),
+      'Set-Cookie': sessionCookie(
+        s.tenant,
+        portalCookie(req).token,
+        new URL(req.url).protocol === 'https:',
+      ),
     });
   }
   if (route === 'bootstrap') {

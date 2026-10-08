@@ -436,7 +436,8 @@ test('Personal tax invoices retain CMPID and separate mixed-tax slices with cust
   );
   assert.ok(
     personal.every(
-      (m) => m.CUST === '305' && m.BILCUST === '305' && m.INVNAME === '待確認',
+      (m) =>
+        m.CUST === '305' && m.BILCUST === '305' && m.INVNAME === 'POS 現銷',
     ),
   );
   assert.ok(
@@ -446,7 +447,7 @@ test('Personal tax invoices retain CMPID and separate mixed-tax slices with cust
   );
   assert.equal(final.preview.filter((m) => m.customerCode === '305').length, 2);
   assert.equal(JSON.stringify(clients), before);
-  assert.equal(final.invoiceTitles[0].pending, true);
+  assert.equal(final.invoiceTitles[0].pending, false);
 });
 
 test('52399254 cannot export without a valid church customer; other tax IDs need no church', () => {

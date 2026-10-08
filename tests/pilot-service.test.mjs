@@ -120,15 +120,48 @@ test('Formal preview/confirm saves a matched CP950 snapshot; repeat download is 
   await assert.rejects(() => confirmPilot(source, first.id), /交易內容已變更/);
 });
 
-test('Missing invoice titles cannot be confirmed; explicit export titles do not overwrite orders', async () => {
+test('Tax ID alone can be confirmed; optional export titles do not overwrite orders', async () => {
   const source = event('title-test', {
     ...order,
     invoiceInfo: { taxId: '23101590' },
   });
   const before = source.state;
   const preview = await previewPilot(source, catalog, context, {});
-  assert.equal(preview.invoiceTitles[0].pending, true);
-  await assert.rejects(() => confirmPilot(source, preview.id), /抬頭尚未確認/);
+  assert.equal(preview.invoiceTitles[0].pending, false);
+  const noTitle = await confirmPilot(source, preview.id);
+  const h = noTitle.rows.stkSale1[0];
+  assert.equal(noTitle.rows.stkSale1[1][h.indexOf('INVNAME')], '個人');
+  assert.equal(noTitle.rows.stkSale1[1][h.indexOf('CMPID')], '23101590');
+  assert.equal(noTitle.rows.stkSale1[1][h.indexOf('CUST')], '305');
+  assert.match(
+    new TextDecoder('big5').decode(
+      Buffer.from(noTitle.files.stkSale1, 'base64'),
+    ),
+    /23101590/,
+  );
+  // An otherwise valid V35 preview remains downloadable despite its obsolete title flag.
+  const parts = sqlite
+    .prepare(
+      'SELECT data FROM pilot_export_parts WHERE export_id=? ORDER BY part',
+    )
+    .all(preview.id);
+  const oldSnapshot = JSON.parse(parts.map((p) => p.data).join(''));
+  oldSnapshot.invoiceTitles[0].pending = true;
+  sqlite
+    .prepare('DELETE FROM pilot_export_parts WHERE export_id=?')
+    .run(preview.id);
+  sqlite
+    .prepare(
+      'INSERT INTO pilot_export_parts(export_id,part,data) VALUES(?,?,?)',
+    )
+    .run(preview.id, 0, JSON.stringify(oldSnapshot));
+  sqlite
+    .prepare('UPDATE pilot_exports SET snapshot=? WHERE id=?')
+    .run(JSON.stringify({ parts: 1 }), preview.id);
+  assert.deepEqual(
+    (await confirmPilot(source, preview.id)).files,
+    noTitle.files,
+  );
   const updated = await previewPilot(
     source,
     catalog,

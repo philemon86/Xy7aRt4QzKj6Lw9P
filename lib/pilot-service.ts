@@ -171,10 +171,6 @@ export async function confirmPilot(event: any, id: string) {
   const snapshot = JSON.parse(parts.results.map((row) => row.data).join(''));
   if (snapshot.formatVersion !== 2)
     throw fail('匯出規則已更新，請重新產生預覽');
-  if (
-    snapshot.invoiceTitles?.some((title: { pending: boolean }) => title.pending)
-  )
-    throw fail('統編發票抬頭尚未確認，請補上抬頭後重新預覽');
   const files = pilotFilesBase64(snapshot.rows);
   await db()
     .prepare(
