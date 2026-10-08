@@ -58,6 +58,7 @@ test('Price precedence: individual setting including legacy, website, category, 
       ...base,
       specialDiscount: undefined,
       websitePrice: 0,
+      websiteZeroConfirmed: true,
     }).price,
     0,
   );

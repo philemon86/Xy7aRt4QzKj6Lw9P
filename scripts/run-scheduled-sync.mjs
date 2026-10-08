@@ -36,11 +36,15 @@ for (let i = 0; i < 1500; i++) {
   const r = await fetch(endpoint, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ restart }),
+    body: JSON.stringify({ restart, repair: input.repair === true }),
     signal: AbortSignal.timeout(60000),
   });
   if (!r.ok) throw Error('同步請求失敗 HTTP ' + r.status);
   status = await r.json();
+  if (input.repair === true) {
+    console.log(JSON.stringify({ repair: true, ...status }));
+    break;
+  }
   if (!status.busy) restart = false;
   if (i % 10 === 0 || status.finished) console.log(JSON.stringify(status));
   if (status.finished && !status.busy) break;

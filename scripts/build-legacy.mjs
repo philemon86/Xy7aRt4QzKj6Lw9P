@@ -15,7 +15,7 @@ const core =
     .replace(/^export /gm, '');
 fs.writeFileSync(
   path.join(root, 'public/pos-core.js'),
-  `window.POSCore=(()=>{${core}\nreturn {searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
+  `window.POSCore=(()=>{${core}\nreturn {searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
 );
 html = html
   .replaceAll('折扣 %', '售價比例 %')
@@ -153,7 +153,12 @@ html =
         dbStatusElement.textContent=data.products.length+' 件商品 · 價格已快取';
         if(!cloud.catalogLoaded)invoiceCustomerInput.value=cloud.event.tenant?formatCustomerOption(customerMap[cloud.event.tenant.toUpperCase()]):'';syncInvoiceCustomerVisibility();cloud.catalogLoaded=true;
       };
-      cloud.onCatalogUpdate=async()=>{await loadMasterData();renderSearch();renderFavorites();updateCartDisplay();calculateTotal();};
+      const repairCartPrices=()=>{
+        if(cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;
+        const restored=POSCore.repairWebsiteZeroCart(cart,products);
+        if(restored.some((item,i)=>item!==cart[i])){cart=restored;saveCart();}
+      };
+      cloud.onCatalogUpdate=async()=>{await loadMasterData();repairCartPrices();renderSearch();renderFavorites();updateCartDisplay();calculateTotal();};
 ` +
   html.slice(loadEnd);
 const discountStart = html.indexOf('      const getSpecialDiscount =');
@@ -372,6 +377,7 @@ html = html.replace(
 html = html.replace(
   'loadMasterData().then(() => {',
   `loadMasterData().then(() => {
+  repairCartPrices();
   const groups=[...document.querySelectorAll('body > .flex-container')];groups.forEach((el,i)=>el.dataset.section=['checkout','history','accounting','exports'][i]);
   document.body.dataset.audience=cloud.me.role==='church'||cloud.event.organizer==='church'?'church':'bookstore';
   document.querySelectorAll('link[rel="icon"]').forEach(link=>{link.href='/pos/favicon-'+document.body.dataset.audience+(link.type==='image/svg+xml'?'.svg':'-32.png');});

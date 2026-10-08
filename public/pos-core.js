@@ -137,7 +137,10 @@ function resolveProductPricing(product, now = new Date()) {
   const web =
     product.websitePrice != null &&
     Number.isFinite(Number(product.websitePrice)) &&
-    Number(product.websitePrice) >= 0;
+    Number(product.websitePrice) >= 0 &&
+    (Number(product.websitePrice) > 0 ||
+      legacyPrice === 0 ||
+      product.websiteZeroConfirmed === true);
   let price = legacyPrice,
     discount = 100,
     priceSource = 'original',
@@ -168,6 +171,31 @@ function resolveProductPricing(product, now = new Date()) {
     priceLabel,
     websiteBase: priceSource === 'website',
   };
+}
+
+// Only the unfinished cart calls this recovery. Explicit manual/free-gift prices remain intact.
+function repairWebsiteZeroCart(items, products) {
+  return items.map((item) => {
+    const product = products[item.code];
+    if (
+      item.priceSource !== 'website' ||
+      Number(item.price) !== 0 ||
+      item.isManual ||
+      item.promotionGift ||
+      Number(item.discount) === 0 ||
+      !product ||
+      !(product.price > 0)
+    )
+      return item;
+    return {
+      ...item,
+      price: product.price,
+      defaultDiscount: product.defaultDiscount,
+      discount: product.defaultDiscount,
+      priceSource: product.priceSource,
+      priceLabel: product.priceLabel,
+    };
+  });
 }
 
 function editCartItem(item, values) {
@@ -489,4 +517,4 @@ function applyPromotions(items, products, groups, now = new Date()) {
   return lines.filter((i) => i.quantity !== 0);
 }
 
-return {searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();
+return {searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();
