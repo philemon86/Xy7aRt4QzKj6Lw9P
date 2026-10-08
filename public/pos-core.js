@@ -179,7 +179,8 @@ function repairWebsiteZeroCart(items, products) {
     const product = products[item.code];
     if (
       item.priceSource !== 'website' ||
-      Number(item.price) !== 0 ||
+      (Number(item.price) !== 0 &&
+        !product?.websitePriceCorrectionFrom?.includes(Number(item.price))) ||
       item.isManual ||
       item.promotionGift ||
       Number(item.discount) === 0 ||

@@ -102,6 +102,7 @@ test('Concurrent worker returns busy without fetching; completed fresh daily run
   const fresh = database({
     promotionsAttempted: true,
     collectionPricesAttempted: true,
+    collectionPrices: {codes: []},
     finished: new Date().toISOString(),
     urls: ['https://www.pbooks.com.tw/products/a'],
     cursor: 1,

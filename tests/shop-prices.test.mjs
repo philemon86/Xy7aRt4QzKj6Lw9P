@@ -4,15 +4,16 @@ import { parseShop, parseVariantPrices, mergeShopCache } from '../lib/shop.mjs';
 import {
   parseCollectionPrices,
   syncCollectionPrices,
+  applyHanBibleDiscount,
 } from '../lib/shop-collection.mjs';
 import { resolveProductPricing } from '../lib/pos-core.mjs';
 const info =
   '51726869,CAT6991,330.0,,330.0,deny,297.0,,五經 - ,,|52223195,CCT12901,1350.0,,1500.0,deny,1350.0,,研讀本 - ,,';
 const row = { id: 1, handle: 'cat6991', variants_info: info };
 const known = [{ code: 'CAT6991' }, { code: 'CCT12901' }];
-test('Campaign prices handle every variant, including an already discounted price without stacking', () => {
+test('Website variant prices ignore the loyalty redemption cap; Hanyu collection discount does not stack', () => {
   const prices = parseVariantPrices(info);
-  assert.equal(prices.get('CAT6991').websitePrice, 297);
+  assert.equal(prices.get('CAT6991').websitePrice, 330);
   assert.equal(prices.get('CCT12901').websitePrice, 1350);
   const html =
     '<script type="application/ld+json">{"@type":"Product","name":"五經"}</script><script>var productData = ' +
@@ -26,12 +27,12 @@ test('Campaign prices handle every variant, including an already discounted pric
   const parsed = parseShop(html, 'https://www.pbooks.com.tw/products/cat6991');
   assert.deepEqual(
     parsed.map((p) => p.websitePrice),
-    [297, 1350],
+    [330, 1350],
   );
   assert.equal(
     resolveProductPricing({
       price: 330,
-      websitePrice: parsed[0].websitePrice,
+      websitePrice: applyHanBibleDiscount(parsed[0]).websitePrice,
       categoryRule: { mode: 'discount', value: 90 },
     }).price,
     297,
@@ -46,8 +47,9 @@ test('Campaign prices handle every variant, including an already discounted pric
   );
 });
 test('Price payloads reject broken amounts and collection SKUs remain limited to the CSV', () => {
-  assert.throws(() => parseVariantPrices('51726869,CAT6991,330,,330,deny,NaN'));
-  assert.throws(() => parseVariantPrices('51726869,CAT6991,330,,330,deny,-1'));
+  assert.throws(() => parseVariantPrices('51726869,CAT6991,NaN,,330,deny,0'));
+  assert.throws(() => parseVariantPrices('51726869,CAT6991,-1,,330,deny,0'));
+  assert.equal(parseVariantPrices('51726869,CAT6991,330,,330,deny,NaN').get('CAT6991').websitePrice,330);
   assert.deepEqual(
     parseCollectionPrices([row], [known[0]]).map((p) => p.code),
     ['CAT6991'],

@@ -24,7 +24,7 @@ import {
 } from './catalog.mjs';
 import initialShop from '../data/shop-cache.json';
 import { mergeShopCache } from './shop.mjs';
-import { repairZeroShopPrices } from './shop-repair.mjs';
+import { repairVerifiedShopPrices } from './shop-repair.mjs';
 import { mergeChanges, validateOrder, stats } from './state.mjs';
 import { syncStateResponse } from './sync-response.mjs';
 import { syncShopStep, syncStatus, syncPromotions } from './shop-sync.mjs';
@@ -372,7 +372,7 @@ export async function handle(req: Request, parts: string[]) {
       ? ((await req.json()) as { restart?: boolean; repair?: boolean })
       : {};
     if (options?.repair === true)
-      return json(await repairZeroShopPrices(db(), initialShop));
+      return json(await repairVerifiedShopPrices(db(), initialShop));
     return json(
       await syncShopStep(db(), await catalogSettings(), {
         daily: true,

@@ -20,7 +20,7 @@ const html = (variants, prices = info) =>
   JSON.stringify(prices) +
   '};</script>';
 
-test('The real S046F and PH05 no-campaign zeros retain official selling prices; real campaigns remain active', () => {
+test('Actual S046F and PH05 selling prices ignore zero bonus redemption limits', () => {
   const parsed = parseShop(
     html([
       { sku: 'S046F', price: 25, compare_at_price: 30, currency: 'TWD' },
@@ -31,7 +31,7 @@ test('The real S046F and PH05 no-campaign zeros retain official selling prices; 
   );
   assert.deepEqual(
     parsed.map((p) => p.websitePrice),
-    [25, 280, 297],
+    [25, 280, 330],
   );
   const collection = parseCollectionPrices(
     [{ handle: 'example', variants_info: info }],
@@ -39,7 +39,7 @@ test('The real S046F and PH05 no-campaign zeros retain official selling prices; 
   );
   assert.deepEqual(
     collection.map((p) => p.websitePrice),
-    [25, 280, 297],
+    [25, 280, 330],
   );
   assert.ok(parsed.every((p) => p.websiteZeroConfirmed === false));
 });
@@ -63,7 +63,7 @@ test('Empty website prices are rejected; actual zero base prices require explici
     parseVariantPrices('3,A,25,,30,deny,0').get('A').websitePrice,
     25,
   );
-  assert.throws(() => parseVariantPrices('3,A,25,,30,deny, '));
+  assert.equal(parseVariantPrices('3,A,25,,30,deny, ').get('A').websitePrice,25);
 });
 
 test('Unconfirmed old zero caches fall back to existing pricing, without blocking manual/free-gift zero prices', () => {
