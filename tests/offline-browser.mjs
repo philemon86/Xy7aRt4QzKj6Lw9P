@@ -68,6 +68,24 @@ try {
     await frame.locator('#product-code').waitFor();
     await page.evaluate(() => runtime.prepare(portal));
     await context.setOffline(true);
+    await frame.locator('summary').filter({ hasText: '批次輸入商品' }).click();
+    await frame.locator('#bulk-backup-btn').click();
+    assert.match(await frame.locator('#bulk-result').innerText(), /請先輸入/);
+    await frame.locator('#bulk-input').fill('C001,2\nMISSING,1');
+    await frame.locator('#bulk-backup-btn').click();
+    await frame.locator('#bulk-result').filter({ hasText: '已回填 1 筆' }).waitFor();
+    assert.equal(await frame.locator('.quantity-value').innerText(), '2');
+    assert.equal(await frame.locator('#bulk-input').inputValue(), 'MISSING,1');
+    // Accepted products and failed input both survive an offline reload.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await frame.locator('#product-code').waitFor();
+    assert.equal(await frame.locator('.quantity-value').innerText(), '2');
+    assert.equal(await frame.locator('#bulk-input').inputValue(), 'MISSING,1');
+    await frame.locator('summary').filter({ hasText: '批次輸入商品' }).click();
+    await frame.locator('#bulk-clear-btn').click();
+    assert.equal(await frame.locator('.quantity-value').innerText(), '2', 'Clear input must retain the cart');
+    await frame.locator('.cart-remove').click();
+    await page.frames().find((f) => f.url().includes('register-v')).evaluate(() => POSCloud.flush());
     const perform = async () => {
       await frame.locator('#product-code').fill('C001');
       await frame.locator('#product-code').press('Enter');
@@ -131,7 +149,7 @@ try {
     await frame.locator('#product-code').waitFor();
     assert.equal(await page.evaluate(async () => (await fetch('/pos/_next/static/chunks/old-cashier-fixture.js')).text()), 'window.oldCashier=true;');
     assert.deepEqual(errors, [], 'Register has no unhandled browser errors');
-    console.log(`PASS ${portal}: offline checkout, reload, cached decoder, reconnect, slow online checkout, release upgrade`);
+    console.log(`PASS ${portal}: batch refill, offline reload, checkout, cached decoder, reconnect, slow online checkout, release upgrade`);
     await context.close();
   }
 } finally { await browser.close(); await new Promise((resolve) => server.close(resolve)); }

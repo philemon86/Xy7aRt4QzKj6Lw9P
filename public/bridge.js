@@ -51,6 +51,7 @@ window.makeCloud = async function () {
       'clientCounter',
       'printEnabled',
       'checkoutFields',
+      'bulkInput',
     ].includes(k)
       ? 'draft:' + device + ':' + k
       : 'shared:' + k;

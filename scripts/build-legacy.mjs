@@ -213,12 +213,18 @@ html = html.slice(0, scanStart) + html.slice(scanEnd);
 const searchStart = html.indexOf(
   "      productCodeInput.addEventListener('input'",
 );
+const bulkStart = html.indexOf('      const parseBulkLine');
+if (bulkStart < 0 || searchStart <= bulkStart) throw Error('找不到批次回填接點');
+html = html.slice(0, bulkStart) + read('scripts/register-bulk.js') + '\n' + html.slice(searchStart);
+html = html.replace('<button id="bulk-backup-btn" class="btn btn-earth-4">回填購物車</button>', '');
+html = html.replace('<button id="bulk-add-btn" class="btn btn-earth-2">批次加入</button>', '<button type="button" id="bulk-backup-btn" class="btn btn-earth-2">回填購物車</button>');
+const newSearchStart = html.indexOf("      productCodeInput.addEventListener('input'");
 const searchEnd = html.indexOf(
   '      const calculatePaymentStats',
-  searchStart,
+  newSearchStart,
 );
 html =
-  html.slice(0, searchStart) +
+  html.slice(0, newSearchStart) +
   read('scripts/register-search.js') +
   '\n' +
   html.slice(searchEnd);
