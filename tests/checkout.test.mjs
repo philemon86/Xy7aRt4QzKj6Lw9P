@@ -248,3 +248,11 @@ test('A failed commit keeps the original order ID for retry and does not print',
   assert.equal(x.reloads, 1);
   assert.equal(x.mem.cart, '[]');
 });
+
+test('background synchronization errors cannot block another cashier sale', async () => {
+  const fixture = make();
+  fixture.context.cloud.offlineSyncError = '這筆資料已被另一台裝置修改';
+  await fixture.checkout('現金');
+  assert.equal(Object.values(fixture.saved).length, 1);
+  assert.equal(Object.values(fixture.saved)[0].amount, 899);
+});

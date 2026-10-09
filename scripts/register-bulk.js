@@ -28,9 +28,6 @@ bulkBackupBtn.addEventListener('click', async () => {
   if (cloud.event.status !== 'open' || (isBookstore && cloud.event.organizer === 'church')) {
     bulkResult.textContent = '此書展僅供查看，無法回填購物車。'; return;
   }
-  if (cloud.offlineSyncError) {
-    bulkResult.textContent = '請先處理上方的待同步資料，再回填購物車。'; return;
-  }
   let success = 0, quantity = 0;
   const failed = [];
   if (!bulkNeedsSave) {

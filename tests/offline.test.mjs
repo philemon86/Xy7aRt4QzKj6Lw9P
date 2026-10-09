@@ -109,7 +109,7 @@ test('a concurrent server edit returns a retained conflict, never silently overw
   await e.request('admin', 'events/fair/sync', { changes: [patch()] });
   s.server.state['order:o1'] = order('o1', 70);
   s.connected = true;
-  await assert.rejects(e.syncAll('admin', true), (err) => err.status === 409);
+  await e.syncAll('admin', true);
   assert.equal(s.server.state['order:o1'].amount, 70);
   assert.equal((await e.summary('admin')).pending, 1);
   assert.match((await e.summary('admin')).error, /另一台/);
@@ -183,7 +183,7 @@ test('conflicts require an explicit decision and reject a changed review snapsho
   await e.request('admin', 'events/fair/sync', { changes: [patch()] });
   s.server.state['order:o1'] = order('o1', 70);
   s.connected = true;
-  await assert.rejects(e.syncAll('admin', true));
+  await e.syncAll('admin', true);
   const review = await e.conflicts('admin');
   assert.equal(review.length, 1);
   await assert.rejects(e.resolveConflicts('admin', review, {}), /逐項/);
@@ -199,8 +199,74 @@ test('keeping the cloud conflict version preserves original completed transactio
   await e.request('admin', 'events/fair/sync', { changes: [patch()] });
   s.server.state['order:o1'] = order('o1', 70);
   s.connected = true;
-  await assert.rejects(e.syncAll('admin', true));
+  await e.syncAll('admin', true);
   await e.resolveConflicts('admin', await e.conflicts('admin'), { 'fair:order:o1': 'server' });
   assert.equal((await e.cached('admin', 'events/fair')).state['order:o1'].amount, 70);
   assert.equal((await e.summary('admin')).pending, 0);
+});
+
+test('a rejected batch isolates an old shared-setting collision and saves a new sale immediately', async () => {
+  const s = setup(), e = await prepared(s);
+  s.connected = false;
+  await e.request('admin', 'events/fair/sync', { changes: [
+    { key: 'shared:clientCounter', before: null, after: '2' }, patch('new-sale'),
+  ] });
+  s.server.state['shared:clientCounter'] = '99';
+  s.connected = true;
+  await e.syncAll('admin');
+  assert.equal(s.server.state['order:new-sale'].amount, 100);
+  assert.equal(s.server.state['shared:clientCounter'], '99');
+  assert.equal((await e.summary('admin')).pending, 0);
+  assert.equal((await e.summary('admin')).pendingEvents, 1);
+  assert.match((await e.summary('admin')).error, /另一台/);
+  await assert.rejects(e.requireSynced('admin'), /尚有資料/);
+  // Reload and continue selling without resolving or discarding the old collision.
+  const reopened = s.create();
+  const result = await reopened.request('admin', 'events/fair/sync', { changes: [patch('next-sale')] });
+  assert.equal(result.localSaved, true);
+  await reopened.syncAll('admin');
+  assert.equal(s.server.state['order:next-sale'].amount, 100);
+  assert.equal(Object.keys(s.server.numbers).length, 2);
+  assert.deepEqual((await reopened.conflicts('admin')).map((r) => r.key), ['shared:clientCounter']);
+});
+test('a genuine old order conflict preserves both versions without blocking later checkout', async () => {
+  const s = setup(), e = await prepared(s);
+  s.connected = false;
+  await e.request('admin', 'events/fair/sync', { changes: [patch()] });
+  s.server.state['order:o1'] = order('o1', 70);
+  s.connected = true;
+  await e.syncAll('admin');
+  const accepted = await e.request('admin', 'events/fair/sync', { changes: [patch('o2')] });
+  assert.equal(accepted.localSaved, true);
+  await e.syncAll('admin');
+  assert.equal(s.server.state['order:o1'].amount, 70);
+  assert.equal(s.server.state['order:o2'].amount, 100);
+  assert.equal((await e.cached('admin', 'events/fair')).state['order:o1'].amount, 100);
+  assert.equal((await e.summary('admin')).pending, 1);
+  await e.resolveConflicts('admin', await e.conflicts('admin'), { 'fair:order:o1': 'server' });
+  assert.equal(s.server.state['order:o2'].amount, 100);
+  assert.equal((await e.summary('admin')).pendingEvents, 0);
+});
+test('an existing V41 rejected request recovers automatically and retains a new checkout', async () => {
+  const s = setup(), e = await prepared(s);
+  const key = e.key('admin', 'fair');
+  const old = { key: 'draft:device:cart', before: null, after: '[]' };
+  await s.store.put(key, { ...(await s.store.get(key)), patches: [old],
+    inflight: { revision: 0, changes: [old] }, errorStatus: 409, error: '另一台裝置修改' });
+  s.server.state[old.key] = '[{"code":"OLD"}]';
+  const accepted = await e.request('admin', 'events/fair/sync', { changes: [patch('fresh')] });
+  assert.equal(accepted.localSaved, true);
+  await e.syncAll('admin');
+  assert.equal(s.server.state['order:fresh'].amount, 100);
+  assert.equal(s.server.state[old.key], '[{"code":"OLD"}]');
+  assert.deepEqual((await s.store.get(key)).conflictKeys, [old.key]);
+});
+test('background non-authentication errors never reject durable local checkout', async () => {
+  const s = setup(), e = await prepared(s);
+  const key = e.key('admin', 'fair');
+  await s.store.put(key, { ...(await s.store.get(key)), errorStatus: 400, error: '舊資料驗證失敗' });
+  s.connected = false;
+  const accepted = await e.request('admin', 'events/fair/sync', { changes: [patch('fresh')] });
+  assert.equal(accepted.localSaved, true);
+  assert.equal((await e.cached('admin', 'events/fair')).state['order:fresh'].amount, 100);
 });

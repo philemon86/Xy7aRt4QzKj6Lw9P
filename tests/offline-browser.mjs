@@ -52,7 +52,7 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Content-Type', type);
     if (file.endsWith('pos-sw.js')) res.end((await fs.readFile(file, 'utf8')).replace('philemon-pos-assets-', `philemon-pos-assets-fixture${workerRevision}-`));
     else res.end(await fs.readFile(file));
-  } catch (error) { res.statusCode = 404; res.end(String(error.message)); }
+  } catch (error) { res.statusCode = error.status || 404; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ error: error.message })); }
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const origin = 'http://127.0.0.1:' + server.address().port;
@@ -117,6 +117,22 @@ try {
     await perform(); // Healthy network is intentionally slow: the register still acknowledges locally.
     await page.evaluate(() => runtime.syncAll(portal));
     assert.equal(Object.keys(record.numbers).length, 3);
+    // Reproduce the reported blocker: old shared data collides, then the cashier
+    // checks out a different sale without being sent to a conflict dialog.
+    await context.setOffline(true);
+    await page.evaluate(() => runtime.request(portal, 'events/fair-' + portal + '/sync', {
+      changes: [{ key: 'shared:conflict-fixture', before: null, after: 'device' }],
+    }));
+    record.state['shared:conflict-fixture'] = 'server';
+    await context.setOffline(false);
+    await page.evaluate(() => runtime.syncAll(portal));
+    assert.match((await page.evaluate(() => runtime.summary(portal))).error, /另一台/);
+    await perform();
+    await page.evaluate(() => runtime.syncAll(portal));
+    assert.equal(Object.keys(record.numbers).length, 4, 'Old conflicts must never block a new checkout');
+    assert.equal(record.state['shared:conflict-fixture'], 'server', 'Keep the original server setting');
+    assert.equal((await page.evaluate(() => runtime.summary(portal))).pending, 0);
+    assert.equal((await page.evaluate(() => runtime.conflicts(portal))).length, 1, 'Retain old difference for later review');
     futureShell = true;
     const notReady = await page.evaluate(async () => new Promise((resolve) => {
       const channel = new MessageChannel();

@@ -151,7 +151,7 @@ var POSOfflineModule = (() => {
       const key = this.key(portal, event.id);
       return this.lock(key, async () => {
         const existing = await this.store.get(key);
-        const record = { kind: "event", portal, event: copy(event), patches: existing?.patches || [], inflight: existing?.inflight || null, error: existing?.error || "", errorStatus: existing?.errorStatus || 0 };
+        const record = { kind: "event", portal, event: copy(event), patches: existing?.patches || [], inflight: existing?.inflight || null, conflictKeys: existing?.conflictKeys || [], error: existing?.error || "", errorStatus: existing?.errorStatus || 0 };
         await this.store.put(key, record);
         return this.eventValue(record);
       });
@@ -251,7 +251,6 @@ var POSOfflineModule = (() => {
       const value = await this.lock(key, async () => {
         const record = await this.store.get(key);
         if (!record) throw Error("\u5C1A\u672A\u4E0B\u8F09\u66F8\u5C55\uFF0C\u8ACB\u5148\u9023\u7DDA\u958B\u555F\u4E00\u6B21\u3002");
-        if (record.error) throw Error("\u5F85\u540C\u6B65\u8CC7\u6599\u9700\u8655\u7406\uFF1A" + record.error);
         if (record.event.status !== "open") throw Error("\u66F8\u5C55\u5DF2\u5C01\u5B58\uFF0C\u7121\u6CD5\u96E2\u7DDA\u4FEE\u6539\u3002");
         if (me.role === "admin" && record.event.organizer === "church" && body.changes.some((p) => !p.key.startsWith("stock:")))
           throw Error("\u66F8\u623F\u53EF\u67E5\u770B\u6559\u6703\u4EA4\u6613\uFF0C\u7531\u6559\u6703\u81EA\u884C\u7D50\u5E33\u3002");
@@ -277,7 +276,7 @@ var POSOfflineModule = (() => {
         return this.eventValue(record);
       });
       this.notify(portal);
-      void this.syncEvent(portal, id).catch(() => {
+      void this.syncEvent(portal, id).then(() => this.syncEvent(portal, id)).catch(() => {
       });
       return { localSaved: true, offline: true, state: value.state, revision: value.revision, numbers: value.numbers || {} };
     }
@@ -288,8 +287,10 @@ var POSOfflineModule = (() => {
         let record;
         const flight = await this.lock(key, async () => {
           record = await this.store.get(key);
-          if (!record?.patches.length || record.error && !retry) return null;
-          record.inflight ||= { revision: record.event.revision, changes: copy(record.patches.slice(0, 500)) };
+          if (!record?.patches.length || record.error && record.errorStatus !== 409 && !retry) return null;
+          const sendable = record.patches.filter((p) => !(record.conflictKeys || []).includes(p.key));
+          if (!record.inflight && !sendable.length) return null;
+          record.inflight ||= { revision: record.event.revision, changes: copy(sendable.slice(0, 500)) };
           await this.store.put(key, record);
           return copy(record.inflight);
         });
@@ -310,11 +311,42 @@ var POSOfflineModule = (() => {
             record.event = { ...record.event, state, revision: result.revision, numbers: { ...record.event.numbers, ...result.numbers } };
             record.patches = [...pending.values()];
             record.inflight = null;
-            record.error = "";
-            record.errorStatus = 0;
+            if (!(record.conflictKeys || []).length) {
+              record.error = "";
+              record.errorStatus = 0;
+            }
             await this.store.put(key, record);
           });
         } catch (error) {
+          if (error.status === 409) {
+            const latest = await this.remote(portal, "events/" + id);
+            await this.lock(key, async () => {
+              const current = await this.store.get(key);
+              const sentByKey = new Map(sent.map((p) => [p.key, p]));
+              const conflicts = [];
+              const patches = [];
+              for (const p of current.patches) {
+                const server = latest.state[p.key] ?? null;
+                const attempted = sentByKey.get(p.key);
+                if (equal(server, p.after)) continue;
+                if (attempted && equal(server, attempted.after))
+                  patches.push({ ...p, before: server });
+                else if (equal(server, p.before)) patches.push(p);
+                else {
+                  patches.push(p);
+                  conflicts.push(p.key);
+                }
+              }
+              current.event = latest;
+              current.patches = patches;
+              current.inflight = null;
+              current.conflictKeys = conflicts;
+              current.error = conflicts.length ? error.message : latest.status !== "open" ? "\u66F8\u5C55\u5DF2\u5C01\u5B58\uFF0C\u5F85\u540C\u6B65\u8CC7\u6599\u4ECD\u4FDD\u7559\u3002" : "";
+              current.errorStatus = current.error ? 409 : 0;
+              await this.store.put(key, current);
+            });
+            return;
+          }
           if (!error.network) await this.lock(key, async () => {
             const current = await this.store.get(key);
             await this.store.put(key, { ...current, error: error.message, errorStatus: error.status || 400 });
@@ -331,7 +363,7 @@ var POSOfflineModule = (() => {
         for (let i = 0; i < 50; i++) {
           await this.syncEvent(portal, r.event.id, retry || r.errorStatus === 401);
           const current = await this.store.get(this.key(portal, r.event.id));
-          if (!current.patches.length || current.error && !retry) break;
+          if (!current.patches.length || !current.patches.some((p) => !(current.conflictKeys || []).includes(p.key)) || current.error && current.errorStatus !== 409 && !retry) break;
         }
       }
     }
@@ -385,6 +417,7 @@ var POSOfflineModule = (() => {
           record.inflight = null;
           record.error = "";
           record.errorStatus = 0;
+          record.conflictKeys = [];
           await this.store.put(this.key(portal, id), record);
         });
       }
