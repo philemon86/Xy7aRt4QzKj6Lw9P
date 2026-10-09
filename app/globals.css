@@ -2436,3 +2436,13 @@ html.dark[data-audience='church'] {
     flex: 0 1 auto;
   }
 }
+.offline-tools { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 12px; }
+.offline-download { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 7px; background: transparent; cursor: pointer; }
+.offline-download:disabled { opacity: .6; cursor: wait; }
+.offline-pending { color: #986622; }
+.offline-review { max-height: 85dvh; overflow: auto; max-width: 800px; }
+.offline-review-item { border-top: 1px solid var(--border); padding: 12px 0; }
+.offline-review-values { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; }
+.offline-review-values pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; max-height: 200px; overflow: auto; background: var(--muted); padding: 8px; }
+.offline-review-item select { padding: 8px; border: 1px solid var(--border); border-radius: 6px; }
+@media(max-width: 700px) { .topbar { flex-wrap: wrap; gap: 8px; } .offline-tools { width: 100%; justify-content: flex-start; } .offline-tools .connection { font-size: 12px; } }

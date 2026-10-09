@@ -1,3 +1,4 @@
+import { attachBridgeRuntime } from './bridge-runtime-fixture.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -98,6 +99,7 @@ async function make() {
       return { ok: true, status: 200, json: async () => result };
     },
   });
+  attachBridgeRuntime(context);
   vm.runInContext(bridge, context);
   const cloud = await context.window.makeCloud();
   cloud.onUpdate = (update) => updates.push(update);

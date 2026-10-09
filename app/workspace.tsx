@@ -3,6 +3,7 @@
 import { POS_BASE } from '@/lib/paths';
 import { setPOSFavicon } from '@/lib/branding';
 import { REGISTER_FILE } from '@/lib/release.mjs';
+import { getOfflineRuntime, registerOfflineWorker } from '@/lib/offline.mjs';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +66,7 @@ import {
 import Camera from './camera';
 import OrderEditor from './order-editor';
 import RecoveryDialog from './recovery-dialog';
+import OfflineConflicts from './offline-conflicts';
 import PilotExportDialog from './pilot-export-dialog';
 import Calculator from './calculator';
 import ChurchInventory from './church-inventory';
@@ -87,24 +89,11 @@ async function requestAPI(
   path: string,
   body?: any,
 ): Promise<any> {
-  const r = await fetch(
-    POS_BASE + '/api/' + path,
-    body === undefined
-      ? { headers: { 'X-POS-Portal': portal } }
-      : {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-POS-Portal': portal,
-          },
-          body: JSON.stringify(body),
-        },
-  );
-  const j: any = await r.json();
-  if (r.status === 401 && path !== 'login')
-    window.dispatchEvent(new Event('pos-session-expired'));
-  if (!r.ok) throw new Error(j.error || '連線失敗');
-  return j;
+  try { return await getOfflineRuntime().request(portal, path, body); }
+  catch (error: any) {
+    if (error.status === 401 && path !== 'login') window.dispatchEvent(new Event('pos-session-expired'));
+    throw error;
+  }
 }
 function download(data: any, name: string) {
   const a = document.createElement('a');
@@ -144,6 +133,27 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     [resumePassword, setResumePassword] = useState(''),
     [resumeError, setResumeError] = useState(''),
     [resuming, setResuming] = useState(false);
+  const [offlineInfo, setOfflineInfo] = useState<any>(null),
+    [preparingOffline, setPreparingOffline] = useState(false),
+    [offlineProgress, setOfflineProgress] = useState('');
+  useEffect(() => {
+    const runtime = getOfflineRuntime(), portal = tenant || 'admin';
+    const update = () => { void runtime.summary(portal).then(setOfflineInfo).catch(() => {}); };
+    window.addEventListener('pos-offline-status', update);
+    update();
+    // Shell/decoder caching happens separately and never delays checkout bootstrap.
+    void registerOfflineWorker().catch(() => {});
+    return () => window.removeEventListener('pos-offline-status', update);
+  }, [tenant]);
+  async function prepareOffline() {
+    setPreparingOffline(true);
+    try {
+      await flushFrame();
+      await getOfflineRuntime().prepare(tenant || 'admin', setOfflineProgress);
+      setNotice('離線資料已下載。此裝置可離線開啟已下載的書展並結帳，恢復連線後自動同步。');
+    } catch (e: any) { setError(e.message); }
+    finally { setPreparingOffline(false); setOfflineProgress(''); }
+  }
   const [events, setEvents] = useState<any[]>([]),
     [catalog, setCatalog] = useState<any>(null),
     [section, setSection] = useState('events'),
@@ -275,7 +285,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
   useEffect(() => {
     setEventDate(today());
     load()
-      .catch(() => {})
+      .catch((e) => { if (e.status !== 401) setError(e.message); })
       .finally(() => setLoaded(true));
     return () => {
       stopSync.current = true;
@@ -735,10 +745,28 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                       : '教會入口'}
             </span>
           </div>
-          <span className={cloudError ? 'error connection' : 'connection'}>
-            <CloudCheck size={16} />
-            {active ? cloudStatus : '已連接雲端'}
-          </span>
+          <div className="offline-tools">
+            <button type="button" className="offline-download" disabled={preparingOffline} onClick={prepareOffline}>
+              <Download size={14} />{offlineProgress || (offlineInfo?.ready ? '更新離線資料' : '下載離線資料')}
+            </button>
+            <span className={cloudError || offlineInfo?.error ? 'error connection' : offlineInfo?.pendingEvents || offlineInfo?.offline ? 'connection offline-pending' : 'connection'} aria-live="polite">
+              <CloudCheck size={16} />
+              {offlineInfo?.error ? '同步需處理：' + offlineInfo.error : offlineInfo?.pendingEvents
+                ? `${offlineInfo.offline ? '離線 · ' : ''}${offlineInfo.pending ? offlineInfo.pending + ' 筆交易' : '設定／草稿'}待同步`
+                : offlineInfo?.offline ? '離線使用 · 資料存於裝置' : active ? cloudStatus : '已連接雲端'}
+            </span>
+            {!!offlineInfo?.pendingEvents && <button className="offline-download" onClick={async () => {
+              try { await getOfflineRuntime().syncAll(tenant || 'admin', true); } catch (e: any) { setError(e.message); }
+            }}>重試同步</button>}
+            {!!offlineInfo?.error && <button className="offline-download" onClick={async () => {
+              download(await getOfflineRuntime().backup(tenant || 'admin'), 'POS-待同步備份.json');
+            }}>下載待同步備份</button>}
+            {!!offlineInfo?.error && <OfflineConflicts portal={tenant || 'admin'} onResolved={() => {
+              const cloud = (frame.current?.contentWindow as any)?.POSCloud;
+              if (cloud) void cloud.refresh().catch((e: any) => setError(e.message));
+              else void load().catch((e: any) => setError(e.message));
+            }} />}
+          </div>
         </header>
         <div className="page-content">
           {error && (

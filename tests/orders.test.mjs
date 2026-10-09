@@ -1,3 +1,4 @@
+import { attachBridgeRuntime } from './bridge-runtime-fixture.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -150,6 +151,7 @@ test('Register reuses parent preload and performs no duplicate catalog or event 
     },
   };
   vm.createContext(context);
+  attachBridgeRuntime(context);
   vm.runInContext(fs.readFileSync('public/bridge.js', 'utf8'), context);
   const cloud = await context.window.makeCloud();
   assert.equal(bootstraps, 1);
@@ -191,6 +193,7 @@ async function bridgeHarness(state, fetch, recovery) {
     },
   };
   vm.createContext(context);
+  attachBridgeRuntime(context);
   vm.runInContext(fs.readFileSync('public/bridge.js', 'utf8'), context);
   return { cloud: await context.window.makeCloud(), local };
 }

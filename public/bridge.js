@@ -7,7 +7,7 @@ window.makeCloud = async function () {
     hostFrame?.getAttribute('data-event-id') || parameters.get('event');
   const portal =
     hostFrame?.getAttribute('data-portal') || parameters.get('portal');
-  const portalHeaders = portal ? { 'X-POS-Portal': portal } : {};
+  const offline = window.POSOfflineModule.getOfflineRuntime();
   let cloud;
   let device = window.localStorage.getItem('pos-device');
   if (!device) {
@@ -15,26 +15,14 @@ window.makeCloud = async function () {
     window.localStorage.setItem('pos-device', device);
   }
   const api = async (path, body) => {
-    const r = await fetch(
-      '/pos/api/' + path,
-      body === undefined
-        ? { headers: portalHeaders }
-        : {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...portalHeaders },
-            body: JSON.stringify(body),
-          },
-    );
-    const j = await r.json();
-    if (r.status === 401) {
-      parent.postMessage({ type: 'session-expired' }, location.origin);
+    try {
+      const result = await offline.request(portal || 'admin', path, body);
+      if (cloud && !result.offline) cloud.sessionCheckedAt = Date.now();
+      return result;
+    } catch (error) {
+      if (error.status === 401) parent.postMessage({ type: 'session-expired' }, location.origin);
+      throw error;
     }
-    if (!r.ok)
-      throw Object.assign(Error(j.error || '雲端連線失敗'), {
-        status: r.status,
-      });
-    if (cloud) cloud.sessionCheckedAt = Date.now();
-    return j;
   };
   const initial =
     typeof parent.POSRegisterBootstrap === 'function'
@@ -201,7 +189,7 @@ window.makeCloud = async function () {
       cloud?.onUpdate?.({
         keys: result.state ? null : result.patches.map((p) => p.key),
       });
-      status('已儲存至雲端');
+      status(result.localSaved ? '已存到裝置 · 等待同步' : '已儲存至雲端');
       preserveRecovery();
       parent.postMessage(
         { type: 'saved', event: eid, state: structuredClone(desired) },
@@ -369,6 +357,23 @@ window.makeCloud = async function () {
     return pending;
   };
   window.POSCloud = cloud;
+  // Acknowledged server numbers replace the local pending label after reconnect.
+  const coordinator = window.parent.POSOffline ? window.parent : window;
+  const syncStatus = async (e) => {
+    if (e?.detail?.portal !== (portal || 'admin')) return;
+    const summary = await offline.summary(portal || 'admin').catch(() => null);
+    if (!summary) return;
+    cloud.offlineSyncError = summary.error;
+    status(summary.error ? '同步需處理 · ' + summary.error : summary.pendingEvents
+      ? `已存到裝置 · ${summary.pending ? summary.pending + ' 筆交易' : '設定／草稿'}待同步`
+      : summary.offline ? '離線使用 · 已存到裝置' : '已連接雲端', !!summary.error);
+    if (!summary.pendingEvents && !busy && !failed) {
+      const record = await offline.store.get(offline.key(portal || 'admin', eid));
+      if (record) { cloud.numbers = record.event.numbers || {}; cloud.onUpdate?.(); }
+    }
+  };
+  coordinator.addEventListener('pos-offline-status', syncStatus);
+  window.addEventListener('pagehide', () => coordinator.removeEventListener('pos-offline-status', syncStatus), { once: true });
   const recover = window.localStorage.getItem(
     'pos-recovery:' + eid + ':' + device,
   );
@@ -415,11 +420,7 @@ window.makeCloud = async function () {
         );
       }
   });
-  status(
-    cloud.recoveryError
-      ? '上次結帳待處理 · ' + cloud.recoveryError
-      : '已連接雲端',
-    !!cloud.recoveryError,
-  );
+  if (cloud.recoveryError) status('上次結帳待處理 · ' + cloud.recoveryError, true);
+  else await syncStatus({ detail: { portal: portal || 'admin' } });
   return cloud;
 };

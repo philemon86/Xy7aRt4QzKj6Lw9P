@@ -1,3 +1,4 @@
+import { attachBridgeRuntime } from './bridge-runtime-fixture.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -38,6 +39,7 @@ async function register(local, server, authorization) {
     if (url.endsWith('/sync')) server.state = mergeChanges(server.state, JSON.parse(options.body).changes);
     return { ok: true, status: 200, json: async () => ({ state: structuredClone(server.state), numbers: {}, ok: true }) };
   } });
+  attachBridgeRuntime(context);
   vm.runInContext(bridge, context);
   return { cloud: await context.window.makeCloud(), messages };
 }

@@ -7,7 +7,8 @@
   },
   "scripts": {
     "dev": "vinext dev",
-    "build": "vinext build",
+    "prebuild": "node scripts/build-offline.mjs && node scripts/build-legacy.mjs",
+    "build": "vinext build && node scripts/offline-manifest.mjs",
     "build:scanner": "node scripts/build-scanner.mjs",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",

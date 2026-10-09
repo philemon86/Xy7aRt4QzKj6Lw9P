@@ -55,7 +55,7 @@ fs.writeFileSync(
 );
 html = html.replace(
   '<title>腓利門雲POS</title>',
-  '<title>腓利門 POS V2 收銀台</title><link rel="stylesheet" href="/pos/checkout.css"><script src="/pos/bridge.js"></script><script src="/pos/pos-core.js"></script>',
+  '<title>腓利門 POS V2 收銀台</title><link rel="stylesheet" href="/pos/checkout.css"><script src="/pos/offline-runtime.js"></script><script src="/pos/bridge.js"></script><script src="/pos/pos-core.js"></script>',
 );
 html = html
   .replace(
@@ -140,7 +140,7 @@ html = html.replace(
 );
 html = html.replace(
   "document.addEventListener('DOMContentLoaded', () => {",
-  "document.addEventListener('DOMContentLoaded', async () => {\n      let cloud; try { cloud=await window.makeCloud(); } catch(error) { document.body.textContent=error.message; parent.postMessage({type:'register-error'},location.origin); return; }\n      const localStorage=cloud.storage;\n      const isBookstore=cloud.me.role==='admin';\n      const displayOrderNumber=order=>cloud.numbers[order?.id] || '正在編號';\n",
+  "document.addEventListener('DOMContentLoaded', async () => {\n      let cloud; try { cloud=await window.makeCloud(); } catch(error) { document.body.textContent=error.message; parent.postMessage({type:'register-error'},location.origin); return; }\n      const localStorage=cloud.storage;\n      const isBookstore=cloud.me.role==='admin';\n      const displayOrderNumber=order=>cloud.numbers[order?.id] || '本機待同步';\n",
 );
 const loadStart = html.indexOf('      const loadMasterData = async () => {');
 const loadEnd = html.indexOf('      const getSpecialDiscount', loadStart);
@@ -237,7 +237,7 @@ html = html.replace(
 );
 html = html.replace(
   '      const performCheckout = (paymentMethod, isComposite = false) => {',
-  "      let checkoutBusy=false,checkoutChecking=false;\n      const performCheckout = async (paymentMethod, isComposite = false, tenderedAmount = Number(paidAmountInput.value || 0)) => {\n        if(checkoutBusy || checkoutChecking || cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;\n        checkoutChecking=true;checkoutBtns.forEach(b=>b.disabled=true);document.body.dataset.checkout='checking';try { await cloud.ensureSession(); } catch { return; } finally { checkoutChecking=false;checkoutBtns.forEach(b=>b.disabled=false);document.body.dataset.checkout='idle'; }\n        if(checkoutBusy)return;\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡/.test(paymentMethod)){alert('教會未開放信用卡');return;}",
+  "      let checkoutBusy=false,checkoutChecking=false;\n      const performCheckout = async (paymentMethod, isComposite = false, tenderedAmount = Number(paidAmountInput.value || 0)) => {\n        if(checkoutBusy || checkoutChecking || cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;\n        checkoutChecking=true;checkoutBtns.forEach(b=>b.disabled=true);document.body.dataset.checkout='checking';try { await cloud.ensureSession(); } catch { return; } finally { checkoutChecking=false;checkoutBtns.forEach(b=>b.disabled=false);document.body.dataset.checkout='idle'; }\n        if(checkoutBusy)return;\n        if(cloud.offlineSyncError){alert('待同步資料需處理，請先按上方「檢查同步差異」或重新登入。'+cloud.offlineSyncError);return;}\n        if(cloud.recoveryError){parent.postMessage({type:'resolve-recovery'},location.origin);return;}\n        if(!isBookstore && /信用卡/.test(paymentMethod)){alert('教會未開放信用卡');return;}",
 );
 html = html.replace(
   /        POSAudio.success\(\);\s*(?=clients\[clientId\] = \{)/,

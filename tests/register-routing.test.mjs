@@ -1,3 +1,4 @@
+import { attachBridgeRuntime } from './bridge-runtime-fixture.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -62,6 +63,7 @@ async function createBridge({ search = '', frameEvent, portal, role }) {
     },
   };
   vm.createContext(context);
+  attachBridgeRuntime(context);
   vm.runInContext(fs.readFileSync('public/bridge.js', 'utf8'), context);
   const cloud = await context.window.makeCloud();
   return { cloud, bootstrapId, calls };
