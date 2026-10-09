@@ -497,8 +497,8 @@ var POSOfflineModule = (() => {
     runtime.prepare = async (portal, progress = () => {
     }) => {
       progress("\u4E0B\u8F09\u5546\u54C1\u8207\u66F8\u5C55\u2026");
-      const boot = await runtime.request(portal, "bootstrap");
-      if (runtime.disconnected) throw Error("\u8ACB\u5148\u6062\u5FA9\u9023\u7DDA\uFF0C\u518D\u4E0B\u8F09\u96E2\u7DDA\u8CC7\u6599\u3002");
+      const boot = await runtime.remote(portal, "bootstrap");
+      await runtime.cache(portal, "bootstrap", boot);
       if (boot.me.role === "church") await runtime.request(portal, "church-stock/" + portal);
       const events = boot.events.filter((e) => e.status === "open");
       for (let i = 0; i < events.length; i++) {
@@ -538,7 +538,23 @@ var POSOfflineModule = (() => {
   async function registerOfflineWorker() {
     if (!navigator.serviceWorker) throw Error("\u700F\u89BD\u5668\u4E0D\u652F\u63F4\u96E2\u7DDA\u958B\u555F");
     return registrationPromise ||= (async () => {
-      await navigator.serviceWorker.register("/pos/pos-sw.js", { scope: "/pos/", updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/pos/pos-sw.js", { scope: "/pos/", updateViaCache: "none" });
+      const installing = registration.installing || registration.waiting;
+      if (installing && installing.state !== "activated") await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          installing.removeEventListener("statechange", changed);
+          reject(Error("\u96E2\u7DDA\u7A0B\u5F0F\u66F4\u65B0\u903E\u6642\uFF0C\u8ACB\u91CD\u8A66\u3002"));
+        }, 6e4);
+        const changed = () => {
+          if (installing.state !== "activated" && installing.state !== "redundant") return;
+          clearTimeout(timer);
+          installing.removeEventListener("statechange", changed);
+          if (installing.state === "activated") resolve();
+          else reject(Error("\u96E2\u7DDA\u7A0B\u5F0F\u672A\u5B8C\u6210\u4E0B\u8F09\uFF0C\u8ACB\u91CD\u8A66\u3002"));
+        };
+        installing.addEventListener("statechange", changed);
+        changed();
+      });
       return Promise.race([
         navigator.serviceWorker.ready,
         new Promise((_, reject) => setTimeout(() => reject(Error("\u96E2\u7DDA\u7A0B\u5F0F\u672A\u5B8C\u6210\u4E0B\u8F09\uFF0C\u8ACB\u4FDD\u6301\u9023\u7DDA\u5F8C\u91CD\u8A66\u3002")), 6e4))

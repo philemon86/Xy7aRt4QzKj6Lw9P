@@ -1,8 +1,8 @@
 // Scope is /pos/ only. API data lives in portal-scoped IndexedDB, never HTTP cache.
 const CACHE = 'philemon-pos-assets-__ASSET_VERSION__';
-const PAGES = 'philemon-pos-pages-__ASSET_VERSION__';
+const PAGES = 'philemon-pos-pages';
 const MANIFEST = '/pos/offline-assets.json';
-const pagePath = (path) => /^\/pos\/(?:[a-z]{2}\d{2}\/?|)$/.test(path);
+const pagePath = (path) => /^\/pos\/(?:[a-z0-9-]{1,40}\/?|)$/.test(path);
 async function resources() {
   const cache = await caches.open(CACHE);
   const manifest = await cache.match(MANIFEST);
@@ -35,8 +35,18 @@ self.addEventListener('activate', (event) => {
 async function storePage(path) {
   const response = await fetch(path, { cache: 'no-store' });
   if (!response.ok || !/text\/html/.test(response.headers.get('content-type') || '')) throw Error('離線登入頁下載失敗');
-  await (await caches.open(PAGES)).put(path, response.clone());
+  if (!await cachePage(path, response)) throw Error('新版離線程式仍在更新，請稍後重新下載。');
   return response;
+}
+async function cachePage(path, response) {
+  const text = await response.clone().text();
+  const references = [...text.matchAll(/(?:src|href)=["'](\/pos\/_next\/[^"'?]+)[^"']*["']/g)].map((m) => m[1]);
+  const { cache, manifest } = await resources();
+  // A new online HTML shell may arrive before its new worker has installed.
+  // Keep the previous usable shell until ALL release assets are present.
+  for (const asset of references) if (!manifest.assets.includes(asset) || !(await cache.match(asset))) return false;
+  await (await caches.open(PAGES)).put(path, response.clone());
+  return true;
 }
 self.addEventListener('message', (event) => {
   if (event.data?.type !== 'PREPARE') return;
@@ -64,8 +74,9 @@ self.addEventListener('fetch', (event) => {
         try { response = await fetch(event.request, { signal: controller.signal }); }
         finally { clearTimeout(timer); }
         if (!response.ok) throw Error('連線失敗');
-        if (/text\/html/.test(response.headers.get('content-type') || ''))
-          await (await caches.open(PAGES)).put(url.pathname, response.clone());
+        if (/text\/html/.test(response.headers.get('content-type') || '')) {
+          try { await cachePage(url.pathname, response); } catch { /* The live page still loads; retain the last complete offline shell. */ }
+        }
         return response;
       } catch { return cached || new Response('尚未下載此入口。請連線後登入並下載離線資料。', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }); }
     })());
@@ -73,7 +84,15 @@ self.addEventListener('fetch', (event) => {
   }
   event.respondWith((async () => {
     const { cache, manifest } = await resources();
-    if (!manifest.assets.includes(url.pathname)) return fetch(event.request);
+    if (!manifest.assets.includes(url.pathname)) {
+      // Retained fingerprinted assets let an open/cached older cashier survive
+      // a deployment until its next online navigation obtains the new shell.
+      if (url.pathname.startsWith('/pos/_next/') || /^\/pos\/register-v\d+\.html$/.test(url.pathname)) {
+        const previous = await caches.match(url.pathname);
+        if (previous) return previous;
+      }
+      return fetch(event.request);
+    }
     // query strings on decoder scripts don't change their release-bound contents.
     return await cache.match(url.pathname) || fetch(event.request);
   })());

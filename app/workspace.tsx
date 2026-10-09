@@ -273,7 +273,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       rememberScreen();
     }
     setLoaded(true);
-    if (user.role === 'admin') {
+    if (user.role === 'admin' && !getOfflineRuntime().disconnected) {
       Promise.all([api('churches'), api('sync-shop')])
         .then(([churches, job]) => {
           setChurches(churches);
