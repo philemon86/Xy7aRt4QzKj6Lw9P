@@ -26,7 +26,7 @@ test('Tendered cash follows denomination boundaries and rounds above 1000 to fiv
     assert.equal(suggestCashAmount(total), expected);
 });
 
-test('Donation completion returns to amounts without jumping while an arbitrary code is incomplete', () => {
+test('Invoice completion returns to barcode search without jumping while a donation is incomplete', () => {
   const script = fs.readFileSync('scripts/register-cash.js', 'utf8');
   let jumps = 0,
     church = null;
@@ -37,9 +37,10 @@ test('Donation completion returns to amounts without jumping while an arbitrary 
       fn();
       return 1;
     },
-    returnToCheckoutSummary() {
+    returnToProductSearch() {
       jumps++;
     },
+    resetSearchIdle() {},
     POSCore: { requiresChurchCustomer },
     getSelectedBookFairCustomer: () => church,
     invoiceTaxIdInput: field(),

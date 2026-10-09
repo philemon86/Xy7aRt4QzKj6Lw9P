@@ -23,14 +23,6 @@ const resetCashSuggestion = () => {
 };
 
 // Let the containing workspace scroll, preserving the fully expanded cart.
-const returnToCheckoutSummary = () => {
-  const summary = document.querySelector('.checkout-summary');
-  if (!summary) return;
-  const top = summary.getBoundingClientRect().top + window.scrollY;
-  if (parent !== window)
-    parent.postMessage({ type: 'checkout-summary', top }, location.origin);
-  else window.scrollTo({ top: Math.max(0, top - 16), behavior: 'auto' });
-};
 let invoiceScrollTimer;
 const finishInvoiceEntry = (event) => {
   clearTimeout(invoiceScrollTimer);
@@ -50,16 +42,9 @@ const finishInvoiceEntry = (event) => {
   )
     return;
   invoiceScrollTimer = setTimeout(() => {
-    if (
-      [
-        invoiceTaxIdInput,
-        invoiceDonateCarrierInput,
-        invoiceCustomerInput,
-      ].includes(document.activeElement)
-    )
-      document.activeElement.blur();
+    returnToProductSearch();
     clearTimeout(invoiceScrollTimer);
-    returnToCheckoutSummary();
+    resetSearchIdle();
   }, 180);
 };
 for (const field of [

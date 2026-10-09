@@ -208,7 +208,7 @@ html =
   html.slice(cartEnd);
 html = html.replace(
   '      const pricedCart=',
-  read('scripts/register-cash.js') + '\n      const pricedCart=',
+  read('scripts/register-focus.js') + '\n' + read('scripts/register-cash.js') + '\n      const pricedCart=',
 );
 const scanStart = html.indexOf("      scanForm.addEventListener('submit'");
 const scanEnd = html.indexOf('      const parseBulkLine', scanStart);
@@ -265,6 +265,10 @@ html = html.replace(
   "const cashPart = (client.paymentRecords || []).filter(p => p.method === '現金').reduce((sum,p) => sum + p.amount,0);\n        const change = Math.max(0, Math.round(paid - (client.paymentMethod.includes(' + ') ? cashPart : total)));",
 );
 const checkoutMarker = '        cart.forEach(item => {';
+html = html.replace(
+  /        productCodeInput\.focus\(\);\s*resetCashSuggestion\(\);/,
+  '        returnToProductSearch();\n        resetSearchIdle();\n        resetCashSuggestion();',
+);
 const pos = html.indexOf(checkoutMarker, html.indexOf('const performCheckout'));
 html =
   html.slice(0, pos) +

@@ -16,7 +16,7 @@ window.runtime=POSOfflineModule.getOfflineRuntime();window.portal=${JSON.stringi
 localStorage.setItem('pos-device','fixture-device');
 window.POSRegisterBootstrap=async()=>({event:await runtime.request(portal,'events/fair-'+portal),catalog:await runtime.request(portal,'catalog'),me:await runtime.request(portal,'me')});
 window.boot=runtime.request(portal,'bootstrap').then(()=>{const frame=document.createElement('iframe');frame.id='register';frame.dataset.eventId='fair-'+portal;frame.dataset.portal=portal;frame.src='/pos${REGISTER_FILE}';frame.style='width:100%;height:1400px;border:0';document.body.append(frame);});
-window.addEventListener('message',e=>{if(e.data.type==='height')document.querySelector('iframe').style.height=e.data.height+'px';});
+window.addEventListener('message',e=>{if(e.data.type==='height')document.querySelector('iframe').style.height=e.data.height+'px';if(e.data.type==='checkout-search'){window.lastSearchJump=e.data;const frame=document.querySelector('iframe');window.scrollTo({top:Math.max(0,frame.getBoundingClientRect().top+scrollY+e.data.top-88),behavior:'auto'});}});
 </script></body></html>`;
 const server = http.createServer(async (req, res) => {
   try {
@@ -67,6 +67,16 @@ try {
     const frame = page.frameLocator('#register');
     await frame.locator('#product-code').waitFor();
     await page.evaluate(() => runtime.prepare(portal));
+    // Completed invoice entry and clicking the current checkout tab both focus
+    // the real register input and scroll its label into the outer viewport.
+    await frame.locator('#invoice-donate-carrier').fill('/M3WKANH');
+    await page.waitForFunction(() => document.querySelector('iframe').contentDocument.activeElement?.id === 'product-code');
+    assert.ok(await page.evaluate(() => !!window.lastSearchJump));
+    assert.ok(await frame.locator('#product-code').evaluate(el => el.getBoundingClientRect().top + window.frameElement.getBoundingClientRect().top < 200));
+    await frame.locator('#invoice-donate-carrier').fill('');
+    await frame.locator('#paid-amount').focus();
+    await page.frames().find(f => f.url().includes('register-v')).evaluate(() => POSCloud.setView('checkout'));
+    assert.equal(await frame.locator('#product-code').evaluate(el => document.activeElement === el), true);
     await context.setOffline(true);
     await frame.locator('summary').filter({ hasText: '批次輸入商品' }).click();
     await frame.locator('#bulk-backup-btn').click();
@@ -109,6 +119,7 @@ try {
       await frame.locator('#btn-f10').click();
       await frame.locator('body[data-checkout="saved"]').waitFor();
       assert.ok(Date.now() - start < 1200, 'Checkout must not wait on the slow network');
+      assert.equal(await frame.locator('#product-code').evaluate(el => document.activeElement === el), true, 'Successful F10 returns to scanning');
     };
     await perform();
     assert.equal((await page.evaluate(() => runtime.summary(portal))).pending, 1);

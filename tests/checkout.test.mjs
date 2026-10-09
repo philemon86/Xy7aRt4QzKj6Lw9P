@@ -37,6 +37,8 @@ function make({ amount = 899, quantity = 1, fail = false } = {}) {
     btnF8: {},
     btnF10: {},
     triggerButtonAnimation: no,
+    returnToProductSearch: no,
+    resetSearchIdle: no,
     pricedCart: () => context.cart,
     calculateCartTotal: cartTotal,
     totalAmountElement: {},
@@ -121,6 +123,20 @@ test('Checkout persists a full order and clears the draft before printing', asyn
   assert.equal(o.paymentRecords[0].amount, 899);
   assert.equal(x.context.cart.length, 0);
   assert.equal(x.prints, 1);
+});
+
+test('All payment paths return to search after successful saving, never on failed saving', async () => {
+  for (const method of ['信用卡', 'LINE PAY', '文化幣(899)', '現金']) {
+    const x = make(); let returned = 0;
+    x.context.returnToProductSearch = () => returned++;
+    await x.checkout(method, method.includes('文化幣'));
+    assert.equal(returned, 1, method);
+    assert.equal(x.context.cart.length, 0);
+  }
+  const x = make({ fail: true }); let returned = 0;
+  x.context.returnToProductSearch = () => returned++;
+  await x.checkout('現金');
+  assert.equal(returned, 0);
 });
 test('Expired authorization preserves the cart and creates no payment or order', async () => {
   const x = make();

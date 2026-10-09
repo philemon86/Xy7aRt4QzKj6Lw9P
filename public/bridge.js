@@ -263,6 +263,7 @@ window.makeCloud = async function () {
     },
     setView(view) {
       document.body.dataset.view = view;
+      if (view === 'checkout') document.dispatchEvent(new Event('pos-checkout-focus'));
     },
     async reserve(count) {
       const r = await api('events/' + eid + '/eri', { count });
