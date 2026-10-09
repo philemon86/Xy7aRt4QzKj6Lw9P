@@ -7,9 +7,9 @@ editDialog.innerHTML = `<form id="item-edit-form">
   <div class="editor-fields">
     <label>單價<input id="edit-price" type="number" step="any" inputmode="decimal" required></label>
     <label>數量<input id="edit-quantity" type="number" step="1" inputmode="numeric" required></label>
-    <label>售價比例（%）<input id="edit-discount" type="number" min="0" max="100" step="0.1" inputmode="decimal" required><small id="edit-discount-label"></small></label>
+    <label>折扣百分比（%）<input id="edit-discount" type="number" min="0" max="100" step="0.1" inputmode="decimal" required><small id="edit-discount-label"></small></label>
   </div>
-  <p class="editor-help">九折請輸入 90；79%＝7.9 折，79.5%＝7.95 折。100 為原價，0 為免費。出貨單總額四捨五入至整元。退貨可輸入負數數量。</p>
+  <p class="editor-help">九折請輸入 90；79%＝7.9 折，79.5%＝7.95 折。100 為原價，0 為免費。每件折後單價先四捨五入至整元，再乘數量。退貨可輸入負數數量。</p>
   <label class="editor-sync"><input type="checkbox" id="edit-sync"> 同時設定本場同分類的折扣</label>
   <p id="edit-error" role="status"></p>
   <div class="editor-preview">此項小計 <strong id="edit-subtotal"></strong></div>
@@ -44,7 +44,7 @@ function previewEdit() {
     editField('subtotal').textContent =
       'NT$ ' +
       formatAmount(
-        Math.round((item.price * item.quantity * item.discount) / 100),
+        POSCore.itemTotal(item),
       );
     editField('error').textContent = '';
   } catch (e) {
@@ -173,7 +173,7 @@ const updateCartDisplay = () => {
     row.className = 'cart-item';
     row.dataset.code = item.code;
     row.innerHTML = `<td class="cart-product"><b></b><div class="cart-meta"><small></small><span class="cart-price-note"></span></div></td>
-      <td class="cart-quantity"><div class="cart-line-controls"><div class="quantity-stepper"><button type="button" aria-label="減少一件">−</button><button type="button" class="quantity-value" aria-label="編輯數量"></button><button type="button" aria-label="增加一件">＋</button></div><label class="cart-discount"><input type="number" min="0" max="10" step="0.01" inputmode="decimal" aria-label="本筆折數，9 表示九折" title="9＝九折，7.9＝七九折；10＝原價，0＝免費"><span>折</span></label></div></td>
+      <td class="cart-quantity"><div class="cart-line-controls"><div class="quantity-stepper"><button type="button" aria-label="減少一件">−</button><button type="button" class="quantity-value" aria-label="編輯數量"></button><button type="button" aria-label="增加一件">＋</button></div><label class="cart-discount"><input type="number" min="0" max="100" step="0.1" inputmode="decimal" aria-label="本筆折扣百分比，90 表示九折" title="90%＝九折，79.5%＝七九五折；100%＝原價，0%＝免費"><span>%</span></label></div></td>
       <td class="cart-subtotal"><strong></strong></td><td class="cart-edit"><div class="cart-row-actions"><button type="button" class="cart-remove" aria-label="移除此筆商品" title="移除此筆商品">×</button><button type="button" class="cart-edit-item">編輯</button></div></td>`;
     row
       .querySelector('.cart-remove')
@@ -184,31 +184,26 @@ const updateCartDisplay = () => {
       item.code +
       ' · ' +
       (item.isManual ? '手動調整' : item.priceLabel || '已保存價格');
-    row.querySelector('.cart-price-note').textContent =
-      '$' +
-      formatAmount(item.price) +
-      (Number(item.discount) === 100 && item.priceSource !== 'group'
-        ? '／件'
-        : ' × ' + POSCore.formatDiscount(item.discount));
+    row.querySelector('.cart-price-note').textContent = '$' + formatAmount(POSCore.discountedUnitPrice(item)) + '／件' + (Number(item.discount) === 100 ? '' : '（' + item.discount + '%）');
     row.querySelector('.cart-subtotal strong').textContent =
       '$' +
       formatAmount(
-        Math.round((item.price * item.quantity * item.discount) / 100),
+        POSCore.itemTotal(item),
       );
     const buttons = row.querySelectorAll('.quantity-stepper button');
     const discountInput = row.querySelector('.cart-discount input');
-    discountInput.value = Number((item.discount / 10).toFixed(2));
+    discountInput.value = Number(item.discount);
     discountInput.onchange = () => {
       if (cloud.event.status !== 'open' || checkoutBusy || item.promotionGift)
         return;
       try {
         const original = cart[item.promotionSourceIndex];
         if (!original || discountInput.value.trim() === '')
-          throw Error('請輸入折數，例如 9 表示九折');
+          throw Error('請輸入折扣百分比，例如 90 表示九折');
         cart[item.promotionSourceIndex] = POSCore.editCartItem(original, {
           price: item.price,
           quantity: original.quantity,
-          discount: Number((Number(discountInput.value) * 10).toFixed(1)),
+          discount: Number(discountInput.value),
         });
         updateCartDisplay();
         calculateTotal();

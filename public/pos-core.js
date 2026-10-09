@@ -199,6 +199,22 @@ function repairWebsiteZeroCart(items, products) {
   });
 }
 
+// Round one physical unit before multiplying quantity. Refunds keep the same
+// magnitude as their corresponding sale, including negative-price adjustments.
+function discountedUnitPrice(item) {
+  const value = Number(item.price || 0) * Number(item.discount ?? 100) / 100;
+  return Math.sign(value) * Math.floor(Math.abs(value) + 0.5 + Number.EPSILON * Math.max(1, Math.abs(value)) * 4);
+}
+function itemTotal(item, roundingMode = 'unit-v1') {
+  return roundingMode === 'unit-v1'
+    ? discountedUnitPrice(item) * Number(item.quantity || 0)
+    : Math.round(Number(item.price || 0) * Number(item.discount ?? 100) / 100 * Number(item.quantity || 0));
+}
+function cartTotal(items, roundingMode = 'unit-v1') {
+  return roundingMode === 'unit-v1'
+    ? (items || []).reduce((sum, item) => sum + itemTotal(item), 0)
+    : Math.round((items || []).reduce((sum, item) => sum + Number(item.price || 0) * Number(item.discount ?? 100) / 100 * Number(item.quantity || 0), 0));
+}
 function editCartItem(item, values) {
   const price = Number(values.price),
     quantity = Number(values.quantity),
@@ -215,6 +231,8 @@ function editCartItem(item, values) {
   if (Math.abs(price) > 9999999) throw Error('單價超出可用範圍');
   if (discount < 0 || discount > 100)
     throw Error('折扣請輸入 0～100，例如 79 表示七九折');
+  if (Math.abs(discount * 10 - Math.round(discount * 10)) > 0.0000001)
+    throw Error('折扣百分比最多一位小數，例如 95.5%');
   return { ...item, price, quantity, discount, isManual: true };
 }
 
@@ -518,4 +536,4 @@ function applyPromotions(items, products, groups, now = new Date()) {
   return lines.filter((i) => i.quantity !== 0);
 }
 
-return {searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();
+return {discountedUnitPrice,itemTotal,cartTotal,searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();

@@ -25,6 +25,28 @@ var POSOfflineModule = (() => {
     registerOfflineWorker: () => registerOfflineWorker
   });
 
+  // lib/pos-core.mjs
+  var pricingDayFormatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  var productSearchCollator = new Intl.Collator("zh-Hant", {
+    numeric: true,
+    sensitivity: "base"
+  });
+  function discountedUnitPrice(item) {
+    const value = Number(item.price || 0) * Number(item.discount ?? 100) / 100;
+    return Math.sign(value) * Math.floor(Math.abs(value) + 0.5 + Number.EPSILON * Math.max(1, Math.abs(value)) * 4);
+  }
+  function itemTotal(item, roundingMode = "unit-v1") {
+    return roundingMode === "unit-v1" ? discountedUnitPrice(item) * Number(item.quantity || 0) : Math.round(Number(item.price || 0) * Number(item.discount ?? 100) / 100 * Number(item.quantity || 0));
+  }
+  function cartTotal(items, roundingMode = "unit-v1") {
+    return roundingMode === "unit-v1" ? (items || []).reduce((sum, item) => sum + itemTotal(item), 0) : Math.round((items || []).reduce((sum, item) => sum + Number(item.price || 0) * Number(item.discount ?? 100) / 100 * Number(item.quantity || 0), 0));
+  }
+
   // lib/state.mjs
   function mergeChanges(current, changes) {
     const next = { ...current };
@@ -45,13 +67,12 @@ var POSOfflineModule = (() => {
   function validateOrder(o) {
     if (!o || typeof o.id !== "string" || !Array.isArray(o.items) || o.items.length > 1e3)
       throw Error("\u8A02\u55AE\u683C\u5F0F\u932F\u8AA4");
-    let sum = 0;
+    if (o.roundingMode != null && !["unit-v1", "legacy"].includes(o.roundingMode)) throw Error("\u91D1\u984D\u8A08\u7B97\u65B9\u5F0F\u932F\u8AA4");
     for (const i of o.items) {
       if (!i.code || typeof i.name !== "string" || /[<>]/.test(i.code) || /[<>]/.test(i.name.replace(/<[\u3400-\u9fff-]+>/g, "")) || ![i.price, i.quantity, i.discount].every(Number.isFinite) || Math.abs(i.price) > 9999999 || Math.abs(i.quantity) > 1e5 || i.discount < 0 || i.discount > 100)
         throw Error("\u5546\u54C1\u6578\u91CF\u6216\u91D1\u984D\u932F\u8AA4");
-      sum += i.price * i.quantity * i.discount / 100;
     }
-    if (!Number.isFinite(o.amount) || Math.round(sum) !== o.amount)
+    if (!Number.isFinite(o.amount) || cartTotal(o.items, o.roundingMode || "legacy") !== o.amount)
       throw Error("\u8A02\u55AE\u91D1\u984D\u8207\u660E\u7D30\u4E0D\u7B26");
     if (!Array.isArray(o.paymentRecords) || o.paymentRecords.some(
       (p) => !["\u73FE\u91D1", "\u4FE1\u7528\u5361", "LINE PAY", "\u6587\u5316\u5E63"].includes(p.method) || !Number.isFinite(p.amount)
@@ -263,7 +284,7 @@ var POSOfflineModule = (() => {
             if (p.key !== "order:" + p.after.id) throw Error("\u4EA4\u6613\u8B58\u5225\u4E0D\u7B26");
           }
         }
-        mergeChanges(local, body.changes);
+        mergeChanges(local, body.changes.map((p) => p.key.startsWith("draft:") || p.key === "shared:clientCounter" ? { ...p, before: local[p.key] ?? null } : p));
         const patches = new Map(record.patches.map((p) => [p.key, p]));
         for (const p of body.changes) {
           const old = patches.get(p.key);
@@ -332,6 +353,8 @@ var POSOfflineModule = (() => {
                 if (attempted && equal(server, attempted.after))
                   patches.push({ ...p, before: server });
                 else if (equal(server, p.before)) patches.push(p);
+                else if (p.key.startsWith("draft:") || p.key === "shared:clientCounter")
+                  patches.push({ ...p, before: server });
                 else {
                   patches.push(p);
                   conflicts.push(p.key);
@@ -380,8 +403,9 @@ var POSOfflineModule = (() => {
     }
     async requireSynced(portal) {
       await this.syncAll(portal, true);
-      const summary = await this.summary(portal);
-      if (summary.pendingEvents) throw Error("\u5C1A\u6709\u8CC7\u6599\u5F85\u540C\u6B65\uFF0C\u8ACB\u9023\u7DDA\u4E26\u5B8C\u6210\u540C\u6B65\u5F8C\u518D\u6B63\u5F0F\u532F\u51FA\u3002");
+      const records = await this.store.all("event", portal);
+      if (records.some((r) => r.kind === "event" && r.portal === portal && r.patches.some((p) => /^(order:|stock:)/.test(p.key))))
+        throw Error("\u5C1A\u6709\u4EA4\u6613\u6216\u5EAB\u5B58\u5F85\u540C\u6B65\uFF0C\u8ACB\u9023\u7DDA\u4E26\u5B8C\u6210\u540C\u6B65\u5F8C\u518D\u6B63\u5F0F\u532F\u51FA\u3002");
     }
     async conflicts(portal) {
       await this.grant(portal);

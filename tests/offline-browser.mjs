@@ -7,7 +7,7 @@ import { REGISTER_FILE } from '../lib/release.mjs';
 import { mergeChanges } from '../lib/state.mjs';
 const { chromium } = await import(process.env.POS_PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve('dist/client');
-const catalog = { products: [{ code: 'C001', name: '離線測試商品', price: 100, legacyPrice: 100, defaultDiscount: 100, ntaxFlag: '1', unitCode: '1' }], customers: [{ code: '0002', name: '書展' }, { code: '305', name: '個人' }, { code: 'AA01', name: '台北教會' }], units: { 1: '本' }, classes: {}, kinds: {}, pricingRules: { groups: [] } };
+const catalog = { products: [{code:'C002',name:'單價取整測試商品',price:20,legacyPrice:20,defaultDiscount:100,ntaxFlag:'1',unitCode:'1'}, { code: 'C001', name: '離線測試商品', price: 100, legacyPrice: 100, defaultDiscount: 100, ntaxFlag: '1', unitCode: '1' }], customers: [{ code: '0002', name: '書展' }, { code: '305', name: '個人' }, { code: 'AA01', name: '台北教會' }], units: { 1: '本' }, classes: {}, kinds: {}, pricingRules: { groups: [] } };
 const events = new Map(['admin', 'aa01'].map((portal) => [portal, { id: 'fair-' + portal, name: '離線測試書展', date: '2026-10-09', tenant: portal === 'admin' ? '' : portal, organizer: portal === 'admin' ? 'bookstore' : 'church', status: 'open', state: {}, revision: 0, numbers: {} }]));
 let workerRevision = 0;
 let futureShell = false;
@@ -86,7 +86,22 @@ try {
     assert.equal(await frame.locator('.quantity-value').innerText(), '2', 'Clear input must retain the cart');
     await frame.locator('.cart-remove').click();
     await page.frames().find((f) => f.url().includes('register-v')).evaluate(() => POSCloud.flush());
-    const perform = async () => {
+    // The inline discount is a percentage in both desktop and church mobile.
+    await frame.locator('#product-code').fill('C002');
+    await frame.locator('#product-code').press('Enter');
+    assert.equal(await frame.locator('.cart-discount input').inputValue(), '100');
+    assert.equal(await frame.locator('.cart-discount input').getAttribute('step'), '0.1');
+    await frame.locator('.cart-discount input').fill('95.5');
+    await frame.locator('.cart-discount input').press('Enter');
+    await frame.locator('.quantity-value').click();
+    await frame.locator('#edit-quantity').fill('1000');
+    await frame.locator('#item-edit-form .editor-save').click();
+    assert.equal(await frame.locator('#total-amount').innerText(), '19000');
+    assert.equal(await frame.locator('.cart-subtotal strong').innerText(), '$19,000');
+    assert.match(await frame.locator('.cart-price-note').innerText(), /19.*95.5%/);
+    await frame.locator('.cart-remove').click();
+    await page.frames().find((f) => f.url().includes('register-v')).evaluate(() => POSCloud.flush());
+        const perform = async () => {
       await frame.locator('#product-code').fill('C001');
       await frame.locator('#product-code').press('Enter');
       await frame.locator('.cart-item').waitFor();
@@ -127,6 +142,7 @@ try {
     await context.setOffline(false);
     await page.evaluate(() => runtime.syncAll(portal));
     assert.match((await page.evaluate(() => runtime.summary(portal))).error, /另一台/);
+    assert.doesNotMatch(await frame.locator('body').innerText(), /另一台裝置修改|舊資料同步待處理/);
     await perform();
     await page.evaluate(() => runtime.syncAll(portal));
     assert.equal(Object.keys(record.numbers).length, 4, 'Old conflicts must never block a new checkout');
@@ -169,3 +185,4 @@ try {
     await context.close();
   }
 } finally { await browser.close(); await new Promise((resolve) => server.close(resolve)); }
+

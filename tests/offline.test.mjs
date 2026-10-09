@@ -209,17 +209,17 @@ test('a rejected batch isolates an old shared-setting collision and saves a new 
   const s = setup(), e = await prepared(s);
   s.connected = false;
   await e.request('admin', 'events/fair/sync', { changes: [
-    { key: 'shared:clientCounter', before: null, after: '2' }, patch('new-sale'),
+    { key: 'shared:conflict-fixture', before: null, after: '2' }, patch('new-sale'),
   ] });
-  s.server.state['shared:clientCounter'] = '99';
+  s.server.state['shared:conflict-fixture'] = '99';
   s.connected = true;
   await e.syncAll('admin');
   assert.equal(s.server.state['order:new-sale'].amount, 100);
-  assert.equal(s.server.state['shared:clientCounter'], '99');
+  assert.equal(s.server.state['shared:conflict-fixture'], '99');
   assert.equal((await e.summary('admin')).pending, 0);
   assert.equal((await e.summary('admin')).pendingEvents, 1);
   assert.match((await e.summary('admin')).error, /另一台/);
-  await assert.rejects(e.requireSynced('admin'), /尚有資料/);
+  await e.requireSynced('admin');
   // Reload and continue selling without resolving or discarding the old collision.
   const reopened = s.create();
   const result = await reopened.request('admin', 'events/fair/sync', { changes: [patch('next-sale')] });
@@ -227,7 +227,7 @@ test('a rejected batch isolates an old shared-setting collision and saves a new 
   await reopened.syncAll('admin');
   assert.equal(s.server.state['order:next-sale'].amount, 100);
   assert.equal(Object.keys(s.server.numbers).length, 2);
-  assert.deepEqual((await reopened.conflicts('admin')).map((r) => r.key), ['shared:clientCounter']);
+  assert.deepEqual((await reopened.conflicts('admin')).map((r) => r.key), ['shared:conflict-fixture']);
 });
 test('a genuine old order conflict preserves both versions without blocking later checkout', async () => {
   const s = setup(), e = await prepared(s);
@@ -258,8 +258,8 @@ test('an existing V41 rejected request recovers automatically and retains a new 
   assert.equal(accepted.localSaved, true);
   await e.syncAll('admin');
   assert.equal(s.server.state['order:fresh'].amount, 100);
-  assert.equal(s.server.state[old.key], '[{"code":"OLD"}]');
-  assert.deepEqual((await s.store.get(key)).conflictKeys, [old.key]);
+  assert.equal(s.server.state[old.key], '[]');
+  assert.deepEqual((await s.store.get(key)).conflictKeys, []);
 });
 test('background non-authentication errors never reject durable local checkout', async () => {
   const s = setup(), e = await prepared(s);
@@ -269,4 +269,20 @@ test('background non-authentication errors never reject durable local checkout',
   const accepted = await e.request('admin', 'events/fair/sync', { changes: [patch('fresh')] });
   assert.equal(accepted.localSaved, true);
   assert.equal((await e.cached('admin', 'events/fair')).state['order:fresh'].amount, 100);
+});
+
+test('stale same-device draft cannot block the new sale or force cashier recovery', async () => {
+  const s = setup(), e = await prepared(s);
+  s.server.state['draft:device:cart'] = '[{"code":"old"}]';
+  s.server.state['shared:clientCounter'] = '9';
+  await e.request('admin', 'events/fair');
+  const accepted = await e.request('admin', 'events/fair/sync', { changes: [
+    { key:'draft:device:cart',before:null,after:'[]' },
+    { key:'shared:clientCounter',before:null,after:'10' },patch('fresh'),
+  ] });
+  assert.equal(accepted.localSaved,true);
+  await e.syncAll('admin');
+  assert.equal(s.server.state['order:fresh'].amount,100);
+  assert.equal(s.server.state['draft:device:cart'],'[]');
+  assert.equal((await e.summary('admin')).pendingEvents,0);
 });

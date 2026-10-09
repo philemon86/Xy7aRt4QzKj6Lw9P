@@ -365,9 +365,9 @@ window.makeCloud = async function () {
     const summary = await offline.summary(portal || 'admin').catch(() => null);
     if (!summary) return;
     cloud.offlineSyncError = summary.error;
-    status(summary.error ? '可繼續結帳 · 舊資料同步待處理 · ' + summary.error : summary.pendingEvents
-      ? `已存到裝置 · ${summary.pending ? summary.pending + ' 筆交易' : '設定／草稿'}待同步`
-      : summary.offline ? '離線使用 · 已存到裝置' : '已連接雲端', !!summary.error);
+    status(summary.pending
+      ? `已存到裝置 · ${summary.pending} 筆交易待同步`
+      : summary.offline ? '離線使用 · 已存到裝置' : '已連接雲端');
     if (!summary.pendingEvents && !busy && !failed) {
       const record = await offline.store.get(offline.key(portal || 'admin', eid));
       if (record) { cloud.numbers = record.event.numbers || {}; cloud.onUpdate?.(); }

@@ -1,3 +1,4 @@
+import { cartTotal } from '../lib/pos-core.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,7 +8,7 @@ test('Generated checkout totals apply current promotions without repricing saved
   const start = html.indexOf('      const pricedCart=');
   const end = html.indexOf('      const calculateTotal =', start);
   const context = {
-    POSCore: { applyPromotions },
+    POSCore: { applyPromotions, cartTotal },
     cart: [item(), item('B')],
     products: Object.fromEntries(products.map((p) => [p.code, p])),
     cloud: { catalog: { pricingRules: { groups: [bogo] } } },
@@ -20,7 +21,7 @@ test('Generated checkout totals apply current promotions without repricing saved
   );
   assert.equal(context.getTotal(context.cart), 100);
   assert.equal(context.lines().length, 2);
-  assert.equal(context.getTotal([{ ...item(), quantity: 2 }]), 79);
+  assert.equal(context.getTotal([{ ...item(), quantity: 2 }], "legacy"), 79);
 });
 import { applyPromotions, validatePromotion } from '../lib/promotions.mjs';
 import { churchInventory } from '../lib/church-stock.mjs';

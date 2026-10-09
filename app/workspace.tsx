@@ -749,19 +749,19 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
             <button type="button" className="offline-download" disabled={preparingOffline} onClick={prepareOffline}>
               <Download size={14} />{offlineProgress || (offlineInfo?.ready ? '更新離線資料' : '下載離線資料')}
             </button>
-            <span className={cloudError || offlineInfo?.error ? 'error connection' : offlineInfo?.pendingEvents || offlineInfo?.offline ? 'connection offline-pending' : 'connection'} aria-live="polite">
+            <span className={cloudError ? 'error connection' : offlineInfo?.pending || offlineInfo?.offline ? 'connection offline-pending' : 'connection'} aria-live="polite">
               <CloudCheck size={16} />
-              {offlineInfo?.error ? '同步需處理：' + offlineInfo.error : offlineInfo?.pendingEvents
-                ? `${offlineInfo.offline ? '離線 · ' : ''}${offlineInfo.pending ? offlineInfo.pending + ' 筆交易' : '設定／草稿'}待同步`
+              {offlineInfo?.pending
+                ? `${offlineInfo.offline ? '離線 · ' : ''}${offlineInfo.pending} 筆交易待同步`
                 : offlineInfo?.offline ? '離線使用 · 資料存於裝置' : active ? cloudStatus : '已連接雲端'}
             </span>
-            {!!offlineInfo?.pendingEvents && <button className="offline-download" onClick={async () => {
+            {!!offlineInfo?.pending && <button className="offline-download" onClick={async () => {
               try { await getOfflineRuntime().syncAll(tenant || 'admin', true); } catch (e: any) { setError(e.message); }
             }}>重試同步</button>}
-            {!!offlineInfo?.error && <button className="offline-download" onClick={async () => {
+            {!!offlineInfo?.error && !!offlineInfo?.pending && <button className="offline-download" onClick={async () => {
               download(await getOfflineRuntime().backup(tenant || 'admin'), 'POS-待同步備份.json');
             }}>下載待同步備份</button>}
-            {!!offlineInfo?.error && <OfflineConflicts portal={tenant || 'admin'} onResolved={() => {
+            {!!offlineInfo?.error && !!offlineInfo?.pending && <OfflineConflicts portal={tenant || 'admin'} onResolved={() => {
               const cloud = (frame.current?.contentWindow as any)?.POSCloud;
               if (cloud) void cloud.refresh().catch((e: any) => setError(e.message));
               else void load().catch((e: any) => setError(e.message));

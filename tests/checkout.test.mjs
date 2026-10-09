@@ -1,3 +1,4 @@
+import { itemTotal, cartTotal } from '../lib/pos-core.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -37,17 +38,14 @@ function make({ amount = 899, quantity = 1, fail = false } = {}) {
     btnF10: {},
     triggerButtonAnimation: no,
     pricedCart: () => context.cart,
-    calculateCartTotal: (cart) =>
-      Math.round(
-        cart.reduce((s, i) => s + (i.price * i.quantity * i.discount) / 100, 0),
-      ),
+    calculateCartTotal: cartTotal,
     totalAmountElement: {},
     generateClientId: () => crypto.randomUUID(),
     getInvoiceInfoFromInputs: () => ({}),
     getSelectedBookFairCustomer: () => null,
     BOOK_FAIR_CUSTOMER: { code: '0002', name: '書展' },
     getPersonalCustomer: () => ({ code: '305' }),
-    POSCore: { requiresChurchCustomer, invoiceCustomerCode },
+    POSCore: { requiresChurchCustomer, invoiceCustomerCode, itemTotal },
     POSAudio: { success: no, error: no },
     PilotExporter: Pilot,
     localStorage: {
@@ -255,4 +253,16 @@ test('background synchronization errors cannot block another cashier sale', asyn
   await fixture.checkout('現金');
   assert.equal(Object.values(fixture.saved).length, 1);
   assert.equal(Object.values(fixture.saved)[0].amount, 899);
+});
+
+test('checkout saves discounted unit rounding with matching payment amount and original percentage', async () => {
+  const x = make({ amount: 20, quantity: 1000 });
+  x.context.cart[0].discount = 95.5;
+  await x.checkout('現金');
+  const o = Object.values(x.saved)[0];
+  assert.equal(o.amount, 19000);
+  assert.equal(o.roundingMode, 'unit-v1');
+  assert.equal(o.items[0].discount, 95.5);
+  assert.equal(o.items[0].price, 20);
+  assert.equal(o.paymentRecords[0].amount, 19000);
 });

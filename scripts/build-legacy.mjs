@@ -15,7 +15,7 @@ const core =
     .replace(/^export /gm, '');
 fs.writeFileSync(
   path.join(root, 'public/pos-core.js'),
-  `window.POSCore=(()=>{${core}\nreturn {searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
+  `window.POSCore=(()=>{${core}\nreturn {discountedUnitPrice,itemTotal,cartTotal,searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
 );
 html = html
   .replaceAll('折扣 %', '售價比例 %')
@@ -167,14 +167,17 @@ html =
   html.slice(0, discountStart) +
   '      const getSpecialDiscount = () => undefined;\n      const calculateItemDiscount = item => item.isManual ? item.discount : (item.defaultDiscount ?? 100);\n' +
   html.slice(discountEnd);
-html = html.replace(
-  '      const calculateCartTotal = (items = cart) => {',
-  '      const pricedCart=()=>POSCore.applyPromotions(cart,products,cloud.catalog.pricingRules?.groups||[]);\n      const calculateCartTotal = (items = cart) => {\n        if(items===cart)items=pricedCart();',
-);
-html = html.replace(
-  'items: cart.map(i => ({ ...i })),',
-  'items: pricedCart().map(i => ({ ...i })),',
-);
+const totalStart = html.indexOf('      const calculateCartTotal = (items = cart) => {');
+const totalEnd = html.indexOf('      const calculateTotal =', totalStart);
+if (totalStart < 0 || totalEnd < 0) throw Error('找不到結帳金額接點');
+html = html.slice(0, totalStart) + '      const pricedCart=()=>POSCore.applyPromotions(cart,products,cloud.catalog.pricingRules?.groups||[]);\n      const calculateCartTotal=(items=cart,roundingMode="unit-v1")=>POSCore.cartTotal(items===cart?pricedCart():items,roundingMode);\n\n' + html.slice(totalEnd);
+html = html.replace('items: cart.map(i => ({ ...i })),', 'roundingMode: "unit-v1",\n          items: pricedCart().map(i => ({ ...i })),');
+html = html.replaceAll('calculateCartTotal(client.items)', "calculateCartTotal(client.items, client.roundingMode || 'legacy')");
+html = html.replace('const sub = it.price * it.quantity * (it.discount / 100);', "const sub = POSCore.itemTotal(it, client.roundingMode || 'legacy');");
+html = html.replace('${formatMoney(it.price)}', '${formatMoney(client.roundingMode === "unit-v1" ? POSCore.discountedUnitPrice(it) : it.price)}');
+html = html.replaceAll('Math.round(item.price * item.quantity * (item.discount / 100))', "POSCore.itemTotal(item, client.roundingMode || 'legacy')");
+html = html.replace('overallSummary[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);', 'overallSummary[item.code].totalAmount += POSCore.itemTotal(item);');
+html = html.replace('tempOverall[item.code].totalAmount += item.price * item.quantity * (item.discount / 100);', "tempOverall[item.code].totalAmount += POSCore.itemTotal(item, client.roundingMode || 'legacy');");
 html = html.replace(
   '        if (cart.length > 0 && total <= 0) paidAmountInput.value = total;',
   '        updateCashSuggestion(total);',
@@ -343,7 +346,7 @@ html = html.replace(
 html = html.replace(
   '            if (data.clients) {',
   `            if (data.clients) {
-              for(const client of Object.values(data.clients)){client.items=(client.items||[]).map(i=>({...i,price:Number(i.price||0),quantity:Number(i.quantity||0),discount:i.discount===undefined?100:Number(i.discount)}));if(Number(client.amount)===0&&calculateCartTotal(client.items)!==0)client.amount=calculateCartTotal(client.items);client.amount=Number(client.amount);client.paymentRecords=PilotExporter.getPaymentRecords(client);}
+              for(const client of Object.values(data.clients)){client.items=(client.items||[]).map(i=>({...i,price:Number(i.price||0),quantity:Number(i.quantity||0),discount:i.discount===undefined?100:Number(i.discount)}));if(Number(client.amount)===0&&calculateCartTotal(client.items, client.roundingMode || 'legacy')!==0)client.amount=calculateCartTotal(client.items, client.roundingMode || 'legacy');client.amount=Number(client.amount);client.paymentRecords=PilotExporter.getPaymentRecords(client);}
 `,
 );
 html = html.replace(

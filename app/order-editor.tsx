@@ -97,7 +97,9 @@ export default function OrderEditor({
       cancelled = true;
     };
   }, [target.eventId, target.orderId]);
-  const total = useMemo(() => orderTotal(items), [items]);
+  const roundingMode = JSON.stringify(items) === JSON.stringify(original?.items || [])
+    ? original?.roundingMode || 'legacy' : 'unit-v1';
+  const total = useMemo(() => orderTotal(items, roundingMode), [items, roundingMode]);
   const matches = search.trim()
     ? (catalog?.products || [])
         .filter((p: any) =>
@@ -141,7 +143,7 @@ export default function OrderEditor({
       if (choice.includes(' + ') && !split.trim())
         throw Error('請輸入文化幣金額');
       const edited = items.map((i) => editCartItem(i, i));
-      const amount = orderTotal(edited),
+      const amount = orderTotal(edited, roundingMode),
         paymentRecords =
           !choice && amount === original.amount
             ? original.paymentRecords
@@ -166,6 +168,7 @@ export default function OrderEditor({
       const after = {
         ...original,
         items: edited,
+        roundingMode,
         amount,
         paymentRecords,
         paymentMethod: paymentLabel(paymentRecords, amount),
@@ -336,8 +339,8 @@ export default function OrderEditor({
                         小計
                         <strong>
                           $
-                          {Number.isFinite(orderTotal([item]))
-                            ? orderTotal([item]).toLocaleString()
+                          {Number.isFinite(orderTotal([item], roundingMode))
+                            ? orderTotal([item], roundingMode).toLocaleString()
                             : '—'}
                         </strong>
                       </span>
