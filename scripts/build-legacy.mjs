@@ -150,7 +150,7 @@ html =
         const data=cloud.catalog;unitMap=data.units;clasMap=data.classes;kindMap=data.kinds;customerMap=Object.fromEntries(data.customers.map(c=>[c.code,c]));
         customerOptions.replaceChildren(...data.customers.map(c=>{const option=document.createElement('option');option.value=formatCustomerOption(c);return option;}));
         products={};for(const source of data.products){const p=POSCore.resolveProductPricing(source);products[p.code]=p;if(p.barcode)products[p.barcode]=p;if(p.webBarcode&&!products[p.webBarcode])products[p.webBarcode]=p;}
-        dbStatusElement.textContent=data.products.length+' 件商品 · 價格已快取';
+        dbStatusElement.textContent='';dbStatusElement.hidden=true;
         if(!cloud.catalogLoaded)invoiceCustomerInput.value=cloud.event.tenant?formatCustomerOption(customerMap[cloud.event.tenant.toUpperCase()]):'';syncInvoiceCustomerVisibility();cloud.catalogLoaded=true;
       };
       const repairCartPrices=()=>{

@@ -168,16 +168,6 @@ const updateCartDisplay = () => {
       ' 種 · ' +
       displayItems.reduce((s, i) => s + i.quantity, 0) +
       ' 件';
-  if (!cart.length) {
-    const row = document.createElement('tr');
-    row.className = 'cart-empty';
-    const cell = document.createElement('td');
-    cell.colSpan = 4;
-    cell.innerHTML =
-      '<span class="empty-bag">＋</span><strong>準備好下一筆結帳</strong><small>掃描條碼、搜尋商品，或點選常用商品。</small>';
-    row.append(cell);
-    cartTableBody.append(row);
-  }
   displayItems.forEach((item) => {
     const row = document.createElement('tr');
     row.className = 'cart-item';
