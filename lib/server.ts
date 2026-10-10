@@ -24,6 +24,8 @@ import {
 } from './catalog.mjs';
 import initialShop from '../data/shop-cache.json';
 import { mergeShopCache } from './shop.mjs';
+import { refreshShopProducts } from './shop-product-refresh.mjs';
+import { POS_RELEASE } from './release.mjs';
 import { repairVerifiedShopPrices } from './shop-repair.mjs';
 import { mergeChanges, validateOrder, stats } from './state.mjs';
 import { syncStateResponse } from './sync-response.mjs';
@@ -589,7 +591,7 @@ export async function handle(req: Request, parts: string[]) {
       if (id === 'version') {
         const rows = await db()
           .prepare(
-            "SELECT key,json_extract(value,'$.revision') revision FROM settings WHERE key IN ('catalog-products','global-pricing')",
+            "SELECT key,json_extract(value,'$.revision') revision FROM settings WHERE key IN ('catalog-products','global-pricing','shop-revision') ORDER BY key",
           )
           .all<any>();
         const sync = await db()
@@ -598,7 +600,7 @@ export async function handle(req: Request, parts: string[]) {
         const job = sync ? JSON.parse(sync.value) : {};
         return json({
           version:
-            JSON.stringify(rows.results) +
+            POS_RELEASE + ':' + JSON.stringify(rows.results) +
             ':' +
             (job.started || '') +
             ':' +
@@ -610,6 +612,10 @@ export async function handle(req: Request, parts: string[]) {
     isAdmin(s);
     if (req.method !== 'POST') throw error('請使用 POST', 405);
     const config = await catalogSettings();
+    if (id === 'refresh-website') {
+      await limited('website-refresh:' + s.token, 60);
+      return json(await refreshShopProducts(db(), config.products, initialShop, b.codes));
+    }
     if (id === 'import') {
       if (typeof b.text !== 'string' || b.text.length > 8000000)
         throw error('CSV 檔案過大或格式錯誤');

@@ -15,7 +15,7 @@ const core =
     .replace(/^export /gm, '');
 fs.writeFileSync(
   path.join(root, 'public/pos-core.js'),
-  `window.POSCore=(()=>{${core}\nreturn {discountedUnitPrice,itemTotal,cartTotal,searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
+  `window.POSCore=(()=>{${core}\nreturn {discountedUnitPrice,itemTotal,cartTotal,searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,refreshAutomaticCartPrices,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
 );
 html = html
   .replaceAll('折扣 %', '售價比例 %')
@@ -155,10 +155,17 @@ html =
       };
       const repairCartPrices=()=>{
         if(cloud.event.status!=='open'||(isBookstore&&cloud.event.organizer==='church'))return;
-        const restored=POSCore.repairWebsiteZeroCart(cart,products);
+        const restored=POSCore.refreshAutomaticCartPrices(POSCore.repairWebsiteZeroCart(cart,products),products);
         if(restored.some((item,i)=>item!==cart[i])){cart=restored;saveCart();}
       };
-      cloud.onCatalogUpdate=async()=>{await loadMasterData();repairCartPrices();renderSearch();renderFavorites();updateCartDisplay();calculateTotal();};
+      let catalogUpdateTimer;
+      cloud.onCatalogUpdate=async()=>{
+        clearTimeout(catalogUpdateTimer);
+        if(['checking','saving','failed'].includes(document.body.dataset.checkout)||document.querySelector('dialog[open]')){
+          catalogUpdateTimer=setTimeout(()=>cloud.onCatalogUpdate(),500);return;
+        }
+        await loadMasterData();repairCartPrices();renderSearch();renderFavorites();updateCartDisplay();calculateTotal();
+      };
 ` +
   html.slice(loadEnd);
 const discountStart = html.indexOf('      const getSpecialDiscount =');

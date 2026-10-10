@@ -111,6 +111,20 @@ try {
     assert.match(await frame.locator('.cart-price-note').innerText(), /19.*95.5%/);
     await frame.locator('.cart-remove').click();
     await page.frames().find((f) => f.url().includes('register-v')).evaluate(() => POSCloud.flush());
+    // A catalog update reaches the already-open register and unfinished cart,
+    // including the shared church interface; offline reload retains the new price.
+    await frame.locator('#product-code').fill('C001');
+    await frame.locator('#product-code').press('Enter');
+    await page.evaluate(async () => {
+      const next = structuredClone(await runtime.cached(portal, 'catalog'));
+      next.products.find(p => p.code === 'C001').websitePrice = 108;
+      await runtime.cache(portal, 'catalog', next);
+      document.querySelector('iframe').contentWindow.postMessage({type:'catalog-updated',catalog:next},location.origin);
+    });
+    await frame.locator('#total-amount').filter({hasText:'108'}).waitFor();
+    assert.match(await frame.locator('.cart-price-note').innerText(), /108/);
+    await frame.locator('.cart-remove').click();
+    await page.frames().find((f) => f.url().includes('register-v')).evaluate(() => POSCloud.flush());
         const perform = async () => {
       await frame.locator('#product-code').fill('C001');
       await frame.locator('#product-code').press('Enter');

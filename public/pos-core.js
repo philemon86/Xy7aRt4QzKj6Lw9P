@@ -199,6 +199,21 @@ function repairWebsiteZeroCart(items, products) {
   });
 }
 
+// Only unfinished automatic cart lines follow catalog updates; explicit cashier
+// changes and free gifts keep their prices. Saved orders never call this helper.
+function refreshAutomaticCartPrices(items, products) {
+  return items.map(item => {
+    const product = products[item.code];
+    if (!product || item.isManual || item.promotionGift || Number(item.discount) === 0) return item;
+    const patch = { price: product.price, discount: product.defaultDiscount,
+      defaultDiscount: product.defaultDiscount, priceSource: product.priceSource,
+      priceLabel: product.priceLabel, legacyPrice: product.legacyPrice,
+      websiteBase: product.websiteBase };
+    if (Object.entries(patch).every(([key, value]) => item[key] === value)) return item;
+    return { ...item, ...patch };
+  });
+}
+
 // Round one physical unit before multiplying quantity. Refunds keep the same
 // magnitude as their corresponding sale, including negative-price adjustments.
 function discountedUnitPrice(item) {
@@ -536,4 +551,4 @@ function applyPromotions(items, products, groups, now = new Date()) {
   return lines.filter((i) => i.quantity !== 0);
 }
 
-return {discountedUnitPrice,itemTotal,cartTotal,searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();
+return {discountedUnitPrice,itemTotal,cartTotal,searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,refreshAutomaticCartPrices,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();

@@ -205,6 +205,11 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     catalogRef = useRef(catalog),
     meRef = useRef(me);
   catalogRef.current = catalog;
+  useEffect(() => {
+    if (catalog) frame.current?.contentWindow?.postMessage(
+      { type: 'catalog-updated', catalog }, location.origin,
+    );
+  }, [catalog]);
   meRef.current = me;
   useEffect(() => {
     const expired = () => {

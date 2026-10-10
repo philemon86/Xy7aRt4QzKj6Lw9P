@@ -247,7 +247,7 @@ window.makeCloud = async function () {
     } finally {
       refreshingCatalog = false;
     }
-  }, 60000);
+  }, 30000);
   cloud = {
     event,
     catalog,
@@ -408,6 +408,10 @@ window.makeCloud = async function () {
   window.addEventListener('message', async (e) => {
     if (e.origin !== location.origin || e.source !== parent) return;
     if (e.data.type === 'view') cloud.setView(e.data.view);
+    if (e.data.type === 'catalog-updated' && Array.isArray(e.data.catalog?.products)) {
+      cloud.catalog = e.data.catalog;
+      void cloud.onCatalogUpdate?.();
+    }
     if (e.data.type === 'flush')
       try {
         await flush();

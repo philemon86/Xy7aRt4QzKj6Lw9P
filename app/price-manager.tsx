@@ -456,6 +456,16 @@ export default function PriceManager({
                         修改
                       </Button>
                     )}
+                    {!readOnly && p.sourceUrl && (
+                      <Button variant="ghost" size="sm" disabled={busy}
+                        onClick={() => run(async () => {
+                          await request('catalog/refresh-website', { codes: [p.code] });
+                          await onUpdated();
+                          setMessage('官網售價已更新，書房與教會同步採用');
+                        })}>
+                        更新官網售價
+                      </Button>
+                    )}
                     {!readOnly &&
                       rules.products[p.code] &&
                       !rules.products[p.code].deleted && (
