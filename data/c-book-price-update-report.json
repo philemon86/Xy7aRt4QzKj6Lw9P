@@ -1,0 +1,1047 @@
+{
+  "at": "2026-10-10T14:21:23.195Z",
+  "sourceCheckedAt": "2026-10-10T14:17:51.963Z",
+  "scope": "C001–C298 verified official product pages",
+  "verified": 170,
+  "websitePriceChanges": 154,
+  "removeRules": [
+    "C002",
+    "C292",
+    "C294",
+    "C295",
+    "C296",
+    "C222",
+    "C293",
+    "C291",
+    "C050",
+    "C167",
+    "C170",
+    "C136",
+    "C180",
+    "C178",
+    "C181",
+    "C190"
+  ],
+  "changes": [
+    {
+      "code": "C201",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c201"
+    },
+    {
+      "code": "C002",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c002"
+    },
+    {
+      "code": "C205",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c205"
+    },
+    {
+      "code": "C210",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c210"
+    },
+    {
+      "code": "C214",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c214"
+    },
+    {
+      "code": "C217",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c217"
+    },
+    {
+      "code": "C219",
+      "previous": 180,
+      "websitePrice": 162,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c223c235c236"
+    },
+    {
+      "code": "C223",
+      "previous": 180,
+      "websitePrice": 162,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c223c235c236"
+    },
+    {
+      "code": "C235",
+      "previous": 180,
+      "websitePrice": 162,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c223c235c236"
+    },
+    {
+      "code": "C236",
+      "previous": 180,
+      "websitePrice": 162,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c223c235c236"
+    },
+    {
+      "code": "C229",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c229"
+    },
+    {
+      "code": "C230",
+      "previous": 200,
+      "websitePrice": 180,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c230"
+    },
+    {
+      "code": "C231",
+      "previous": 450,
+      "websitePrice": 405,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c231"
+    },
+    {
+      "code": "C237",
+      "previous": 500,
+      "websitePrice": 450,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c237"
+    },
+    {
+      "code": "C234",
+      "previous": 500,
+      "websitePrice": 450,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c234"
+    },
+    {
+      "code": "C241",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c241"
+    },
+    {
+      "code": "C243",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c243"
+    },
+    {
+      "code": "C245",
+      "previous": 200,
+      "websitePrice": 180,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c245"
+    },
+    {
+      "code": "C248",
+      "previous": 200,
+      "websitePrice": 180,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c248"
+    },
+    {
+      "code": "C250",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c250"
+    },
+    {
+      "code": "C224",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c224"
+    },
+    {
+      "code": "C226",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c226"
+    },
+    {
+      "code": "C238",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c238"
+    },
+    {
+      "code": "C240",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c240"
+    },
+    {
+      "code": "C242",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c242"
+    },
+    {
+      "code": "C244",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c244"
+    },
+    {
+      "code": "C249",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c249"
+    },
+    {
+      "code": "C251",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c251"
+    },
+    {
+      "code": "C254",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c254"
+    },
+    {
+      "code": "C259",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c259"
+    },
+    {
+      "code": "C260",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c260"
+    },
+    {
+      "code": "C261",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c261"
+    },
+    {
+      "code": "C252",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c252"
+    },
+    {
+      "code": "C253",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c253"
+    },
+    {
+      "code": "C255",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c255"
+    },
+    {
+      "code": "C256",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c256"
+    },
+    {
+      "code": "C025",
+      "previous": 135,
+      "websitePrice": 99,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c025"
+    },
+    {
+      "code": "C265",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c265"
+    },
+    {
+      "code": "C271",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c271"
+    },
+    {
+      "code": "C266",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c266"
+    },
+    {
+      "code": "C272",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c272"
+    },
+    {
+      "code": "C273",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c273"
+    },
+    {
+      "code": "C010",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c010"
+    },
+    {
+      "code": "C280",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c280"
+    },
+    {
+      "code": "C281",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c281"
+    },
+    {
+      "code": "C161",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c161"
+    },
+    {
+      "code": "C221",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c221"
+    },
+    {
+      "code": "C287",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c287"
+    },
+    {
+      "code": "C187",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c187"
+    },
+    {
+      "code": "C290",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c290"
+    },
+    {
+      "code": "C292",
+      "previous": 500,
+      "websitePrice": 450,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c292"
+    },
+    {
+      "code": "C289",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c289"
+    },
+    {
+      "code": "C294",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c294"
+    },
+    {
+      "code": "C295",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c295"
+    },
+    {
+      "code": "C296",
+      "previous": 899,
+      "websitePrice": 899,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c296"
+    },
+    {
+      "code": "C199",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c199"
+    },
+    {
+      "code": "C198",
+      "previous": 250,
+      "websitePrice": 250,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c198"
+    },
+    {
+      "code": "C207",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c207"
+    },
+    {
+      "code": "C206",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c206"
+    },
+    {
+      "code": "C211",
+      "previous": 100,
+      "websitePrice": 90,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c211"
+    },
+    {
+      "code": "C209",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c209"
+    },
+    {
+      "code": "C215",
+      "previous": 800,
+      "websitePrice": 720,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c215"
+    },
+    {
+      "code": "C213",
+      "previous": 250,
+      "websitePrice": 250,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c213"
+    },
+    {
+      "code": "C216",
+      "previous": 250,
+      "websitePrice": 250,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c216"
+    },
+    {
+      "code": "C218",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c218"
+    },
+    {
+      "code": "C222",
+      "previous": 280,
+      "websitePrice": 280,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c222"
+    },
+    {
+      "code": "C225",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c225"
+    },
+    {
+      "code": "C227",
+      "previous": 400,
+      "websitePrice": 360,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c227"
+    },
+    {
+      "code": "C232",
+      "previous": 200,
+      "websitePrice": 180,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c232"
+    },
+    {
+      "code": "C239",
+      "previous": 200,
+      "websitePrice": 180,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c239"
+    },
+    {
+      "code": "C246",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c246"
+    },
+    {
+      "code": "C247",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c247"
+    },
+    {
+      "code": "C258",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c258"
+    },
+    {
+      "code": "C257",
+      "previous": 500,
+      "websitePrice": 450,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c257"
+    },
+    {
+      "code": "C262",
+      "previous": 200,
+      "websitePrice": 200,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c262"
+    },
+    {
+      "code": "C264",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c264"
+    },
+    {
+      "code": "C268",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c268c278"
+    },
+    {
+      "code": "C278",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c268c278"
+    },
+    {
+      "code": "C267",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c267"
+    },
+    {
+      "code": "C269",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c269"
+    },
+    {
+      "code": "C270",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c270"
+    },
+    {
+      "code": "C274",
+      "previous": 200,
+      "websitePrice": 180,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c274"
+    },
+    {
+      "code": "C277",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c277"
+    },
+    {
+      "code": "C275",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c275"
+    },
+    {
+      "code": "C279",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c279"
+    },
+    {
+      "code": "C276",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c276"
+    },
+    {
+      "code": "C003",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c003"
+    },
+    {
+      "code": "C007",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c007"
+    },
+    {
+      "code": "C009",
+      "previous": 500,
+      "websitePrice": 450,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c009"
+    },
+    {
+      "code": "C021",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c021"
+    },
+    {
+      "code": "C182",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c182"
+    },
+    {
+      "code": "C282",
+      "previous": 400,
+      "websitePrice": 360,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c282"
+    },
+    {
+      "code": "C283",
+      "previous": 500,
+      "websitePrice": 450,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c283"
+    },
+    {
+      "code": "C284",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c284"
+    },
+    {
+      "code": "C285",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c285"
+    },
+    {
+      "code": "C184",
+      "previous": 400,
+      "websitePrice": 360,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c184"
+    },
+    {
+      "code": "C286",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c286"
+    },
+    {
+      "code": "C288",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c288"
+    },
+    {
+      "code": "C185",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c185"
+    },
+    {
+      "code": "C122",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c122"
+    },
+    {
+      "code": "C293",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c293"
+    },
+    {
+      "code": "C291",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c291"
+    },
+    {
+      "code": "C141",
+      "previous": 162,
+      "websitePrice": 162,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c141"
+    },
+    {
+      "code": "C072",
+      "previous": 50,
+      "websitePrice": 45,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c072"
+    },
+    {
+      "code": "C088",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c088"
+    },
+    {
+      "code": "C137",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c137"
+    },
+    {
+      "code": "C083",
+      "previous": 240,
+      "websitePrice": 216,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c083"
+    },
+    {
+      "code": "C172",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c172"
+    },
+    {
+      "code": "C043",
+      "previous": 500,
+      "websitePrice": 450,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c043"
+    },
+    {
+      "code": "C153",
+      "previous": 280,
+      "websitePrice": 252,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c153"
+    },
+    {
+      "code": "C155",
+      "previous": 180,
+      "websitePrice": 162,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c155"
+    },
+    {
+      "code": "C154",
+      "previous": 280,
+      "websitePrice": 252,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c154"
+    },
+    {
+      "code": "C008",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c008"
+    },
+    {
+      "code": "C158",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c158"
+    },
+    {
+      "code": "C157",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c157"
+    },
+    {
+      "code": "C159",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c159"
+    },
+    {
+      "code": "C175",
+      "previous": 250,
+      "websitePrice": 250,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c175"
+    },
+    {
+      "code": "C004",
+      "previous": 100,
+      "websitePrice": 90,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c004"
+    },
+    {
+      "code": "C001",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c001"
+    },
+    {
+      "code": "C005",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c005"
+    },
+    {
+      "code": "C011",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c011"
+    },
+    {
+      "code": "C012",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c012"
+    },
+    {
+      "code": "C016",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c016"
+    },
+    {
+      "code": "C019",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c019"
+    },
+    {
+      "code": "C018",
+      "previous": 100,
+      "websitePrice": 90,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c018"
+    },
+    {
+      "code": "C050",
+      "previous": 50,
+      "websitePrice": 45,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c050"
+    },
+    {
+      "code": "C023",
+      "previous": 135,
+      "websitePrice": 99,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c023"
+    },
+    {
+      "code": "C084",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c084"
+    },
+    {
+      "code": "C101",
+      "previous": 200,
+      "websitePrice": 180,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c101"
+    },
+    {
+      "code": "C156",
+      "previous": 240,
+      "websitePrice": 216,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c156"
+    },
+    {
+      "code": "C106",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c106"
+    },
+    {
+      "code": "C133",
+      "previous": 50,
+      "websitePrice": 45,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c133"
+    },
+    {
+      "code": "C024",
+      "previous": 135,
+      "websitePrice": 99,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c024"
+    },
+    {
+      "code": "C167",
+      "previous": 180,
+      "websitePrice": 180,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c167"
+    },
+    {
+      "code": "C100",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c100"
+    },
+    {
+      "code": "C170",
+      "previous": 120,
+      "websitePrice": 120,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c170"
+    },
+    {
+      "code": "C116",
+      "previous": 200,
+      "websitePrice": 180,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c116"
+    },
+    {
+      "code": "C183",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c183"
+    },
+    {
+      "code": "C144",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c144"
+    },
+    {
+      "code": "C176",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c176"
+    },
+    {
+      "code": "C145",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c145"
+    },
+    {
+      "code": "C146",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c146"
+    },
+    {
+      "code": "C152",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c152"
+    },
+    {
+      "code": "C148",
+      "previous": 250,
+      "websitePrice": 250,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c148"
+    },
+    {
+      "code": "C139",
+      "previous": 350,
+      "websitePrice": 315,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c139"
+    },
+    {
+      "code": "C136",
+      "previous": 800,
+      "websitePrice": 720,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c136"
+    },
+    {
+      "code": "C006",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c006"
+    },
+    {
+      "code": "C138",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c138"
+    },
+    {
+      "code": "C143",
+      "previous": 220,
+      "websitePrice": 198,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c143"
+    },
+    {
+      "code": "C162",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c162"
+    },
+    {
+      "code": "C165",
+      "previous": 200,
+      "websitePrice": 180,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c165"
+    },
+    {
+      "code": "C089",
+      "previous": 100,
+      "websitePrice": 90,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c089"
+    },
+    {
+      "code": "C168",
+      "previous": 200,
+      "websitePrice": 180,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c168"
+    },
+    {
+      "code": "C169",
+      "previous": 600,
+      "websitePrice": 540,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c169"
+    },
+    {
+      "code": "C180",
+      "previous": 120,
+      "websitePrice": 120,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c180"
+    },
+    {
+      "code": "C178",
+      "previous": 120,
+      "websitePrice": 120,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c178"
+    },
+    {
+      "code": "C181",
+      "previous": 150,
+      "websitePrice": 150,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c181"
+    },
+    {
+      "code": "C179",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c179"
+    },
+    {
+      "code": "C192",
+      "previous": 150,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c192"
+    },
+    {
+      "code": "C190",
+      "previous": 250,
+      "websitePrice": 250,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c190"
+    },
+    {
+      "code": "C022",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c022"
+    },
+    {
+      "code": "C195",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c195"
+    },
+    {
+      "code": "C196",
+      "previous": 250,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c196"
+    },
+    {
+      "code": "C197",
+      "previous": 250,
+      "websitePrice": 250,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c197"
+    },
+    {
+      "code": "C298",
+      "previous": 400,
+      "websitePrice": 360,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c298"
+    },
+    {
+      "code": "C297",
+      "previous": 300,
+      "websitePrice": 270,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c297"
+    },
+    {
+      "code": "C200",
+      "previous": null,
+      "websitePrice": 225,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c200"
+    },
+    {
+      "code": "C102",
+      "previous": null,
+      "websitePrice": 180,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c102"
+    },
+    {
+      "code": "C202",
+      "previous": null,
+      "websitePrice": 720,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c202"
+    },
+    {
+      "code": "C203",
+      "previous": null,
+      "websitePrice": 135,
+      "sourceUrl": "https://www.pbooks.com.tw/products/c203"
+    }
+  ]
+}
