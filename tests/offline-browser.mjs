@@ -65,7 +65,12 @@ try {
     page.on('dialog', (dialog) => dialog.accept());
     await page.goto(origin + (portal === 'admin' ? '/pos/' : '/pos/aa01'));
     const frame = page.frameLocator('#register');
-    await frame.locator('#product-code').waitFor();
+    try { await frame.locator('#product-code').waitFor(); }
+    catch(error) {
+      console.error('Fixture browser errors:', errors);
+      console.error('Fixture register body:', await frame.locator('body').innerText());
+      throw error;
+    }
     await page.evaluate(() => runtime.prepare(portal));
     // Completed invoice entry and clicking the current checkout tab both focus
     // the real register input and scroll its label into the outer viewport.
@@ -94,6 +99,24 @@ try {
     await frame.locator('summary').filter({ hasText: '批次輸入商品' }).click();
     await frame.locator('#bulk-clear-btn').click();
     assert.equal(await frame.locator('.quantity-value').innerText(), '2', 'Clear input must retain the cart');
+    await frame.locator('#bulk-to-list-btn').click();
+    await frame.locator('#bulk-result').filter({hasText:'已將購物車 1 筆'}).waitFor();
+    assert.equal(await frame.locator('.cart-item').count(),0);
+    assert.equal(await frame.locator('#bulk-input').inputValue(),'C001,2');
+    const movedDraft = await page.evaluate(async ()=>(await runtime.request(portal,'events/fair-'+portal)).state);
+    assert.ok(movedDraft['draft:fixture-device:bulkMovedItems']);
+    assert.equal(movedDraft['shared:bulkMovedItems'],undefined);
+    await page.reload({waitUntil:'domcontentloaded'});
+    await frame.locator('#product-code').waitFor();
+    await frame.locator('summary').filter({hasText:'批次輸入商品'}).click();
+    assert.equal(await frame.locator('#bulk-input').inputValue(),'C001,2');
+    await frame.locator('#bulk-backup-btn').click();
+    await frame.locator('#bulk-result').filter({hasText:'已回填 1 筆'}).waitFor();
+    assert.equal(await frame.locator('.quantity-value').innerText(),'2');
+    assert.equal(await frame.locator('#bulk-input').inputValue(),'');
+    await frame.locator('#bulk-backup-btn').click();
+    assert.equal(await frame.locator('.quantity-value').innerText(),'2');
+    await page.screenshot({path:`work/v48-bulk-${portal}.png`,fullPage:false});
     await frame.locator('.cart-remove').click();
     await page.frames().find((f) => f.url().includes('register-v')).evaluate(() => POSCloud.flush());
     // The inline discount is a percentage in both desktop and church mobile.

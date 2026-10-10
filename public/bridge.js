@@ -52,6 +52,7 @@ window.makeCloud = async function () {
       'printEnabled',
       'checkoutFields',
       'bulkInput',
+      'bulkMovedItems',
     ].includes(k)
       ? 'draft:' + device + ':' + k
       : 'shared:' + k;
