@@ -17,8 +17,9 @@ test('Single-product refresh updates official sibling SKUs atomically, preserves
   const products=[{code:'OIJ204'},{code:'OIJ205'},{code:'OTHER'}];
   const initial={OIJ204:{sourceUrl:url,websitePrice:99},OIJ205:{sourceUrl:url,websitePrice:99}};
   sqlite.prepare('INSERT INTO shop VALUES(?,?)').run('OTHER',JSON.stringify({websitePrice:50}));
-  const result=await refreshShopProducts(db,products,initial,['OIJ204'],async source=>{
+  const result=await refreshShopProducts(db,products,initial,['OIJ204'],async (source,options)=>{
     assert.equal(source,url);
+    assert.equal(options.redirect,'manual');
     return new Response(page(['OIJ204','OIJ205','UNKNOWN'].map(sku=>({sku,price:108,compare_at_price:120,currency:'TWD'}))));
   });
   assert.deepEqual(result.updated,['OIJ204','OIJ205']);
@@ -29,12 +30,12 @@ test('Single-product refresh updates official sibling SKUs atomically, preserves
   sqlite.close();
 });
 test('Refresh rejects unknown/unsafe URLs, failed pages and missing SKUs without overwriting cache', async () => {
-  for(const scenario of ['unknown','unsafe','failed','missing']) {
+  for(const scenario of ['unknown','unsafe','failed','missing','redirect']) {
     const {db,sqlite}=database();
     const initial={A:{sourceUrl:scenario==='unsafe'?'https://evil.test/products/a':url,websitePrice:99}};
     let fetches=0;
     await assert.rejects(refreshShopProducts(db,[{code:'A'}],initial,[scenario==='unknown'?'BAD':'A'],async()=>{
-      fetches++;return scenario==='failed'?new Response('',{status:503}):new Response(page([{sku:'B',price:108,currency:'TWD'}]));
+      fetches++;return scenario==='redirect'?new Response('',{status:302,headers:{Location:'https://evil.test/'}}):scenario==='failed'?new Response('',{status:503}):new Response(page([{sku:'B',price:108,currency:'TWD'}]));
     }));
     if(['unknown','unsafe'].includes(scenario)) assert.equal(fetches,0);
     assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM shop').get().n,0);
