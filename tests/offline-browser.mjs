@@ -205,6 +205,56 @@ try {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await frame.locator('#product-code').waitFor();
     assert.equal(await page.evaluate(async () => (await fetch('/pos/_next/static/chunks/old-cashier-fixture.js')).text()), 'window.oldCashier=true;');
+    // Exercise each visible combination through the actual offline register.
+    const combinations = portal === 'admin' ? ['', '現金', 'LINE PAY', '信用卡'] : ['', '現金', 'LINE PAY'];
+    for (const method of combinations) {
+      const before = await page.evaluate(async () => Object.keys((await runtime.request(portal, 'events/fair-' + portal)).state));
+      await frame.locator('#product-code').fill('C001');
+      await frame.locator('#product-code').press('Enter');
+      await frame.locator('#btn-f9').click();
+      const dialog = frame.locator('.culture-editor');
+      await dialog.waitFor({state:'visible'});
+      assert.equal(await dialog.locator('.culture-method').count(), combinations.length);
+      assert.equal(await dialog.locator('select').count(), 0);
+      assert.equal(await dialog.locator('#culture-amount').inputValue(), '108');
+      assert.equal(await dialog.locator('#culture-amount').evaluate(el => el.readOnly), true);
+      const boxes = await dialog.locator('.culture-method').evaluateAll(els => els.map(el => {const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}));
+      assert.equal(new Set(boxes.map(b=>Math.round(b.y))).size, 2, 'Payment options occupy exactly two rows');
+      assert.ok(boxes.every(b=>b.height>=44));
+      if (!method) {
+        const box=await dialog.boundingBox();
+        await page.screenshot({path:`work/v47-culture-${portal}.png`,clip:box});
+      } else {
+        await dialog.getByRole('button',{name:'文化幣 ＋ '+method,exact:true}).click();
+        assert.equal(await dialog.locator('#culture-amount').evaluate(el => el.readOnly), false);
+        await dialog.locator('#culture-amount').fill('40');
+        assert.equal(await dialog.locator('#culture-rest-amount').innerText(),'68');
+        assert.equal(await dialog.locator('#culture-cash').isVisible(),method==='現金');
+        if(method==='現金') {
+          await dialog.locator('#culture-paid').fill('80');
+          assert.equal(await dialog.locator('#culture-change').innerText(),'12');
+          await page.setViewportSize({width:portal==='admin'?1440:390,height:650});
+          await dialog.locator('#culture-paid').fill('100');
+          const compactBox=await dialog.boundingBox();
+          assert.ok(compactBox.y>=0&&compactBox.y+compactBox.height<=650, 'Mixed cash dialog fits a short viewport');
+          await page.screenshot({path:`work/v47-culture-cash-${portal}.png`,clip:compactBox});
+          await page.setViewportSize({width:portal==='admin'?1440:390,height:1000});
+        }
+        // Switching back to full culture payment restores the full amount.
+        await dialog.getByRole('button',{name:'單獨文化幣',exact:true}).click();
+        assert.equal(await dialog.locator('#culture-amount').inputValue(),'108');
+        await dialog.getByRole('button',{name:'文化幣 ＋ '+method,exact:true}).click();
+        await dialog.locator('#culture-amount').fill('40');
+        if(method==='現金') await dialog.locator('#culture-paid').fill('80');
+      }
+      await dialog.getByRole('button',{name:'確認收款',exact:true}).click();
+      await frame.locator('body[data-checkout="saved"]').waitFor();
+      const state = await page.evaluate(async () => (await runtime.request(portal, 'events/fair-' + portal)).state);
+      const created=Object.keys(state).filter(k=>k.startsWith('order:')&&!before.includes(k));
+      assert.equal(created.length,1);
+      assert.deepEqual(state[created[0]].paymentRecords, method ? [{method:'文化幣',amount:40},{method,amount:68}] : [{method:'文化幣',amount:108}]);
+      assert.equal(await frame.locator('#product-code').evaluate(el=>document.activeElement===el),true);
+    }
     assert.deepEqual(errors, [], 'Register has no unhandled browser errors');
     console.log(`PASS ${portal}: batch refill, offline reload, checkout, cached decoder, reconnect, slow online checkout, release upgrade`);
     await context.close();
