@@ -4,7 +4,6 @@ import knownImports from '../data/pilot-known-imports.json' with { type: 'json' 
 import {
   preparePilotSources,
   finalizePilotExport,
-  collectEris,
   exportContext,
 } from './pilot-finalize.mjs';
 import { encodePilotFiles, pilotFilesBase64 } from './pilot-csv.mjs';
@@ -30,23 +29,33 @@ const fail = (message: string) =>
   Object.assign(Error(message), { status: 409 });
 async function historicalEris() {
   const used = new Set<string>([...eriHistory.eris, ...knownImports.eris]);
+  // Read unique ERIs only, not every full order/draft snapshot in the audit log.
+  // Include object keys as well as values, matching collectEris' collision rules.
   for (const table of ['events', 'audit'])
-    for (let offset = 0; ; offset += 8) {
+    for (let after = ''; ;) {
       const rows = await db()
-        .prepare(`SELECT state FROM ${table} ORDER BY id LIMIT 8 OFFSET ?`)
-        .bind(offset)
+        .prepare(`SELECT DISTINCT candidate.value AS eri
+          FROM ${table}, json_tree(${table}.state) AS node,
+            json_each(json_array(node.atom,node.key)) AS candidate
+          WHERE candidate.type='text' AND length(candidate.value)=16
+            AND substr(candidate.value,1,3) IN ('0H5','0H8','01E')
+            AND substr(candidate.value,4) NOT GLOB '*[^A-Za-z0-9]*'
+            AND candidate.value > ?
+          ORDER BY eri LIMIT 1000`)
+        .bind(after)
         .all<any>();
-      for (const row of rows.results)
-        for (const eri of collectEris(row.state)) used.add(eri);
-      if (rows.results.length < 8) break;
+      for (const row of rows.results) used.add(row.eri);
+      if (rows.results.length < 1000) break;
+      after = rows.results[rows.results.length - 1].eri;
     }
-  for (let offset = 0; ; offset += 1000) {
+  for (let after = ''; ;) {
     const allocated = await db()
-      .prepare('SELECT eri FROM pilot_eris ORDER BY eri LIMIT 1000 OFFSET ?')
-      .bind(offset)
+      .prepare('SELECT eri FROM pilot_eris WHERE eri > ? ORDER BY eri LIMIT 1000')
+      .bind(after)
       .all<any>();
     for (const row of allocated.results) used.add(row.eri);
     if (allocated.results.length < 1000) break;
+    after = allocated.results[allocated.results.length - 1].eri;
   }
   return used;
 }

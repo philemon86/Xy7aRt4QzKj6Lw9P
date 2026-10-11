@@ -1432,7 +1432,13 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       {pilotEvent && me.role === 'admin' && (
         <PilotExportDialog
           event={pilotEvent}
-          request={api}
+          request={async (path, body) => {
+            // Open the parameter dialog immediately; flush device changes before
+            // its visible preview/download step, never export a stale snapshot.
+            if (frame.current?.dataset.eventId === pilotEvent.id)
+              await (frame.current?.contentWindow as any)?.POSCloud?.flush();
+            return api(path, body);
+          }}
           onClose={() => setPilotEvent(null)}
         />
       )}

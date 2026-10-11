@@ -25,6 +25,7 @@ const db = {
         return sqlite.prepare(sql).get(...values) || null;
       },
       async all() {
+        reads.push(sql);
         return { results: sqlite.prepare(sql).all(...values) };
       },
       async run() {
@@ -46,6 +47,7 @@ const db = {
     }
   },
 };
+const reads = [];
 globalThis.__pilotServiceTestEnv = { DB: db };
 const hooks = registerHooks({
   resolve(specifier, context, next) {
@@ -211,4 +213,38 @@ test('Unencodable text cannot save a partly downloadable preview; legacy preview
     .prepare('UPDATE pilot_exports SET snapshot=? WHERE id=?')
     .run(JSON.stringify({ parts: 1 }), preview.id);
   await assert.rejects(() => confirmPilot(good, preview.id), /規則已更新/);
+});
+
+test('Thousands of audit snapshots use bounded ERI-only reads and preserve historical key/value collisions', async () => {
+  const start = Number(sqlite.prepare("SELECT value FROM settings WHERE key='eri'").get().value);
+  const nextEri = (prefix, n) => prefix + '0010LU0' + (start + n).toString(36).toUpperCase().padStart(6, '0');
+  const used = [nextEri('0H5',1), nextEri('0H5',2), nextEri('0H8',3), nextEri('01E',4)];
+  const insert = sqlite.prepare('INSERT INTO audit(id,state) VALUES(?,?)');
+  const bulky = JSON.stringify({ snapshot: { nested: used.slice(0,3), [used[3]]: 'historical key' }, draft: '結帳草稿'.repeat(2000) });
+  sqlite.exec('BEGIN');
+  for (let n = 0; n < 1600; n++) insert.run('perf-' + n, bulky);
+  sqlite.exec('COMMIT');
+  sqlite.prepare('INSERT INTO events(id,state) VALUES(?,?)').run('history-event', JSON.stringify({ eri: nextEri('0H5',5) }));
+  reads.length = 0;
+  const source = event('history-perf');
+  const preview = await previewPilot(source, catalog, context, {});
+  const historyQueries = reads.filter(sql => /FROM (audit|events),/.test(sql));
+  assert.equal(historyQueries.length, 2); // Old path required over 200 remote reads.
+  assert.ok(historyQueries.every(sql => !/SELECT state/.test(sql)));
+  const confirmed = await confirmPilot(source, preview.id);
+  assert.ok(eriColumn(confirmed.rows).every(eri => !used.includes(eri)));
+  assert.notEqual(confirmed.rows.stkSale1[1][0], nextEri('0H5',5));
+  assert.equal(sqlite.prepare('SELECT count(*) n FROM audit').get().n, 1600);
+});
+
+test('More than one page of historical ERIs remains collision-safe', async () => {
+  const start = Number(sqlite.prepare("SELECT value FROM settings WHERE key='eri'").get().value);
+  const eris = Array.from({ length: 1200 }, (_, n) => '0H5' + '0010LU0' + (start+n+1).toString(36).toUpperCase().padStart(6,'0'));
+  sqlite.prepare('INSERT INTO audit(id,state) VALUES(?,?)').run('many-eris',JSON.stringify(eris));
+  reads.length=0;
+  const source=event('many-history');
+  const preview=await previewPilot(source,catalog,context,{});
+  assert.equal(reads.filter(sql => /FROM audit,/.test(sql)).length,2);
+  const confirmed=await confirmPilot(source,preview.id);
+  assert.ok(eriColumn(confirmed.rows).every(eri => !eris.includes(eri)));
 });

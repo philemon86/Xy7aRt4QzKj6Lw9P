@@ -3,8 +3,8 @@ async function exportPilot(options = {}) {
     alert('請由書房匯出');
     return;
   }
-  await cloud.flush();
   if (options.dryRun) {
+    await cloud.flush();
     let counter = 0;
     const result = PilotExporter.buildPilotExport({
       clients,
@@ -24,5 +24,16 @@ async function exportPilot(options = {}) {
 }
 window.runPilotDryRun = (now) =>
   exportPilot({ dryRun: true, now: now ? new Date(now) : new Date() });
-exportPilotBtn.onclick = () =>
-  exportPilot().catch((error) => alert(error.message));
+exportPilotBtn.onclick = async () => {
+  if (exportPilotBtn.disabled) return;
+  const label = exportPilotBtn.textContent;
+  exportPilotBtn.disabled = true;
+  try {
+    await exportPilot();
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    exportPilotBtn.disabled = false;
+    exportPilotBtn.textContent = label;
+  }
+};

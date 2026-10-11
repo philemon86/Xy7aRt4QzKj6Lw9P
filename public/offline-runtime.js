@@ -158,6 +158,7 @@ var POSOfflineModule = (() => {
         this.disconnected = false;
         return result;
       } catch (error) {
+        if (error.exportTimeout) throw error;
         if (error.status === 401 || error.status === 403) await this.revoke(portal);
         if (!error.status || [408, 429, 502, 503, 504].includes(error.status)) {
           this.disconnected = true;
@@ -261,6 +262,7 @@ var POSOfflineModule = (() => {
         }
         return body === void 0 || path === "session-renew" ? await this.cache(portal, path, result) : result;
       } catch (error) {
+        if (error.exportTimeout) throw error;
         if (!error.network) throw error;
         if (body === void 0 || path === "session-renew") return this.cached(portal, path);
         throw Error("\u9019\u500B\u64CD\u4F5C\u9700\u8981\u9023\u7DDA\u3002\u96E2\u7DDA\u6642\u53EF\u4EE5\u5728\u5DF2\u4E0B\u8F09\u7684\u66F8\u5C55\u641C\u5C0B\u5546\u54C1\u8207\u7D50\u5E33\u3002");
@@ -486,6 +488,18 @@ var POSOfflineModule = (() => {
     };
   }
 
+  // lib/request-timeout.mjs
+  var isPilotRequest = (path) => /^events\/[^/]+\/pilot-(preview|confirm)$/.test(path);
+  function requestTimeout(path, body) {
+    if (isPilotRequest(path)) return 6e4;
+    return body === void 0 || path === "session-renew" ? 2500 : 12e3;
+  }
+  function requestFailure(error, path) {
+    if (isPilotRequest(path) && error?.name === "TimeoutError")
+      return Object.assign(Error("\u532F\u51FA\u8655\u7406\u903E\u6642\uFF0C\u8ACB\u91CD\u65B0\u7522\u751F\u9810\u89BD\u518D\u4E0B\u8F09\uFF1B\u539F\u59CB\u4EA4\u6613\u4ECD\u4FDD\u7559\u3002"), { status: 408, exportTimeout: true });
+    return error;
+  }
+
   // lib/offline.mjs
   function getOfflineRuntime() {
     if (window.POSOffline) return window.POSOffline;
@@ -513,7 +527,9 @@ var POSOfflineModule = (() => {
           headers: { "X-POS-Portal": portal, ...body === void 0 ? {} : { "Content-Type": "application/json" } },
           ...body === void 0 ? {} : { body: JSON.stringify(body) },
           cache: "no-store",
-          signal: AbortSignal.timeout(body === void 0 || path === "session-renew" ? 2500 : 12e3)
+          signal: AbortSignal.timeout(requestTimeout(path, body))
+        }).catch((error) => {
+          throw requestFailure(error, path);
         });
         if (!response.ok) {
           const error = await response.json().catch(() => ({}));

@@ -82,6 +82,7 @@ export default function PilotExportDialog({
   const [preview, setPreview] = useState<ExportPreview | null>(null),
     [result, setResult] = useState<ExportResult | null>(null),
     [busy, setBusy] = useState(false),
+    [stage, setStage] = useState(''),
     [error, setError] = useState('');
   const invalidate = () => {
     setPreview(null);
@@ -160,6 +161,7 @@ export default function PilotExportDialog({
           disabled={busy}
           onClick={async () => {
             setBusy(true);
+            setStage('正在同步交易並產生匯出預覽…');
             setError('');
             setResult(null);
             setPreview(null);
@@ -181,11 +183,12 @@ export default function PilotExportDialog({
           }}
         >
           {busy
-            ? '正在處理…'
+            ? stage
             : preview
               ? '重新產生預覽（使用全新 ERI）'
               : '產生匯出預覽'}
         </Button>
+        {busy && <p role="status">{stage} 請稍候，完成後會顯示結果。</p>}
         {preview && (
           <>
             <p className="pilot-counts">
@@ -303,6 +306,7 @@ export default function PilotExportDialog({
                 disabled={busy}
                 onClick={async () => {
                   setBusy(true);
+                  setStage('正在產生三個 CSV 檔案…');
                   setError('');
                   try {
                     const saved = (await request(
@@ -319,7 +323,7 @@ export default function PilotExportDialog({
                   }
                 }}
               >
-                確認正式匯出，下載三個 CSV
+                {busy ? '正在準備下載…' : '確認正式匯出，下載三個 CSV'}
               </Button>
             ) : (
               <div className="pilot-downloads">

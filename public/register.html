@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>腓利門 POS V2 收銀台</title><script src="/pos/offline-runtime.js"></script><script src="/pos/bridge.js?v=49"></script><script src="/pos/pos-core.js?v=49"></script>
+  <title>腓利門 POS V2 收銀台</title><script src="/pos/offline-runtime.js"></script><script src="/pos/bridge.js?v=50"></script><script src="/pos/pos-core.js?v=50"></script>
   <!-- SINGLE-FILE-PILOT-ERI-DIRECT-TEST-20260818-CUSTOMERFIX-PLUSFIX-TOTALFIX -->
   <link rel="icon" href="/pos/favicon-bookstore-32.png" type="image/png" sizes="32x32" />
   <link rel="icon" href="/pos/favicon-bookstore.svg" type="image/svg+xml" sizes="any" />
@@ -864,7 +864,7 @@
       text-shadow: 0 2px 6px rgba(94, 79, 64, 0.2);
     }
   </style>
-<link rel="stylesheet" href="/pos/checkout.css?v=49"></head>
+<link rel="stylesheet" href="/pos/checkout.css?v=50"></head>
 
 <body data-view="checkout"><div id="cloud-status" role="status">正在連接雲端…</div>
   <input type="file" id="import-file" accept=".json" style="display:none;" />
@@ -4486,8 +4486,8 @@ async function exportPilot(options = {}) {
     alert('請由書房匯出');
     return;
   }
-  await cloud.flush();
   if (options.dryRun) {
+    await cloud.flush();
     let counter = 0;
     const result = PilotExporter.buildPilotExport({
       clients,
@@ -4507,8 +4507,19 @@ async function exportPilot(options = {}) {
 }
 window.runPilotDryRun = (now) =>
   exportPilot({ dryRun: true, now: now ? new Date(now) : new Date() });
-exportPilotBtn.onclick = () =>
-  exportPilot().catch((error) => alert(error.message));
+exportPilotBtn.onclick = async () => {
+  if (exportPilotBtn.disabled) return;
+  const label = exportPilotBtn.textContent;
+  exportPilotBtn.disabled = true;
+  try {
+    await exportPilot();
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    exportPilotBtn.disabled = false;
+    exportPilotBtn.textContent = label;
+  }
+};
 
 
 // ===== 啟動 =====
