@@ -1435,7 +1435,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
           request={async (path, body) => {
             // Open the parameter dialog immediately; flush device changes before
             // its visible preview/download step, never export a stale snapshot.
-            if (frame.current?.dataset.eventId === pilotEvent.id)
+            if (/\/pilot-(preview|confirm)$/.test(path) && frame.current?.dataset.eventId === pilotEvent.id)
               await (frame.current?.contentWindow as any)?.POSCloud?.flush();
             return api(path, body);
           }}

@@ -59,7 +59,7 @@ const hooks = registerHooks({
     return next(specifier, context);
   },
 });
-const { previewPilot, confirmPilot } = await import('../lib/pilot-service.ts');
+const { previewPilot, confirmPilot, listPilotExports, downloadPilot } = await import('../lib/pilot-service.ts');
 hooks.deregister();
 const context = {
   date: '2026-10-08',
@@ -247,4 +247,51 @@ test('More than one page of historical ERIs remains collision-safe', async () =>
   assert.equal(reads.filter(sql => /FROM audit,/.test(sql)).length,2);
   const confirmed=await confirmPilot(source,preview.id);
   assert.ok(eriColumn(confirmed.rows).every(eri => !eris.includes(eri)));
+});
+
+test('Confirmed CSV bytes and settings persist; downloading after source edits never allocates new ERIs', async () => {
+  const source=event('saved-files');
+  const preview=await previewPilot(source,catalog,context,{});
+  await assert.rejects(downloadPilot(source,preview.id),/尚未確認/);
+  assert.equal((await listPilotExports(source)).items.length,0);
+  const confirmed=await confirmPilot(source,preview.id);
+  const history=await listPilotExports(source);
+  assert.equal(history.items[0].id,preview.id);
+  assert.deepEqual(history.items[0].context,{...context,date:'2026/10/08'});
+  const parts=sqlite.prepare('SELECT data FROM pilot_export_parts WHERE export_id=? ORDER BY part').all(preview.id);
+  assert.deepEqual(JSON.parse(parts.map(p=>p.data).join('')).files,confirmed.files);
+  const eriCount=sqlite.prepare('SELECT count(*) n FROM pilot_eris').get().n;
+  const counter=sqlite.prepare("SELECT value FROM settings WHERE key='eri'").get().value;
+  source.state=JSON.stringify({'order:source-a':{...order,amount:600,items:[{...order.items[0],price:600}]}});
+  assert.deepEqual((await downloadPilot(source,preview.id)).files,confirmed.files);
+  assert.equal(sqlite.prepare('SELECT count(*) n FROM pilot_eris').get().n,eriCount);
+  assert.equal(sqlite.prepare("SELECT value FROM settings WHERE key='eri'").get().value,counter);
+  await assert.rejects(downloadPilot(event('other-fair'),preview.id),/找不到/);
+  assert.equal((await listPilotExports(event('other-fair'))).items.length,0);
+});
+
+test('Previously confirmed row snapshots materialize CSV bytes once and stay downloadable', async () => {
+  const source=event('old-saved-files');
+  const preview=await previewPilot(source,catalog,context,{});
+  const confirmed=await confirmPilot(source,preview.id);
+  const snapshot=JSON.parse(sqlite.prepare('SELECT data FROM pilot_export_parts WHERE export_id=?').get(preview.id).data);
+  delete snapshot.files;
+  sqlite.prepare('UPDATE pilot_export_parts SET data=? WHERE export_id=?').run(JSON.stringify(snapshot),preview.id);
+  const first=await downloadPilot(source,preview.id);
+  assert.deepEqual(first.files,confirmed.files);
+  const descriptor=JSON.parse(sqlite.prepare('SELECT snapshot FROM pilot_exports WHERE id=?').get(preview.id).snapshot);
+  assert.ok(descriptor.filesId&&descriptor.filesParts>0);
+  snapshot.rows.stkSale1[1][10]='changed after materialization';
+  sqlite.prepare('UPDATE pilot_export_parts SET data=? WHERE export_id=?').run(JSON.stringify(snapshot),preview.id);
+  assert.deepEqual((await downloadPilot(source,preview.id)).files,first.files);
+});
+
+test('Saved export history paginates without losing older confirmed exports', async () => {
+  const insert=sqlite.prepare('INSERT INTO pilot_exports(id,event,source_hash,context,snapshot,created,confirmed) VALUES(?,?,?,?,?,?,?)');
+  for(let n=0;n<61;n++) insert.run('page-'+String(n).padStart(3,'0'),'paged-fair','hash',JSON.stringify(context),'{}','2026-10-11T00:00:00Z','2026-10-11T00:00:00Z');
+  const first=await listPilotExports({id:'paged-fair'});
+  assert.equal(first.items.length,50);assert.ok(first.next);
+  const second=await listPilotExports({id:'paged-fair'},first.next);
+  assert.equal(second.items.length,11);assert.equal(second.next,null);
+  assert.equal(new Set([...first.items,...second.items].map(r=>r.id)).size,61);
 });

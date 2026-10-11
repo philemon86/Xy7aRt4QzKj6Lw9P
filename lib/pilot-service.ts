@@ -6,7 +6,7 @@ import {
   finalizePilotExport,
   exportContext,
 } from './pilot-finalize.mjs';
-import { encodePilotFiles, pilotFilesBase64 } from './pilot-csv.mjs';
+import { pilotFilesBase64 } from './pilot-csv.mjs';
 const db = () => env.DB;
 export const sourceOrders = (state: any) =>
   Object.fromEntries(
@@ -110,7 +110,9 @@ export async function previewPilot(
   });
   const id = crypto.randomUUID(),
     created = new Date().toISOString();
-  encodePilotFiles(snapshot.rows); // Fail before saving a preview with invalid text.
+  // Store the actual CP950 CSV bytes with the immutable snapshot. Re-downloads
+  // must not depend on later catalog, transaction or encoder changes.
+  snapshot.files = pilotFilesBase64(snapshot.rows);
   const ledger = snapshot.newEris.map((eri: string) =>
     db()
       .prepare('INSERT INTO pilot_eris(eri,export_id) VALUES(?,?)')
@@ -159,16 +161,12 @@ export async function previewPilot(
     },
   };
 }
-export async function confirmPilot(event: any, id: string) {
+async function savedPilot(event: any, id: string) {
   const record: any = await db()
     .prepare('SELECT * FROM pilot_exports WHERE id=? AND event=?')
     .bind(id, event.id)
     .first();
   if (!record) throw Error('找不到匯出預覽，請重新產生');
-  if (
-    (await digest(sourceOrders(JSON.parse(event.state)))) !== record.source_hash
-  )
-    throw fail('預覽後交易內容已變更，請重新預覽再正式匯出');
   const parts = await db()
     .prepare(
       'SELECT data FROM pilot_export_parts WHERE export_id=? ORDER BY part',
@@ -178,21 +176,61 @@ export async function confirmPilot(event: any, id: string) {
   if (parts.results.length !== JSON.parse(record.snapshot).parts)
     throw Error('匯出快照不完整，請重新預覽');
   const snapshot = JSON.parse(parts.results.map((row) => row.data).join(''));
+  return { record, snapshot };
+}
+async function savedFiles(record: any, snapshot: any) {
+  if (snapshot.files) return snapshot.files;
+  const descriptor = JSON.parse(record.snapshot);
+  if (descriptor.filesId) {
+    const parts = await db().prepare('SELECT data FROM pilot_export_parts WHERE export_id=? ORDER BY part').bind(descriptor.filesId).all<any>();
+    if (parts.results.length !== descriptor.filesParts) throw Error('已保存 CSV 不完整，請聯絡書房');
+    return JSON.parse(parts.results.map((p) => p.data).join(''));
+  }
+  // Existing confirmed exports already retain their original rows. Materialize
+  // their CSV bytes once without altering ERIs, dates, codes or original orders.
+  const files = pilotFilesBase64(snapshot.rows), serialized = JSON.stringify(files), filesId = crypto.randomUUID();
+  const parts = [];
+  for (let n = 0; n < serialized.length; n += 100000)
+    parts.push(db().prepare('INSERT INTO pilot_export_parts(export_id,part,data) VALUES(?,?,?)').bind(filesId, parts.length, serialized.slice(n,n+100000)));
+  for (let n = 0; n < parts.length; n += 80) await db().batch(parts.slice(n,n+80));
+  await db().prepare('UPDATE pilot_exports SET snapshot=? WHERE id=?').bind(JSON.stringify({ ...descriptor, filesId, filesParts: parts.length }), record.id).run();
+  return files;
+}
+export async function confirmPilot(event: any, id: string) {
+  const { record, snapshot } = await savedPilot(event, id);
+  if ((await digest(sourceOrders(JSON.parse(event.state)))) !== record.source_hash)
+    throw fail('預覽後交易內容已變更，請重新預覽再正式匯出');
   if (snapshot.formatVersion !== 2)
     throw fail('匯出規則已更新，請重新產生預覽');
-  const files = pilotFilesBase64(snapshot.rows);
+  const files = await savedFiles(record, snapshot);
+  const confirmed = record.confirmed || new Date().toISOString();
   await db()
     .prepare(
       'UPDATE pilot_exports SET confirmed=COALESCE(confirmed,?) WHERE id=?',
     )
-    .bind(new Date().toISOString(), id)
+    .bind(confirmed, id)
     .run();
   return {
     id,
+    confirmed,
     context: snapshot.context,
     rows: snapshot.rows,
     mappings: snapshot.mappings,
     files,
     encoding: 'CP950',
   };
+}
+
+export async function listPilotExports(event: any, before?: {created: string; id: string}) {
+  const rows = await db().prepare(`SELECT id,context,created,confirmed FROM pilot_exports
+    WHERE event=? AND confirmed IS NOT NULL AND (?='' OR created<? OR (created=? AND id<?))
+    ORDER BY created DESC,id DESC LIMIT 51`).bind(event.id,before?.created||'',before?.created||'',before?.created||'',before?.id||'').all<any>();
+  const items = rows.results.slice(0,50).map(row => ({...row,context:JSON.parse(row.context)}));
+  const last = items[items.length-1];
+  return {items,next:rows.results.length>50?{created:last.created,id:last.id}:null};
+}
+export async function downloadPilot(event: any, id: string) {
+  const { record, snapshot } = await savedPilot(event, id);
+  if (!record.confirmed) throw fail('這份預覽尚未確認匯出');
+  return { id, context: snapshot.context, confirmed:record.confirmed, files: await savedFiles(record,snapshot), encoding:'CP950' };
 }

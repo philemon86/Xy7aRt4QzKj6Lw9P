@@ -489,14 +489,14 @@ var POSOfflineModule = (() => {
   }
 
   // lib/request-timeout.mjs
-  var isPilotRequest = (path) => /^events\/[^/]+\/pilot-(preview|confirm)$/.test(path);
+  var isPilotRequest = (path) => /^events\/[^/]+\/pilot-(preview|confirm|download)$/.test(path);
   function requestTimeout(path, body) {
     if (isPilotRequest(path)) return 6e4;
     return body === void 0 || path === "session-renew" ? 2500 : 12e3;
   }
   function requestFailure(error, path) {
     if (isPilotRequest(path) && error?.name === "TimeoutError")
-      return Object.assign(Error("\u532F\u51FA\u8655\u7406\u903E\u6642\uFF0C\u8ACB\u91CD\u65B0\u7522\u751F\u9810\u89BD\u518D\u4E0B\u8F09\uFF1B\u539F\u59CB\u4EA4\u6613\u4ECD\u4FDD\u7559\u3002"), { status: 408, exportTimeout: true });
+      return Object.assign(Error(path.endsWith("/pilot-download") ? "\u8B80\u53D6\u5DF2\u4FDD\u5B58 CSV \u903E\u6642\uFF0C\u8ACB\u518D\u6B21\u4E0B\u8F09\uFF1B\u539F\u6A94\u6848\u4ECD\u4FDD\u5B58\uFF0C\u4E0D\u9700\u91CD\u65B0\u532F\u51FA\u3002" : "\u532F\u51FA\u8655\u7406\u903E\u6642\uFF0C\u8ACB\u91CD\u65B0\u7522\u751F\u9810\u89BD\u518D\u4E0B\u8F09\uFF1B\u539F\u59CB\u4EA4\u6613\u4ECD\u4FDD\u7559\u3002"), { status: 408, exportTimeout: true });
     return error;
   }
 
@@ -542,7 +542,7 @@ var POSOfflineModule = (() => {
     const nativeRequest = runtime.request.bind(runtime);
     runtime.request = async (portal, path, body) => {
       portals.add(portal);
-      if (body !== void 0 && /pilot|export|\/archive$/.test(path)) await runtime.requireSynced(portal);
+      if (body !== void 0 && /pilot-(preview|confirm)$|export|\/archive$/.test(path)) await runtime.requireSynced(portal);
       const result = await nativeRequest(portal, path, body);
       if (path === "bootstrap" && !runtime.disconnected) void runtime.syncAll(portal).catch(() => {
       });

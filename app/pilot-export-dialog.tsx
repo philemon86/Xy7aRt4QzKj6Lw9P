@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -55,7 +55,9 @@ type ExportPreview = {
   preview: PreviewRow[];
   voucherPreview: VoucherRow[];
 };
-type ExportResult = { files: Record<string, string> };
+type ExportResult = { id: string; confirmed:string; files: Record<string, string> };
+type SavedExport = {id:string;created:string;confirmed:string;context:{date:string;firstCode:string;firstInvoice:string}};
+type ExportHistory = {items:SavedExport[];next:{created:string;id:string}|null};
 function download(key: string, encoded: string) {
   const bytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
   const url = URL.createObjectURL(
@@ -84,6 +86,32 @@ export default function PilotExportDialog({
     [busy, setBusy] = useState(false),
     [stage, setStage] = useState(''),
     [error, setError] = useState('');
+  const [history,setHistory] = useState<SavedExport[]>([]),
+    [next,setNext] = useState<ExportHistory['next']>(null),
+    [selected,setSelected] = useState(''),
+    [loading,setLoading] = useState(true);
+  const choose = (saved:SavedExport) => {
+    setSelected(saved.id);
+    setDate(saved.context.date.replaceAll('/','-'));setFirstCode(saved.context.firstCode);setFirstInvoice(saved.context.firstInvoice);
+    setPreview(null);setResult(null);setError('');
+  };
+  useEffect(()=>{
+    let alive=true;
+    request('events/'+event.id+'/pilot-exports').then(value=>{
+      if(!alive)return;
+      const list=value as ExportHistory;setHistory(list.items);setNext(list.next);
+      if(list.items.length)choose(list.items[0]);
+    }).catch(e=>{if(alive)setError(e.message);}).finally(()=>{if(alive)setLoading(false);});
+    return()=>{alive=false;};
+  },[event.id]);
+  const retrieve = async (file?:string) => {
+    setBusy(true);setStage('正在讀取已保存的 CSV…');setError('');
+    try {
+      const saved=result || (await request('events/'+event.id+'/pilot-download',{id:selected})) as ExportResult;
+      setResult(saved);
+      for(const [key,encoded] of Object.entries(saved.files)) if(!file||key===file)download(key,encoded);
+    }catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}
+  };
   const invalidate = () => {
     setPreview(null);
     setResult(null);
@@ -91,9 +119,9 @@ export default function PilotExportDialog({
   return (
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent className="pilot-export-dialog">
-        <DialogTitle>PILOT 正式匯出 · {event.name}</DialogTitle>
+        <DialogTitle>匯出pilot · {event.name}</DialogTitle>
         <DialogDescription>
-          輸入正式資料後先預覽；POS 原始出貨單與交易識別保持不變。
+          完成匯出的 CSV 與設定會保存於本場書展，日後可直接下載同一份檔案。
         </DialogDescription>
         <p className="muted">
           未填發票資料與捐贈碼 2995 合併匯出；載具、統編及其他愛心碼各自成單。
@@ -105,6 +133,27 @@ export default function PilotExportDialog({
             {error}
           </p>
         )}
+        {loading && <p role="status">正在讀取已保存匯出…</p>}
+        {history.length>0 && <section className="pilot-saved">
+          <label htmlFor="pilot-saved">已保存匯出</label>
+          <select id="pilot-saved" value={selected} disabled={busy||loading} onChange={e=>{const saved=history.find(row=>row.id===e.target.value);if(saved)choose(saved);}}>
+            {!selected && <option value="">正在建立新的匯出</option>}
+            {history.map(row=><option key={row.id} value={row.id}>{new Date(row.confirmed).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})} · {row.context.firstCode} · {row.context.firstInvoice}</option>)}
+          </select>
+          {next && <Button variant="outline" disabled={busy} onClick={async()=>{
+            setBusy(true);setStage('正在讀取較早匯出…');
+            try{const list=await request('events/'+event.id+'/pilot-exports?before='+encodeURIComponent(JSON.stringify(next))) as ExportHistory;setHistory(current=>[...current,...list.items]);setNext(list.next);}catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}
+          }}>載入較早的匯出</Button>}
+          {selected && <>
+            {result && <b>正式匯出已完成</b>}
+            <p className="muted">下方為這份 CSV 保存的匯出設定。再次下載會使用原檔案。</p>
+            <div className="pilot-downloads">
+              <Button disabled={busy} onClick={()=>retrieve()}>下載三個已保存 CSV</Button>
+              {Object.entries(filenames).map(([key,name])=><Button key={key} variant="outline" disabled={busy} onClick={()=>retrieve(key)}>{name}</Button>)}
+            </div>
+            <Button variant="outline" disabled={busy} onClick={()=>{setSelected('');setPreview(null);setResult(null);setError('');setDate(taipeiDay());setFirstCode('');setFirstInvoice('');}}>建立新的匯出</Button>
+          </>}
+        </section>}
         <div className="pilot-fields">
           <label htmlFor="pilot-date">
             出貨日期
@@ -112,7 +161,7 @@ export default function PilotExportDialog({
               id="pilot-date"
               type="date"
               value={date}
-              disabled={busy}
+              disabled={busy || loading || !!selected}
               onChange={(e) => {
                 setDate(e.target.value);
                 invalidate();
@@ -126,7 +175,7 @@ export default function PilotExportDialog({
               inputMode="numeric"
               placeholder="例如 1152778"
               value={firstCode}
-              disabled={busy}
+              disabled={busy || loading || !!selected}
               onChange={(e) => {
                 setFirstCode(e.target.value);
                 invalidate();
@@ -140,7 +189,7 @@ export default function PilotExportDialog({
               placeholder="例如 FR13223935"
               maxLength={10}
               value={firstInvoice}
-              disabled={busy}
+              disabled={busy || loading || !!selected}
               onChange={(e) => {
                 setFirstInvoice(e.target.value.toUpperCase());
                 invalidate();
@@ -156,9 +205,9 @@ export default function PilotExportDialog({
             <Checkbox id="pilot-einvoice" checked disabled /> 電子發票
           </label>
         </div>
-        <Button
+        {!selected && <Button
           variant="outline"
-          disabled={busy}
+          disabled={busy || loading}
           onClick={async () => {
             setBusy(true);
             setStage('正在同步交易並產生匯出預覽…');
@@ -187,7 +236,7 @@ export default function PilotExportDialog({
             : preview
               ? '重新產生預覽（使用全新 ERI）'
               : '產生匯出預覽'}
-        </Button>
+        </Button>}
         {busy && <p role="status">{stage} 請稍候，完成後會顯示結果。</p>}
         {preview && (
           <>
@@ -316,6 +365,9 @@ export default function PilotExportDialog({
                     setResult(saved);
                     for (const [key, encoded] of Object.entries(saved.files))
                       download(key, encoded as string);
+                    const row={id:saved.id,created:saved.confirmed,confirmed:saved.confirmed,context:{date,firstCode,firstInvoice}};
+                    setHistory(current=>[row,...current.filter(item=>item.id!==row.id)]);
+                    setSelected(saved.id);setPreview(null);
                   } catch (e) {
                     setError(e instanceof Error ? e.message : String(e));
                   } finally {

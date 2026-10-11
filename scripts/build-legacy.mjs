@@ -4,6 +4,7 @@ import { POS_RELEASE, REGISTER_FILE } from '../lib/release.mjs';
 import { CHURCH_TAX_ID } from '../lib/invoice-customers.mjs';
 const root = path.resolve(import.meta.dirname, '..');
 let html = fs.readFileSync(path.join(root, 'legacy/index.html'), 'utf8');
+html = html.replace('匯出 Pilot ERI 測試檔','匯出pilot');
 const read = (name) => fs.readFileSync(path.join(root, name), 'utf8');
 const core =
   read('lib/pos-core.mjs').replace(/^export /gm, '') +

@@ -31,7 +31,7 @@ import { mergeChanges, validateOrder, stats } from './state.mjs';
 import { syncStateResponse } from './sync-response.mjs';
 import { syncShopStep, syncStatus, syncPromotions } from './shop-sync.mjs';
 import { formatOrderNumber, orderDay, validateRoleChange } from './orders.mjs';
-import { previewPilot, confirmPilot } from './pilot-service';
+import { previewPilot, confirmPilot, listPilotExports, downloadPilot } from './pilot-service';
 type Session = { role: string; tenant: string; token: string; expires: number };
 const db = () => env.DB;
 const enc = new TextEncoder();
@@ -393,6 +393,7 @@ export async function handle(req: Request, parts: string[]) {
         'eri',
         'pilot-preview',
         'pilot-confirm',
+        'pilot-download',
       ].includes(action))
   )
     throw error('請使用 POST', 405);
@@ -860,9 +861,18 @@ export async function handle(req: Request, parts: string[]) {
         throw error('名稱已更新，請重新開啟場次', 409);
       return json({ ok: true });
     }
-    if (action === 'pilot-preview' || action === 'pilot-confirm') {
+    if (action === 'pilot-exports') {
+      isAdmin(s);
+      if (req.method !== 'GET') throw error('請使用 GET',405);
+      const raw = new URL(req.url).searchParams.get('before');
+      const before = raw ? JSON.parse(raw) : undefined;
+      if (before && (typeof before.created !== 'string' || typeof before.id !== 'string')) throw error('匯出紀錄分頁格式錯誤');
+      return json(await listPilotExports(e,before));
+    }
+    if (action === 'pilot-preview' || action === 'pilot-confirm' || action === 'pilot-download') {
       isAdmin(s);
       if (req.method !== 'POST') throw error('請使用 POST', 405);
+      if (action === 'pilot-download') return json(await downloadPilot(e,String(b.id||'')));
       if (action === 'pilot-confirm')
         return json(await confirmPilot(e, String(b.id || '')));
       const [catalog, numbers] = await Promise.all([

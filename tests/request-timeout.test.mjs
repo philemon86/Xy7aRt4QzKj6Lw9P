@@ -6,6 +6,7 @@ import { OfflineEngine } from '../lib/offline-engine.mjs';
 test('PILOT gets its own timeout without slowing checkout or catalog failure fallback',()=>{
   assert.equal(requestTimeout('events/fair/pilot-preview',{}),60000);
   assert.equal(requestTimeout('events/fair/pilot-confirm',{}),60000);
+  assert.equal(requestTimeout('events/fair/pilot-download',{}),60000);
   assert.equal(requestTimeout('events/fair/sync',{}),12000);
   assert.equal(requestTimeout('catalog'),2500);
   assert.equal(requestTimeout('session-renew',{}),2500);

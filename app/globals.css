@@ -1932,6 +1932,16 @@ html[data-audience] .stage {
   font-size: 14px;
   font-weight: 600;
 }
+.pilot-saved {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--pos-background);
+}
+.pilot-saved > button { justify-self: start; }
+.pilot-saved select { width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 8px; }
 html.dark[data-audience='bookstore'] {
   --pos-background: #29241e;
   --pos-sidebar: #342b20;
