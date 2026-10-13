@@ -86,6 +86,49 @@ const objects = (rows) =>
     .slice(1)
     .map((row) => Object.fromEntries(rows[0].map((key, i) => [key, row[i]])));
 
+test('Formal export uses one real Taipei generation timestamp, independently of shipment dates and host timezone', () => {
+  const prepared = prepare({a:order('a',[item('T'),item('E')])});
+  const original = JSON.stringify(prepared);
+  const previousTZ = process.env.TZ;
+  try {
+    for (const zone of ['UTC','Asia/Taipei','America/Los_Angeles']) {
+      process.env.TZ = zone;
+      for (const [generatedAt, stamp] of [
+        ['2026-10-13T15:59:59.123Z','261013235959'],
+        ['2026-10-13T16:00:00.000Z','261014000000'],
+        ['2026-12-31T16:00:00.000Z','270101000000'],
+      ]) {
+        const snapshot = finalizePilotExport(prepared, {generateERI:generator(),generatedAt});
+        assert.equal(snapshot.generatedAt, generatedAt);
+        for (const [key, rows] of Object.entries(snapshot.rows))
+          for (const row of objects(rows)) {
+            assert.equal(row.LASTUPD, stamp, key+' timestamp');
+            for (const field of DATE_FIELDS[key]) assert.equal(row[field],context.date);
+          }
+        assert.equal(JSON.stringify(prepared), original);
+      }
+    }
+  } finally {
+    if (previousTZ === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTZ;
+  }
+});
+
+test('Validation rejects inconsistent generation timestamps, while next exports can have new times and ERIs', () => {
+  const prepared = prepare({a:order('a',[item('T'),item('E')])});
+  const first = finalizePilotExport(prepared, {generateERI:generator(),generatedAt:'2026-10-13T03:21:43.000Z'});
+  const second = finalizePilotExport(prepared, {generateERI:generator(),usedEris:new Set(first.newEris),generatedAt:'2026-10-13T03:22:44.000Z'});
+  assert.equal(objects(first.rows.stkSale1)[0].LASTUPD,'261013112143');
+  assert.equal(objects(second.rows.stkSale1)[0].LASTUPD,'261013112244');
+  assert.ok(first.newEris.every(eri=>!second.newEris.includes(eri)));
+  for (const key of Object.keys(first.rows)) {
+    const broken = structuredClone(first);
+    broken.rows[key][1][broken.rows[key][0].indexOf('LASTUPD')] = '261011000000';
+    assert.throws(()=>validateFinalExport(broken,prepared),/產檔時間/);
+  }
+  assert.throws(()=>finalizePilotExport(prepared,{generateERI:generator(),generatedAt:'invalid'}),/產檔時間/);
+});
+
 test('Separate invoices use one base per transaction, mixed-tax suffix and independent invoice counter', () => {
   const clients = {
     a: order('a', [item('T'), item('E')], {
@@ -305,6 +348,7 @@ test('Blank invoices and default donations consolidate exactly like legacy while
   assert.notEqual(mapping.get('i').baseCode, mapping.get('j').baseCode);
   const finalFields = new Set([
     'ERI',
+    'LASTUPD',
     'MASTERI',
     'SRCERI',
     'INVNO',

@@ -65,6 +65,7 @@ export async function previewPilot(
   input: any,
   numbers: any,
 ) {
+  const generatedAt = new Date().toISOString();
   const context = exportContext(input),
     clients = sourceOrders(JSON.parse(event.state));
   const sourceHash = await digest(clients);
@@ -101,6 +102,7 @@ export async function previewPilot(
   if (!range) throw Error('ERI 序號已用完');
   let sequence = Number(range.value) - count;
   const snapshot = finalizePilotExport(prepared, {
+    generatedAt,
     usedEris: used,
     numbers,
     generateERI: (type: string) =>
@@ -109,7 +111,7 @@ export async function previewPilot(
       (++sequence).toString(36).toUpperCase().padStart(6, '0'),
   });
   const id = crypto.randomUUID(),
-    created = new Date().toISOString();
+    created = generatedAt;
   // Store the actual CP950 CSV bytes with the immutable snapshot. Re-downloads
   // must not depend on later catalog, transaction or encoder changes.
   snapshot.files = pilotFilesBase64(snapshot.rows);

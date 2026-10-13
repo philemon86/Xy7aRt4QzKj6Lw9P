@@ -93,6 +93,38 @@ const event = (id, source = order) => ({
 const eriColumn = (rows) =>
   Object.values(rows).flatMap((table) => table.slice(1).map((row) => row[0]));
 
+test('Server captures and persists one generation instant; saved downloads never adopt a later clock', async () => {
+  const source = event('generation-clock-test');
+  const started = Date.now();
+  // A caller cannot replace the actual generation clock with the shipment date.
+  const preview = await previewPilot(source, catalog, {
+    ...context, generatedAt: '1900-01-01T00:00:00.000Z',
+  }, {});
+  const ended = Date.now();
+  const parts = sqlite.prepare('SELECT data FROM pilot_export_parts WHERE export_id=? ORDER BY part').all(preview.id);
+  const snapshot = JSON.parse(parts.map(part => part.data).join(''));
+  const descriptor = sqlite.prepare('SELECT created FROM pilot_exports WHERE id=?').get(preview.id);
+  assert.equal(snapshot.generatedAt, descriptor.created);
+  assert.ok(Date.parse(snapshot.generatedAt) >= started && Date.parse(snapshot.generatedAt) <= ended);
+  assert.deepEqual(snapshot.context, { ...context, date: '2026/10/08' });
+  const taipei = new Date(Date.parse(snapshot.generatedAt) + 8 * 60 * 60 * 1000).toISOString();
+  const expectedStamp = taipei.slice(2, 19).replace(/[-:T]/g, '');
+  const confirmed = await confirmPilot(source, preview.id);
+  for (const key of ['stkSale1', 'stkSale2', 'vchrplus']) {
+    const table = confirmed.rows[key];
+    const column = table[0].indexOf('LASTUPD');
+    assert.ok(column >= 0);
+    for (const row of table.slice(1)) assert.equal(row[column], expectedStamp);
+    assert.ok(new TextDecoder('big5').decode(Buffer.from(confirmed.files[key], 'base64')).includes('"' + expectedStamp + '"'));
+  }
+  // Old saved snapshots did not have generatedAt: still return their original bytes.
+  delete snapshot.generatedAt;
+  sqlite.prepare('DELETE FROM pilot_export_parts WHERE export_id=?').run(preview.id);
+  sqlite.prepare('INSERT INTO pilot_export_parts(export_id,part,data) VALUES(?,?,?)').run(preview.id, 0, JSON.stringify(snapshot));
+  sqlite.prepare('UPDATE pilot_exports SET snapshot=? WHERE id=?').run(JSON.stringify({parts:1}), preview.id);
+  assert.deepEqual((await downloadPilot(source, preview.id)).files, confirmed.files);
+});
+
 test('Formal preview/confirm saves a matched CP950 snapshot; repeat download is identical and new previews get new ERIs', async () => {
   const source = event('service-test');
   const original = source.state;
