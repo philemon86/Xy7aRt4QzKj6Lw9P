@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>腓利門 POS V2 收銀台</title><script src="/pos/offline-runtime.js"></script><script src="/pos/bridge.js?v=53"></script><script src="/pos/pos-core.js?v=53"></script>
+  <title>腓利門 POS V2 收銀台</title><script src="/pos/offline-runtime.js"></script><script src="/pos/bridge.js?v=54"></script><script src="/pos/pos-core.js?v=54"></script>
   <!-- SINGLE-FILE-PILOT-ERI-DIRECT-TEST-20260818-CUSTOMERFIX-PLUSFIX-TOTALFIX -->
   <link rel="icon" href="/pos/favicon-bookstore-32.png" type="image/png" sizes="32x32" />
   <link rel="icon" href="/pos/favicon-bookstore.svg" type="image/svg+xml" sizes="any" />
@@ -864,7 +864,7 @@
       text-shadow: 0 2px 6px rgba(94, 79, 64, 0.2);
     }
   </style>
-<link rel="stylesheet" href="/pos/checkout.css?v=53"></head>
+<link rel="stylesheet" href="/pos/checkout.css?v=54"></head>
 
 <body data-view="checkout"><div id="cloud-status" role="status">正在連接雲端…</div>
   <input type="file" id="import-file" accept=".json" style="display:none;" />
@@ -4540,7 +4540,7 @@ loadMasterData().then(() => {
   productCodeInput.placeholder='條碼 / 名稱 / 商品代碼';productCodeInput.style.textTransform='none';productCodeInput.setAttribute('aria-controls','search-results');productCodeInput.setAttribute('aria-label','掃描條碼或搜尋商品');productCodeInput.setAttribute('enterkeyhint','search');
   scanForm.querySelector('button').textContent='加入 / 搜尋';
   cloud.unlockAudio=()=>POSAudio.ctx.resume().catch(()=>{});
-  const cameraButton=document.createElement('button');cameraButton.type='button';cameraButton.className='scan-camera-btn';cameraButton.textContent='相機';cameraButton.onclick=()=>{cloud.unlockAudio();parent.postMessage({type:'open-camera'},location.origin);};scanForm.append(cameraButton);
+  const cameraButton=document.createElement('button');cameraButton.type='button';cameraButton.className='scan-camera-btn';cameraButton.title='相機掃描商品';cameraButton.setAttribute('aria-label','相機掃描商品');cameraButton.setAttribute('aria-haspopup','dialog');cameraButton.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7.5 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5z"/><circle cx="12" cy="13" r="4"/></svg>';cameraButton.onclick=()=>{cloud.unlockAudio();parent.postMessage({type:'open-camera'},location.origin);};scanForm.append(cameraButton);
   productInfoElement.removeAttribute('style');productInfoElement.setAttribute('role','status');productInfoElement.textContent='掃描後按 Enter 加入，支援連續掃描。';
   scanForm.parentNode.append(searchResultsElement);document.querySelector('.search-container').hidden=true;
   const favoritesSection=document.createElement('section');favoritesSection.className='favorites-section';favoritesSection.innerHTML='<div class="favorites-heading"><h2>常用商品</h2><span>本場雲端保存</span></div><div id="favorite-products"></div>';

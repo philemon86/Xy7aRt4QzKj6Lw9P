@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import CSVImport from './csv-import';
+import ProductCreate from './product-create';
 import { resolveProductPricing, formatDiscount } from '@/lib/pos-core.mjs';
 import {
   applyPromotions,
@@ -335,6 +336,7 @@ export default function PriceManager({
           ['products', '商品列表'],
           ['classes', '類別折扣'],
           ['groups', '折扣群組／買一送一'],
+          ...(!readOnly ? [['create', '＋ 新增商品']] : []),
         ].map(([key, title]) => (
           <button
             role="tab"
@@ -355,14 +357,25 @@ export default function PriceManager({
           {message}
         </p>
       )}
+      {tab === 'create' && !readOnly && <ProductCreate
+        catalog={catalog} request={request}
+        onCancel={()=>setTab('products')}
+        onCreated={async(code:string)=>{
+          await onUpdated();setQuery(code);setTab('products');
+          setMessage('商品 '+code+' 已新增，書房與全教會同步');
+        }}
+      />}
       {tab === 'products' && (
         <>
           {!readOnly && (
+            <>
+            <div className="heading-actions"><Button onClick={()=>setTab('create')}>＋ 新增商品</Button></div>
             <CSVImport
               catalog={catalog}
               request={request}
               onUpdated={onUpdated}
             />
+            </>
           )}
           <Input
             aria-label="搜尋商品"

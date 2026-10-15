@@ -1997,6 +1997,12 @@ html.dark[data-audience='church'] {
   display: grid;
   gap: 14px;
 }
+.product-create { margin: 16px 0; padding: 24px; }
+.product-create h2 { font-size: 20px; font-weight: 650; }
+.product-create > p { margin: 8px 0 20px; }
+.product-create fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.product-create h3 { margin-top: 8px; font-weight: 600; }
+.product-create-error { color: #a43538; margin-top: 12px; }
 .pricing-form label {
   display: grid;
   gap: 6px;

@@ -21,6 +21,7 @@ import {
   composeCatalogProduct,
   rebaseCatalogProducts,
   validatePriceRule,
+  validateNewProduct,
 } from './catalog.mjs';
 import initialShop from '../data/shop-cache.json';
 import { mergeShopCache } from './shop.mjs';
@@ -276,7 +277,7 @@ async function catalogSettings() {
       return catalogSettings();
     }
   }
-  const defaults = defaultPricing(catalog.products),
+  const defaults = defaultPricing(catalog.products, products),
     saved = settings['global-pricing'];
   return {
     products,
@@ -616,6 +617,20 @@ export async function handle(req: Request, parts: string[]) {
     if (id === 'refresh-website') {
       await limited('website-refresh:' + s.token, 60);
       return json(await refreshShopProducts(db(), config.products, initialShop, b.codes));
+    }
+    if (id === 'product') {
+      if (config.catalogRevision !== (b.revision || '')) throw error('商品資料已更新，請重新載入商品資料再新增', 409);
+      if (config.products.length >= 10000) throw error('商品數量已達上限');
+      const current = await getCatalog(s);
+      let product;
+      try { product = validateNewProduct(b.product, current); }
+      catch (e: any) { throw error(e.message); }
+      await writeCatalogSetting('catalog-products', {
+        revision: crypto.randomUUID(),
+        products: [...config.products, product],
+        sourceRevision: catalog.sourceRevision,
+      }, b.revision || '');
+      return json({code:product.code});
     }
     if (id === 'import') {
       if (typeof b.text !== 'string' || b.text.length > 8000000)

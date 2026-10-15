@@ -1,0 +1,20 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {sqlite,requestAPI} from './product-server-fixture.mjs';
+test('Only bookstore can create durable shared products, with discount atomicity, collision and revision protection',async()=>{
+  const before=await (await requestAPI('catalog')).json();
+  const input={code:'FIXTUREADD01',name:'新增商品測試',barcode:'000099990001',class:Object.keys(before.classes)[0],kind:Object.keys(before.kinds)[0],unitCode:Object.keys(before.units)[0],ntaxFlag:'1',price:'24',priceMode:'discount',priceValue:'79.5'};
+  const body={product:input,revision:before.catalogRevision};
+  assert.equal((await requestAPI('catalog/product',body,'aa01')).status,403);
+  assert.equal((await requestAPI('catalog/product',body)).status,200);
+  const stored=JSON.parse(sqlite.prepare("SELECT value FROM settings WHERE key='catalog-products'").get().value);
+  const row=stored.products.find(p=>p.code===input.code);assert.equal(row.initialPriceRule.value,79.5);assert.equal(row.barcode,input.barcode);
+  const after=await (await requestAPI('catalog',undefined,'aa01')).json();
+  assert.equal(after.products.find(p=>p.code===input.code).productRule.value,79.5);
+  assert.notEqual(after.catalogRevision,before.catalogRevision);
+  assert.equal((await requestAPI('catalog/product',body)).status,409);
+  assert.equal((await requestAPI('catalog/product',{...body,revision:after.catalogRevision})).status,400);
+  assert.equal((await requestAPI('catalog/product',{product:{...input,code:'FIXTUREADD02',priceValue:'101'},revision:after.catalogRevision})).status,400);
+  const reloaded=JSON.parse(sqlite.prepare("SELECT value FROM settings WHERE key='catalog-products'").get().value);
+  assert.equal(reloaded.products.length,stored.products.length);assert.equal(reloaded.revision,stored.revision);
+});

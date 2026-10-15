@@ -857,7 +857,8 @@ details[open] > summary {
   background: var(--soft);
   border: 1px solid var(--border-color);
 }
-#scan-carrier-btn svg { width: 22px; height: 22px; }
+#scan-carrier-btn svg, .scan-camera-btn svg { width: 22px; height: 22px; }
+.scan-camera-btn { display: inline-flex; align-items: center; justify-content: center; }
 #scan-carrier-btn:focus-visible { outline: 2px solid var(--primary-btn); outline-offset: 2px; }
 .invoice-hint {
   font-size: 12px !important;
