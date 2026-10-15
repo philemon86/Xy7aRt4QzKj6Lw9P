@@ -321,6 +321,14 @@ function createScanGate(delay = 1000) {
   };
 }
 
+// Camera results are stricter than manual invoice entry. Never write a product
+// barcode, donation code or arbitrary scanned text into the mobile carrier field.
+function normalizeCarrierScan(raw) {
+  if (typeof raw !== 'string') return null;
+  const code = raw.trim().toUpperCase();
+  return /^\/[A-Z0-9+.-]{7}$/.test(code) ? code : null;
+}
+
 const CHURCH_TAX_ID = '52399254';
 
 function requiresChurchCustomer(taxId) {
@@ -551,4 +559,4 @@ function applyPromotions(items, products, groups, now = new Date()) {
   return lines.filter((i) => i.quantity !== 0);
 }
 
-return {discountedUnitPrice,itemTotal,cartTotal,searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,refreshAutomaticCartPrices,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();
+return {normalizeCarrierScan,discountedUnitPrice,itemTotal,cartTotal,searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,refreshAutomaticCartPrices,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();

@@ -9,6 +9,8 @@ const read = (name) => fs.readFileSync(path.join(root, name), 'utf8');
 const core =
   read('lib/pos-core.mjs').replace(/^export /gm, '') +
   '\n' +
+  read('lib/carrier-scan.mjs').replace(/^export /gm, '') +
+  '\n' +
   read('lib/invoice-customers.mjs').replace(/^export /gm, '') +
   '\n' +
   read('lib/promotions.mjs')
@@ -16,7 +18,7 @@ const core =
     .replace(/^export /gm, '');
 fs.writeFileSync(
   path.join(root, 'public/pos-core.js'),
-  `window.POSCore=(()=>{${core}\nreturn {discountedUnitPrice,itemTotal,cartTotal,searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,refreshAutomaticCartPrices,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
+  `window.POSCore=(()=>{${core}\nreturn {normalizeCarrierScan,discountedUnitPrice,itemTotal,cartTotal,searchProducts,formatDiscount,suggestCashAmount,culturalCoinPayment,applyPromotions,resolveProductPricing,repairWebsiteZeroCart,refreshAutomaticCartPrices,editCartItem,evaluateExpression,insertOperand,createScanGate,requiresChurchCustomer,invoiceCustomerCode};})();\n`,
 );
 html = html
   .replaceAll('折扣 %', '售價比例 %')
@@ -444,6 +446,7 @@ html = html.replace(
   for(const id of checkoutFieldIds){const field=document.getElementById(id);if(!field)continue;if(Object.hasOwn(savedCheckoutFields,id))field.value=savedCheckoutFields[id];field.addEventListener('input',saveCheckoutFields);field.addEventListener('change',saveCheckoutFields);}
   if(savedCheckoutFields.donationDefaultInitialized && !savedCheckoutFields.donationSuggestionVersion && invoiceDonateCarrierInput.value==='2995')invoiceDonateCarrierInput.value='';
   ${read('scripts/register-donation.js')}
+  ${read('scripts/register-carrier.js')}
   saveCheckoutFields();
   syncInvoiceCustomerVisibility();calculateChange();
   const resize=new ResizeObserver(()=>parent.postMessage({type:'height',height:document.body.scrollHeight+24},location.origin));resize.observe(document.body);

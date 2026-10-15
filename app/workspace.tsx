@@ -64,6 +64,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import Camera from './camera';
+import { normalizeCarrierScan } from '@/lib/carrier-scan.mjs';
 import OrderEditor from './order-editor';
 import RecoveryDialog from './recovery-dialog';
 import OfflineConflicts from './offline-conflicts';
@@ -182,6 +183,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
     [stock, setStock] = useState(''),
     [stockMode, setStockMode] = useState('add'),
     [camera, setCamera] = useState(false),
+    [cameraMode, setCameraMode] = useState<'product' | 'carrier'>('product'),
     [cloudStatus, setCloudStatus] = useState('雲端資料'),
     [cloudError, setCloudError] = useState(false),
     [sync, setSync] = useState<any>(null),
@@ -354,6 +356,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
         setCurrentCash(m.amount);
       if (m.type === 'open-camera' && activeRef.current?.status === 'open') {
         setScanFeedback(null);
+        setCameraMode(m.target === 'carrier' ? 'carrier' : 'product');
         setCamera(true);
       }
       if (m.type === 'cloud-status') {
@@ -865,6 +868,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                         onClick={() => {
                           tab('checkout');
                           setScanFeedback(null);
+                          setCameraMode('product');
                           (
                             frame.current?.contentWindow as any
                           )?.POSCloud?.unlockAudio?.();
@@ -1581,14 +1585,23 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
       )}
       {camera && (
         <Camera
+          mode={cameraMode}
           feedback={scanFeedback}
           onClose={() => setCamera(false)}
-          onScan={(code) =>
+          onScan={(code) => {
+            if (cameraMode === 'carrier') {
+              const carrier = normalizeCarrierScan(code);
+              if (!carrier || !frame.current?.contentWindow || activeRef.current?.status !== 'open') return;
+              frame.current.contentWindow.postMessage({ type: 'carrier-scan', code: carrier }, location.origin);
+              setCamera(false);
+              setNotice('載具已填入');
+              return;
+            }
             frame.current?.contentWindow?.postMessage(
               { type: 'scan', code },
               location.origin,
-            )
-          }
+            );
+          }}
         />
       )}
     </SidebarProvider>

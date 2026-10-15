@@ -13,14 +13,17 @@ import { loadBarcodeDecoder } from '@/lib/barcode-loader.mjs';
 import { captureScanFrame, decodeScanFrame, scanFrame } from '@/lib/camera-scan.mjs';
 import { configureScanTrack, exposureRange, exposureValue } from '@/lib/glare-scan.mjs';
 import { createCameraWorker } from '@/lib/scan-worker.mjs';
+import { normalizeCarrierScan } from '@/lib/carrier-scan.mjs';
 export default function Camera({
   onScan,
   onClose,
   feedback,
+  mode = 'product',
 }: {
   onScan: (code: string) => void;
   onClose: () => void;
   feedback: { ok: boolean; text: string; code: string; at: number } | null;
+  mode?: 'product' | 'carrier';
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const [message, setMessage] = useState('正在開啟相機…');
@@ -55,16 +58,30 @@ export default function Camera({
     let stopped = false,
       stream: MediaStream | undefined;
     const scanGate = createScanGate();
+    let carrierRead = false;
     let timer: ReturnType<typeof setTimeout>;
     let angleWorker: ReturnType<typeof createCameraWorker> = null;
     const accept = (code: string) => {
-      if (stopped || !scanGate(code)) return;
-      scan.current(code);
+      if (stopped || carrierRead || !scanGate(code)) return;
+      if (mode === 'carrier') {
+        const carrier = normalizeCarrierScan(code);
+        if (!carrier) {
+          setMessage('請掃描以 / 開頭的手機載具條碼');
+          return;
+        }
+        carrierRead = true;
+        navigator.vibrate?.(40);
+        scan.current(carrier);
+        return;
+      }
       setMessage('正在比對 ' + code);
+      scan.current(code);
     };
     (async () => {
       try {
-        angleWorker = createCameraWorker({onCode:accept});
+        // The product worker prioritizes angle/glare crops. Short mobile carrier
+        // bars need the focused Code 39 reader to scan every live frame instead.
+        if (mode === 'product') angleWorker = createCameraWorker({onCode:accept});
         // Warm the fallback while the browser opens the camera. A load failure
         // must not prevent native scanning on devices that support it.
         let reader: any = null;
@@ -74,7 +91,9 @@ export default function Camera({
         const fallback = loadBarcodeDecoder().then(({ BrowserMultiFormatReader, DecodeHintType, BarcodeFormat, createGlareReader }: any) => {
           const hints = new Map();
           hints.set(DecodeHintType.TRY_HARDER, true);
-          hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.ITF]);
+          hints.set(DecodeHintType.POSSIBLE_FORMATS, mode === 'carrier'
+            ? [BarcodeFormat.CODE_39, BarcodeFormat.CODE_128]
+            : [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.ITF]);
           reader = new BrowserMultiFormatReader(hints);
           thoroughReader = reader;
           reader = new BrowserMultiFormatReader(new Map(hints).set(DecodeHintType.TRY_HARDER, false));
@@ -107,9 +126,9 @@ export default function Camera({
         el.srcObject = stream;
         await el.play();
         if (stopped) return;
-        setMessage('將條碼放進畫面，辨識後移開再掃下一件');
+        setMessage(mode === 'carrier' ? '將手機載具條碼放進畫面，辨識成功後自動填入' : '將條碼放進畫面，辨識後移開再掃下一件');
         const Native = (window as any).BarcodeDetector;
-        const formats = [
+        const formats = mode === 'carrier' ? ['code_39', 'code_128'] : [
           'ean_13',
           'ean_8',
           'code_128',
@@ -132,7 +151,7 @@ export default function Camera({
         }
         if (stopped) return;
         const canvas = document.createElement('canvas');
-        let pass = 0;
+        let pass = 0, lastFallback = -Infinity;
         const tick = async () => {
           if (stopped) return;
           const start = performance.now();
@@ -152,7 +171,11 @@ export default function Camera({
                 angleWorker.submit(ctx.getImageData(0,0,canvas.width,canvas.height));
               }
             }
-            for (let i = 0; !code && !angleWorker?.ready && reader && i < 2; i++) {
+            // A ready angle worker can still miss a clear barcode. Keep a
+            // bounded direct-reader retry so it cannot starve the fallback.
+            const fallbackDue = reader && (!angleWorker?.ready || performance.now() - lastFallback >= 250);
+            if (fallbackDue) lastFallback = performance.now();
+            for (let i = 0; !code && fallbackDue && i < 2; i++) {
               const current = pass++;
               captureScanFrame(canvas, el, el.videoWidth, el.videoHeight, current);
               const detailed = scanFrame(el.videoWidth, el.videoHeight, current).tryHarder;
@@ -187,14 +210,14 @@ export default function Camera({
       stream?.getTracks().forEach((t) => t.stop());
       track.current = null;
     };
-  }, [attempt]);
+  }, [attempt, mode]);
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="camera-dialog">
         <DialogTitle>
-          <ScanBarcode /> 連續掃描
+          <ScanBarcode /> {mode === 'carrier' ? '掃描載具' : '連續掃描'}
         </DialogTitle>
-        <DialogDescription>支援橫向、直向與斜放條碼，無須對準細線。</DialogDescription>
+        <DialogDescription>{mode === 'carrier' ? '將顧客手機上的載具條碼對著鏡頭，掃描後自動填入本次發票。' : '支援橫向、直向與斜放條碼，無須對準細線。'}</DialogDescription>
         <div
           className="camera-viewport"
           data-result={flash ? (feedback?.ok ? 'success' : 'error') : ''}
@@ -213,12 +236,12 @@ export default function Camera({
               <span>{feedback.code}</span>
             </div>
           )}
-          <span className="camera-count">已加入 {added} 次</span>
+          {mode === 'product' && <span className="camera-count">已加入 {added} 次</span>}
         </div>
         <p className="camera-status" role="status">
           {message}
         </p>
-        <p className="camera-tip">反光時先關閉補光，將書本稍微傾斜，避開白色亮斑；模糊時稍微拉遠。</p>
+        <p className="camera-tip">{mode === 'carrier' ? '請完整露出載具條碼，避開螢幕反光；模糊時稍微拉遠。' : '反光時先關閉補光，將書本稍微傾斜，避開白色亮斑；模糊時稍微拉遠。'}</p>
         {exposureLimits && (
           <label className="camera-zoom">曝光 {exposure > 0 ? '+' : ''}{exposure.toFixed(1)}
             <input aria-label="相機曝光" type="range" min={exposureLimits.min} max={exposureLimits.max} step={exposureLimits.step} value={exposure}

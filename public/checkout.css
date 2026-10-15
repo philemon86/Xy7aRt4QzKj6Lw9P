@@ -835,6 +835,30 @@ details[open] > summary {
 .invoice-field label {
   margin-bottom: 7px;
 }
+.invoice-carrier-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.invoice-carrier-input input {
+  flex: 1;
+  min-width: 0;
+}
+#scan-carrier-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  color: var(--primary-btn);
+  background: var(--soft);
+  border: 1px solid var(--border-color);
+}
+#scan-carrier-btn svg { width: 22px; height: 22px; }
+#scan-carrier-btn:focus-visible { outline: 2px solid var(--primary-btn); outline-offset: 2px; }
 .invoice-hint {
   font-size: 12px !important;
   margin: 10px 0;
