@@ -845,7 +845,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                             if (
                               ending &&
                               !window.confirm(
-                                '確定結束這場書展？\\n結束後仍可查詢交易與營收，但需重新開啟才能新增或修改交易。',
+                                '確定結束這場書展？\n結束後仍可查詢交易與營收，但需重新開啟才能新增或修改交易。',
                               )
                             ) return;
 
