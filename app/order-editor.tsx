@@ -220,7 +220,7 @@ export default function OrderEditor({
               </span>
               <span>
                 {archived
-                  ? '此書展已封存'
+                  ? '書展已結束（唯讀）'
                   : original.isValid
                     ? '有效出貨單'
                     : '原已作廢紀錄'}
