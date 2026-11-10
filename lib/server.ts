@@ -911,7 +911,7 @@ export async function handle(req: Request, parts: string[]) {
     }
     if (action === 'sync') {
       if (e.status !== 'open')
-        throw error('此書展已封存，請由書房重新開啟', 409);
+        throw error('這場書展已結束，請重新開啟後再修改', 409);
       if (!Array.isArray(b.changes) || b.changes.length > 1000)
         throw error('更新格式錯誤');
       if (
@@ -946,7 +946,7 @@ export async function handle(req: Request, parts: string[]) {
       }
       for (let attempt = 0; attempt < 6; attempt++) {
         const current = attempt === 0 ? e : await event(id, s);
-        if (current.status !== 'open') throw error('書展已封存', 409);
+        if (current.status !== 'open') throw error('書展已結束', 409);
         const next = mergeChanges(JSON.parse(current.state), b.changes);
         const data = JSON.stringify(next);
         if (data.length > 5000000) throw error('此場資料量過大，請建立新場次');
@@ -1014,11 +1014,18 @@ export async function handle(req: Request, parts: string[]) {
       if (s.role === 'admin' && e.organizer === 'church')
         throw error('教會場次請由教會自行管理', 403);
       if (req.method !== 'POST') throw error('請使用 POST', 405);
-      await db()
-        .prepare('UPDATE events SET status=?,updated=? WHERE id=?')
-        .bind(b.open ? 'open' : 'archived', new Date().toISOString(), id)
+      if (typeof b.open !== 'boolean') throw error('請指定書展狀態');
+      const nextStatus = b.open ? 'open' : 'archived';
+      const expectedStatus = b.open ? 'archived' : 'open';
+      // Compare the previous status so simultaneous actions do not silently
+      // overwrite one another. "archived" remains the persisted status.
+      const result = await db()
+        .prepare('UPDATE events SET status=?,updated=?,actor=? WHERE id=? AND status=?')
+        .bind(nextStatus, new Date().toISOString(), s.tenant || 'admin', id, expectedStatus)
         .run();
-      return json({ ok: true });
+      if (result.meta.changes !== 1)
+        throw error('書展狀態已變更，請重新整理後重試', 409);
+      return json({ ok: true, status: nextStatus });
     }
     if (action === 'close') {
       isAdmin(s);
@@ -1033,7 +1040,7 @@ export async function handle(req: Request, parts: string[]) {
               .all()
           ).results,
         );
-      if (e.status !== 'open') throw error('書展已封存');
+      if (e.status !== 'open') throw error('書展已結束');
       if (!/^\d{4}-\d{2}-\d{2}$/.test(b.day)) throw error('日結日期錯誤');
       const state = JSON.parse(e.state);
       const dayState = Object.fromEntries(

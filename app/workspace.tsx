@@ -831,33 +831,80 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                     )}
                     <p>
                       {active.date} <span className="dot">·</span>{' '}
-                      {active.status === 'open' ? '進行中' : '已封存'}
+                      {active.status === 'open' ? '進行中' : '已結束'}
                     </p>
                   </div>
                   <div className="heading-actions">
                     {(me.role !== 'admin' || active.organizer !== 'church') && (
                       <Button
                         variant="outline"
+                        disabled={busy}
                         onClick={() =>
                           run(async () => {
+                            const ending = active.status === 'open';
+                            if (
+                              ending &&
+                              !window.confirm(
+                                '確定結束這場書展？\n結束後仍可查詢交易與營收，但需重新開啟才能新增或修改交易。',
+                              )
+                            ) return;
+
                             await flushFrame();
+                            if (ending) {
+                              const cloud = (frame.current?.contentWindow as any)?.POSCloud;
+                              if (cloud?.recoveryOrders?.()?.length || recoveryError) {
+                                setRecovery(true);
+                                throw Error('尚有待存結帳，請先確認實際收款並完成保存，再結束書展。');
+                              }
+                              // Prevent this device's unsynced changes from being
+                              // stranded when the server switches to read-only.
+                              const runtime = getOfflineRuntime();
+                              const portal = tenant || 'admin';
+                              for (let attempt = 0; attempt < 50; attempt++) {
+                                const local = (await runtime.backup(portal)).find(
+                                  (r: any) => r.event?.id === active.id && r.patches?.length,
+                                );
+                                if (!local) break;
+                                await runtime.syncEvent(portal, active.id, true);
+                              }
+                              if (
+                                (await runtime.backup(portal)).some(
+                                  (r: any) => r.event?.id === active.id && r.patches?.length,
+                                )
+                              ) {
+                                throw Error('這場書展仍有待同步資料，請先完成同步或處理衝突，再結束書展。');
+                              }
+                            }
+
                             await api('events/' + active.id + '/archive', {
-                              open: active.status !== 'open',
+                              open: !ending,
                             });
+                            const refreshed = await api('events/' + active.id);
                             const all = await api('events');
                             setEvents(all);
                             eventRecord.current = {
                               id: active.id,
-                              record: api('events/' + active.id),
+                              record: Promise.resolve(refreshed),
                             };
+                            setState(refreshed.state);
                             setActive(all.find((e: any) => e.id === active.id));
+                            if (ending) {
+                              setView('history');
+                              viewRef.current = 'history';
+                              rememberScreen(active.id, 'history');
+                            }
                             if (frame.current)
                               frame.current.src = frame.current.src;
+                            setNotice(
+                              ending
+                                ? '書展已結束，交易與營收可繼續查詢；需要結帳時請重新開啟。'
+                                : '書展已重新開啟，可以繼續結帳。',
+                            );
                           })
                         }
                       >
                         <Archive />
-                        {active.status === 'open' ? '封存' : '重新開啟'}
+                        {active.status === 'open' ? '結束書展' : '重新開啟'}
                       </Button>
                     )}
                     {!(
@@ -1181,7 +1228,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                   <TabsList>
                     <TabsTrigger value="all">全部場次</TabsTrigger>
                     <TabsTrigger value="open">進行中</TabsTrigger>
-                    <TabsTrigger value="archived">已封存</TabsTrigger>
+                    <TabsTrigger value="archived">已結束</TabsTrigger>
                   </TabsList>
                 </Tabs>
                 <div className="search">
@@ -1217,7 +1264,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
                       </p>
                     </div>
                     <span className={'badge ' + e.status}>
-                      {e.status === 'open' ? '進行中' : '已封存'}
+                      {e.status === 'open' ? '進行中' : '已結束'}
                     </span>
                     <div className="event-total">
                       <b>NT$ {money(e.revenue)}</b>
@@ -1242,7 +1289,7 @@ export default function Workspace({ tenant = '' }: { tenant?: string }) {
               </section>
               <p className="footnote">
                 <ShieldCheck size={15} />{' '}
-                歷史場次持續保留。封存後可查詢，也可由書房重新開啟。
+                歷史場次持續保留。書展結束後可查詢交易與營收，需要結帳時可重新開啟。
               </p>
             </>
           ) : section === 'catalog' ? (
