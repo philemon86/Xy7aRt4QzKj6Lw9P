@@ -98,13 +98,13 @@ html, body {
 }
 
 .quote-pill {
-  height: 30px;
-  padding: 0 11px;
+  height: 32px;
+  padding: 0 12px;
   border-radius: 8px;
   border: none;
   background: var(--black);
   color: var(--white);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 800;
   cursor: pointer;
   display: none;
@@ -112,7 +112,55 @@ html, body {
   gap: 5px;
 }
 
-/* Hero Price Card (Red / Blue / Black / White) */
+/* Main Content Area */
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* Idle Welcome State (when search is empty) */
+.idle-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 20px 12px;
+  gap: 10px;
+}
+
+.idle-title {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.idle-sub {
+  font-size: 14px;
+  color: var(--gray);
+  line-height: 1.5;
+}
+
+.recent-wrap {
+  width: 100%;
+  margin-top: 14px;
+  text-align: left;
+}
+
+.recent-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray);
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+
+/* Hero Price Card */
 .hero {
   flex-shrink: 0;
   background: var(--white);
@@ -120,11 +168,11 @@ html, body {
   border-radius: 18px;
   padding: 18px;
   box-shadow: var(--shadow);
-  transition: transform 0.16s ease;
+  display: none;
 }
 
-.hero.pop {
-  transform: scale(0.988);
+.hero.show {
+  display: block;
 }
 
 .hero-top {
@@ -132,22 +180,18 @@ html, body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .hero-code {
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--gray);
   cursor: pointer;
 }
 
-.hero-code:hover {
-  color: var(--blue);
-}
-
 .stock-pill {
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 800;
   display: inline-flex;
   align-items: center;
@@ -163,10 +207,8 @@ html, body {
 
 .st-ok { color: var(--blue); }
 .st-ok i { background: var(--blue); }
-.st-low { color: var(--red); }
-.st-low i { background: var(--red); }
-.st-out { color: var(--red); }
-.st-out i { background: var(--red); }
+.st-low, .st-out { color: var(--red); }
+.st-low i, .st-out i { background: var(--red); }
 
 .hero-name {
   font-size: 20px;
@@ -174,11 +216,6 @@ html, body {
   line-height: 1.35;
   letter-spacing: -0.02em;
   margin-bottom: 14px;
-  min-height: 54px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .hero-price-row {
@@ -211,29 +248,25 @@ html, body {
 }
 
 .price-unit {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--gray);
 }
 
 .add-btn {
-  height: 42px;
-  padding: 0 16px;
+  height: 44px;
+  padding: 0 18px;
   border-radius: 10px;
   border: none;
   background: var(--black);
   color: var(--white);
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 800;
   cursor: pointer;
 }
 
-.add-btn:active {
-  transform: scale(0.95);
-}
-
 .barcode-strip {
   margin-top: 14px;
-  padding: 9px 12px;
+  padding: 10px 12px;
   border-radius: 10px;
   background: var(--bg);
   display: flex;
@@ -257,7 +290,7 @@ html, body {
   border-radius: 1px;
 }
 
-/* Status Banner (for OCR progress) */
+/* OCR Status Banner */
 .ocr-banner {
   display: none;
   align-items: center;
@@ -268,7 +301,7 @@ html, body {
   background: var(--blue-soft);
   border: 1px solid #BFDBFE;
   color: var(--blue);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -277,9 +310,9 @@ html, body {
   display: flex;
 }
 
-/* Match List */
+/* Compact Match List (Max 8 items) */
 .list-head {
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: space-between;
   padding: 0 2px;
@@ -289,6 +322,10 @@ html, body {
   flex-shrink: 0;
 }
 
+.list-head.show {
+  display: flex;
+}
+
 .stream {
   flex: 1;
   min-height: 0;
@@ -296,7 +333,6 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-bottom: 4px;
   scrollbar-width: none;
 }
 
@@ -314,11 +350,6 @@ html, body {
   background: var(--white);
   border: 1px solid var(--line);
   cursor: pointer;
-  transition: border-color 0.12s ease, background 0.12s ease;
-}
-
-.item-card:active {
-  transform: scale(0.985);
 }
 
 .item-card.active {
@@ -332,7 +363,7 @@ html, body {
 }
 
 .ic-name {
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -355,79 +386,103 @@ html, body {
 }
 
 .ic-price {
-  font-size: 16.5px;
+  font-size: 17px;
   font-weight: 900;
   color: var(--black);
   flex-shrink: 0;
 }
 
-/* Bottom Thumb-Zone Dock */
+/* TWO-ROW GENEROUS THUMB-ZONE DOCK */
 .dock-wrap {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
 }
 
-.command-dock {
+/* Row 1: Full-width big input box */
+.big-search-box {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 58px;
-  padding: 6px 6px 6px 14px;
-  border-radius: 18px;
+  gap: 8px;
+  height: 56px;
+  padding: 0 10px 0 16px;
+  border-radius: 16px;
   background: var(--white);
-  border: 1.5px solid var(--black);
+  border: 2px solid var(--black);
   box-shadow: var(--shadow);
 }
 
-.command-dock input {
+.big-search-box:focus-within {
+  border-color: var(--blue);
+}
+
+.big-search-box input {
   flex: 1;
   min-width: 0;
+  height: 100%;
   border: none;
   background: transparent;
   color: var(--black);
-  font-size: 15.5px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   outline: none;
 }
 
-.command-dock input::placeholder {
+.big-search-box input::placeholder {
   color: var(--gray);
   font-weight: 400;
+  font-size: 16px;
 }
 
 .clear-btn {
-  width: 26px;
-  height: 26px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   border: none;
-  background: transparent;
-  color: var(--gray);
-  font-size: 15px;
+  background: var(--bg);
+  color: var(--black);
+  font-size: 16px;
+  font-weight: 800;
   cursor: pointer;
   display: none;
   place-items: center;
+  flex-shrink: 0;
 }
 
 .clear-btn.show {
   display: grid;
 }
 
-.icon-act {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--bg);
-  color: var(--black);
+/* Row 2: Three large, easy-to-tap action buttons */
+.action-grid {
   display: grid;
-  place-items: center;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 8px;
+}
+
+.big-act {
+  height: 50px;
+  border-radius: 14px;
+  border: 1.5px solid var(--black);
+  background: var(--white);
+  color: var(--black);
+  font-size: 14.5px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   cursor: pointer;
-  flex-shrink: 0;
 }
 
-.icon-act:active {
-  background: var(--line);
+.big-act:active {
+  transform: scale(0.97);
+  background: var(--bg);
 }
 
-.icon-act.listening {
+.big-act.listening {
   background: var(--red);
   border-color: var(--red);
   color: var(--white);
@@ -436,27 +491,13 @@ html, body {
 
 @keyframes pulseRec {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.07); }
+  50% { transform: scale(1.03); }
 }
 
-.scan-primary {
-  height: 42px;
-  padding: 0 13px;
-  border-radius: 12px;
-  border: none;
+.big-act.primary {
   background: var(--blue);
+  border-color: var(--blue);
   color: var(--white);
-  font-size: 13px;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.scan-primary:active {
-  opacity: 0.9;
 }
 
 /* Modal Sheet */
@@ -532,24 +573,24 @@ html, body {
 
 .btn-full {
   width: 100%;
-  height: 46px;
+  height: 48px;
   border-radius: 12px;
   border: none;
   background: var(--blue);
   color: var(--white);
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 800;
   cursor: pointer;
 }
 
 .btn-outline {
   width: 100%;
-  height: 44px;
+  height: 46px;
   border-radius: 12px;
   border: 1.5px solid var(--black);
   background: var(--white);
   color: var(--black);
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -571,8 +612,8 @@ html, body {
 }
 
 .q-step button {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border: none;
   background: transparent;
   font-size: 16px;
@@ -580,9 +621,9 @@ html, body {
 }
 
 .q-step span {
-  width: 24px;
+  width: 26px;
   text-align: center;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 800;
 }
 
@@ -595,9 +636,9 @@ html, body {
   transform: translate(-50%, -180%);
   background: var(--black);
   color: var(--white);
-  padding: 8px 16px;
+  padding: 9px 18px;
   border-radius: 99px;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
   transition: transform 0.2s ease, opacity 0.2s ease;
   z-index: 100;
@@ -625,53 +666,71 @@ html, body {
     </div>
   </header>
 
-  <section class="hero" id="heroCard">
-    <div class="hero-top">
-      <span class="hero-code mono" id="heroCode" title="點擊複製代碼">---</span>
-      <span class="stock-pill st-ok" id="heroStock"><i></i>載入中</span>
-    </div>
-    <div class="hero-name" id="heroName">正在讀取商品資料…</div>
-    <div class="hero-price-row">
-      <div class="price-wrap">
-        <span class="price-nt">NT$</span>
-        <span class="price-big num" id="heroPrice">0</span>
-        <span class="price-unit" id="heroUnit">/ 件</span>
-      </div>
-      <button type="button" class="add-btn" id="heroAddBtn">+ 試算</button>
-    </div>
-    <div class="barcode-strip" id="barcodeStrip" title="點擊複製條碼">
-      <div class="bars" id="barcodeBars"></div>
-      <span class="mono" style="font-size:12px;font-weight:700;color:var(--gray)" id="heroBarcode">點擊複製條碼</span>
-    </div>
-  </section>
-
   <div class="ocr-banner" id="ocrBanner">
     <span id="ocrBannerTxt">辨識中…</span>
     <button type="button" style="border:none;background:transparent;color:var(--red);font-weight:800;cursor:pointer" id="clearOcrBtn">清除</button>
   </div>
 
-  <div class="list-head">
-    <span>商品清單</span>
-    <span class="num" id="countLabel">0 筆</span>
+  <div class="stage">
+    <!-- Clean Idle State (before typing) -->
+    <div class="idle-box" id="idleBox">
+      <div class="idle-title">快速查商品・看價錢</div>
+      <div class="idle-sub">在下方輸入書名、語音直說、<br>拍書名或直接掃描條碼</div>
+      <div class="recent-wrap" id="recentWrap" style="display:none">
+        <div class="recent-label">最近查過</div>
+        <div class="stream" id="recentList"></div>
+      </div>
+    </div>
+
+    <!-- Active Result Hero -->
+    <section class="hero" id="heroCard">
+      <div class="hero-top">
+        <span class="hero-code mono" id="heroCode" title="點擊複製代碼">---</span>
+        <span class="stock-pill st-ok" id="heroStock"><i></i>庫存</span>
+      </div>
+      <div class="hero-name" id="heroName"></div>
+      <div class="hero-price-row">
+        <div class="price-wrap">
+          <span class="price-nt">NT$</span>
+          <span class="price-big num" id="heroPrice">0</span>
+          <span class="price-unit" id="heroUnit">/ 件</span>
+        </div>
+        <button type="button" class="add-btn" id="heroAddBtn">+ 試算</button>
+      </div>
+      <div class="barcode-strip" id="barcodeStrip" title="點擊複製條碼">
+        <div class="bars" id="barcodeBars"></div>
+        <span class="mono" style="font-size:12.5px;font-weight:700;color:var(--gray)" id="heroBarcode"></span>
+      </div>
+    </section>
+
+    <!-- Compact Top Matches (Max 8) -->
+    <div class="list-head" id="listHead">
+      <span>最相符商品</span>
+      <span class="num" id="countLabel">0 筆</span>
+    </div>
+    <main class="stream" id="stream" style="display:none"></main>
   </div>
 
-  <main class="stream" id="stream"></main>
-
-  <!-- Free local OCR photo input for book titles -->
   <input type="file" id="ocrInput" accept="image/*" capture="environment" style="display:none">
 
+  <!-- Two-Row Big Thumb-Zone Dock -->
   <footer class="dock-wrap">
-    <div class="command-dock">
-      <input type="search" id="searchInput" placeholder="輸入書名、代碼、條碼…" autocomplete="off">
+    <div class="big-search-box">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--gray);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="searchInput" placeholder="輸入書名、代碼或條碼…" autocomplete="off">
       <button type="button" class="clear-btn" id="clearBtn" aria-label="清除">✕</button>
-      <button type="button" class="icon-act" id="voiceBtn" aria-label="語音搜尋" title="語音講商品名稱">
+    </div>
+    <div class="action-grid">
+      <button type="button" class="big-act" id="voiceBtn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        語音
       </button>
-      <button type="button" class="icon-act" id="ocrBtn" aria-label="拍書名文字" title="拍書名文字（免費OCR）">
+      <button type="button" class="big-act" id="ocrBtn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+        拍書名
       </button>
-      <button type="button" class="scan-primary" id="barcodeBtn" title="鏡頭掃描條碼">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="8" y1="8" x2="8" y2="16"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="16" y1="8" x2="16" y2="16"/></svg>
+      <button type="button" class="big-act primary" id="barcodeBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="8" y1="8" x2="8" y2="16"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="16" y1="8" x2="16" y2="16"/></svg>
         掃條碼
       </button>
     </div>
@@ -688,13 +747,12 @@ const FALLBACK = [
   { code: 'PH-CAL-2027', barcode: '4710002027019', name: '2027 桌曆限定版', price: 180, qty: 64, spec: '桌曆', unit: '本' },
   { code: 'PH-BAG-01', barcode: '4710008801024', name: '腓利門帆布袋', price: 250, qty: 15, spec: '厚磅純棉 A4', unit: '個' },
   { code: 'BK-DEV-901', barcode: '9789861234567', name: '靈修日引（精裝典藏版）', price: 220, qty: 11, spec: '精裝', unit: '本' },
-  { code: 'S006D3', barcode: '4719900600032', name: '不鏽鋼聖餐壺', price: 450, qty: 3, spec: '304不鏽鋼', unit: '組' },
-  { code: 'BK-BIB-L02', barcode: '9789867765432', name: '和合本聖經（大字拉鍊皮面）', price: 680, qty: 0, spec: '大字皮面', unit: '本' }
+  { code: 'S006D3', barcode: '4719900600032', name: '不鏽鋼聖餐壺', price: 450, qty: 3, spec: '304不鏽鋼', unit: '組' }
 ];
 
 let products = [];
 let codeIndex = new Map();
-let state = { query: '', activeCode: '', quote: [], ocrNote: '' };
+let state = { query: '', activeCode: '', quote: [], recent: [], ocrNote: '' };
 let toastTimer = null;
 let camStream = null, camRaf = null, html5Qr = null;
 
@@ -803,7 +861,6 @@ async function loadData() {
     if (parsed.length) {
       products = parsed;
       buildIndex(products);
-      state.activeCode = products[0].code;
       document.getElementById('dbStatus').textContent = `${products.length.toLocaleString()} 筆`;
       render();
       return;
@@ -812,14 +869,18 @@ async function loadData() {
 
   products = [...FALLBACK];
   buildIndex(products);
-  state.activeCode = products[0].code;
   document.getElementById('dbStatus').textContent = '離線預覽';
   render();
 }
 
+function recordRecent(code) {
+  if (!code) return;
+  state.recent = [code, ...state.recent.filter(c => c !== code)].slice(0, 4);
+}
+
 function getFiltered() {
   const q = state.query.trim().toLowerCase();
-  if (!q) return products.slice(0, 80);
+  if (!q) return { items: [], totalHits: 0 };
   const tokens = q.split(/\s+/).filter(Boolean);
   const scored = [];
   for (let i = 0; i < products.length; i++) {
@@ -827,11 +888,15 @@ function getFiltered() {
     const hay = `${p.name} ${p.code} ${p.barcode} ${p.spec}`.toLowerCase();
     let score = 0;
     if (p.code.toLowerCase() === q || p.barcode.toLowerCase() === q) score += 100;
-    tokens.forEach(t => { if (hay.includes(t)) score += 10; });
-    if (score > 0) scored.push({ p, score });
+    let allMatch = true;
+    for (let j = 0; j < tokens.length; j++) {
+      if (hay.includes(tokens[j])) score += 10;
+      else allMatch = false;
+    }
+    if (allMatch || score >= 100) scored.push({ p, score });
   }
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, 80).map(x => x.p);
+  return { items: scored.slice(0, 8).map(x => x.p), totalHits: scored.length };
 }
 
 function drawBars(str) {
@@ -844,20 +909,11 @@ function drawBars(str) {
 }
 
 function renderHero(item) {
-  const stockEl = document.getElementById('heroStock');
-  if (!item) {
-    document.getElementById('heroCode').textContent = '查無結果';
-    stockEl.className = 'stock-pill st-out';
-    stockEl.innerHTML = '<i></i>無符合商品';
-    document.getElementById('heroName').textContent = '換個關鍵字、用語音說，或掃條碼／拍書名';
-    document.getElementById('heroPrice').textContent = '0';
-    document.getElementById('heroUnit').textContent = '';
-    document.getElementById('heroBarcode').textContent = '---';
-    document.getElementById('barcodeBars').innerHTML = '';
-    return;
-  }
-
+  const hero = document.getElementById('heroCard');
+  if (!item) { hero.classList.remove('show'); return; }
+  hero.classList.add('show');
   document.getElementById('heroCode').textContent = `${item.code}${item.spec ? ' · ' + item.spec : ''}`;
+  const stockEl = document.getElementById('heroStock');
   if (item.qty <= 0) {
     stockEl.className = 'stock-pill st-out';
     stockEl.innerHTML = '<i></i>缺貨';
@@ -873,10 +929,6 @@ function renderHero(item) {
   document.getElementById('heroUnit').textContent = `/ ${item.unit}`;
   document.getElementById('heroBarcode').textContent = item.barcode;
   document.getElementById('barcodeBars').innerHTML = drawBars(item.barcode);
-
-  const card = document.getElementById('heroCard');
-  card.classList.add('pop');
-  setTimeout(() => card.classList.remove('pop'), 110);
 }
 
 function renderQuotePill() {
@@ -891,36 +943,91 @@ function renderQuotePill() {
 }
 
 function render() {
-  const list = getFiltered();
   const q = state.query.trim();
   document.getElementById('clearBtn').classList.toggle('show', q.length > 0);
-  document.getElementById('countLabel').textContent = `${list.length} 筆`;
 
   const banner = document.getElementById('ocrBanner');
   banner.classList.toggle('show', Boolean(state.ocrNote));
   if (state.ocrNote) document.getElementById('ocrBannerTxt').textContent = state.ocrNote;
 
-  let active = list.find(i => i.code === state.activeCode) || list[0] || null;
-  if (active) state.activeCode = active.code;
+  const idleBox = document.getElementById('idleBox');
+  const listHead = document.getElementById('listHead');
+  const stream = document.getElementById('stream');
+
+  // Idle state: keep screen ultra-clean (no 80-item dump!)
+  if (!q && !state.activeCode) {
+    idleBox.style.display = 'flex';
+    document.getElementById('heroCard').classList.remove('show');
+    listHead.classList.remove('show');
+    stream.style.display = 'none';
+
+    const recentWrap = document.getElementById('recentWrap');
+    const recentItems = state.recent.map(c => codeIndex.get(c.toLowerCase())).filter(Boolean);
+    recentWrap.style.display = recentItems.length ? 'block' : 'none';
+    document.getElementById('recentList').innerHTML = recentItems.map(p => `
+      <div class="item-card" data-recent="${esc(p.code)}">
+        <div class="ic-main">
+          <div class="ic-name">${esc(p.name)}</div>
+          <div class="ic-sub"><span class="mono">${esc(p.code)}</span><span>庫存 ${p.qty}</span></div>
+        </div>
+        <div class="ic-price num">$${p.price}</div>
+      </div>
+    `).join('');
+    renderQuotePill();
+    return;
+  }
+
+  idleBox.style.display = 'none';
+  const { items, totalHits } = getFiltered();
+
+  // If user tapped a recent item while query is empty, just show its hero card cleanly
+  if (!q && state.activeCode) {
+    const picked = codeIndex.get(state.activeCode.toLowerCase());
+    renderHero(picked);
+    listHead.classList.remove('show');
+    stream.style.display = 'none';
+    renderQuotePill();
+    return;
+  }
+
+  let active = items.find(i => i.code === state.activeCode) || items[0] || null;
+  if (active) {
+    state.activeCode = active.code;
+    recordRecent(active.code);
+  }
   renderHero(active);
 
-  document.getElementById('stream').innerHTML = list.map(p => `
-    <div class="item-card${active && p.code === active.code ? ' active' : ''}" data-code="${esc(p.code)}">
-      <div class="ic-main">
-        <div class="ic-name">${hi(p.name, q)}</div>
-        <div class="ic-sub">
-          <span class="mono">${esc(p.code)}</span>
-          <span style="color:${p.qty <= 5 ? 'var(--red)' : 'var(--gray)'}">${p.qty <= 0 ? '缺貨' : '庫存 ' + p.qty}</span>
+  if (!items.length) {
+    listHead.classList.add('show');
+    document.getElementById('countLabel').textContent = '0 筆';
+    stream.style.display = 'flex';
+    stream.innerHTML = '<div style="padding:36px 0;text-align:center;color:var(--gray);font-size:14px">找不到符合的商品</div>';
+  } else if (items.length === 1) {
+    // Only 1 exact match: hero card already shows everything, hide redundant list!
+    listHead.classList.remove('show');
+    stream.style.display = 'none';
+  } else {
+    listHead.classList.add('show');
+    document.getElementById('countLabel').textContent = totalHits > 8 ? `顯示前 8 / 共 ${totalHits} 筆` : `${totalHits} 筆`;
+    stream.style.display = 'flex';
+    stream.innerHTML = items.map(p => `
+      <div class="item-card${active && p.code === active.code ? ' active' : ''}" data-code="${esc(p.code)}">
+        <div class="ic-main">
+          <div class="ic-name">${hi(p.name, q)}</div>
+          <div class="ic-sub">
+            <span class="mono">${esc(p.code)}</span>
+            <span style="color:${p.qty <= 5 ? 'var(--red)' : 'var(--gray)'}">${p.qty <= 0 ? '缺貨' : '庫存 ' + p.qty}</span>
+          </div>
         </div>
+        <div class="ic-price num">$${p.price}</div>
       </div>
-      <div class="ic-price num">$${p.price}</div>
-    </div>
-  `).join('');
+    `).join('');
+  }
 
   renderQuotePill();
 }
 
-// 1. Free Browser Voice Search (zh-TW)
+// 1. Voice Search (zh-TW)
 function startVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { showToast('此瀏覽器不支援語音辨識'); return; }
@@ -933,6 +1040,7 @@ function startVoice() {
     const txt = e.results[0][0].transcript.trim();
     state.ocrNote = '';
     state.query = txt;
+    state.activeCode = '';
     document.getElementById('searchInput').value = txt;
     render();
     showToast(`語音：${txt}`);
@@ -942,9 +1050,9 @@ function startVoice() {
   rec.start();
 }
 
-// 2. Free Local Book Title OCR via Tesseract.js (Zero API Key / Zero Cost)
+// 2. Free Local Book Title OCR (Tesseract.js)
 async function runTitleOCR(file) {
-  state.ocrNote = '正在免費辨識書名文字（首次載入語言包約 3–5 秒）…';
+  state.ocrNote = '正在免費辨識書名文字（首次約 3–5 秒）…';
   render();
   try {
     if (!window.Tesseract) {
@@ -960,7 +1068,7 @@ async function runTitleOCR(file) {
       .replace(/[^\u4e00-\u9fa5A-Za-z0-9\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    const tokens = raw.split(' ').filter(t => t.length >= 2).slice(0, 4).join(' ');
+    const tokens = raw.split(' ').filter(t => t.length >= 2).slice(0, 3).join(' ');
     if (!tokens) {
       state.ocrNote = '';
       render();
@@ -969,6 +1077,7 @@ async function runTitleOCR(file) {
     }
     state.ocrNote = `書名辨識：「${tokens}」`;
     state.query = tokens;
+    state.activeCode = '';
     document.getElementById('searchInput').value = tokens;
     render();
     showToast(`辨識完成：${tokens}`);
@@ -979,7 +1088,7 @@ async function runTitleOCR(file) {
   }
 }
 
-// 3. Free Live Camera Barcode Scanner (Native BarcodeDetector + iOS Safari fallback)
+// 3. Live Camera Barcode Scanner
 function stopCam() {
   if (camRaf) { cancelAnimationFrame(camRaf); camRaf = null; }
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
@@ -999,7 +1108,7 @@ function onBarcodeHit(raw) {
   state.query = val;
   document.getElementById('searchInput').value = val;
   const hit = codeIndex.get(val.toLowerCase());
-  if (hit) state.activeCode = hit.code;
+  state.activeCode = hit ? hit.code : '';
   render();
   showToast(hit ? `掃碼命中：$${hit.price}` : `查無條碼：${val}`);
 }
@@ -1061,8 +1170,8 @@ function openQuoteSheet() {
     return `
       <div class="q-row">
         <div style="min-width:0;flex:1">
-          <div style="font-size:14px;font-weight:700">${esc(p.name)}</div>
-          <div style="font-size:12px;color:var(--gray)" class="num">$${p.price} × ${entry.qty} = $${sub}</div>
+          <div style="font-size:14.5px;font-weight:700">${esc(p.name)}</div>
+          <div style="font-size:12.5px;color:var(--gray)" class="num">$${p.price} × ${entry.qty} = $${sub}</div>
         </div>
         <div class="q-step">
           <button type="button" data-qcode="${esc(p.code)}" data-delta="-1">−</button>
@@ -1076,12 +1185,12 @@ function openQuoteSheet() {
   document.getElementById('sheet').innerHTML = `
     <div class="sheet-handle"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <strong style="font-size:15.5px">臨時查價試算（不記帳）</strong>
-      <button type="button" style="border:none;background:transparent;color:var(--red);font-size:13px;font-weight:800;cursor:pointer" data-clear-q="1">清空</button>
+      <strong style="font-size:16px">臨時查價試算（不記帳）</strong>
+      <button type="button" style="border:none;background:transparent;color:var(--red);font-size:13.5px;font-weight:800;cursor:pointer" data-clear-q="1">清空</button>
     </div>
     ${rows}
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin:16px 0">
-      <span style="font-size:13px;color:var(--gray);font-weight:700">小計</span>
+      <span style="font-size:13.5px;color:var(--gray);font-weight:700">小計</span>
       <span class="num" style="font-size:26px;font-weight:900;color:var(--blue)">NT$ ${total.toLocaleString()}</span>
     </div>
     <button type="button" class="btn-full" data-copy-q="1">複製報價文字</button>
@@ -1093,28 +1202,22 @@ function openQuoteSheet() {
 const searchInput = document.getElementById('searchInput');
 searchInput.addEventListener('input', e => {
   state.query = e.target.value;
-  if (!state.query) state.ocrNote = '';
+  if (!state.query.trim()) {
+    state.activeCode = '';
+    state.ocrNote = '';
+  }
   render();
 });
 
-searchInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    const q = state.query.trim();
-    if (!q) return;
-    const hit = codeIndex.get(q.toLowerCase());
-    if (hit) { state.activeCode = hit.code; render(); }
-  }
-});
-
 document.getElementById('clearBtn').addEventListener('click', () => {
-  state.query = ''; state.ocrNote = '';
+  state.query = ''; state.activeCode = ''; state.ocrNote = '';
   searchInput.value = '';
   searchInput.focus();
   render();
 });
 
 document.getElementById('clearOcrBtn').addEventListener('click', () => {
-  state.query = ''; state.ocrNote = '';
+  state.query = ''; state.activeCode = ''; state.ocrNote = '';
   searchInput.value = '';
   render();
 });
@@ -1123,6 +1226,14 @@ document.getElementById('stream').addEventListener('click', e => {
   const card = e.target.closest('.item-card');
   if (!card) return;
   state.activeCode = card.dataset.code;
+  recordRecent(state.activeCode);
+  render();
+});
+
+document.getElementById('recentList').addEventListener('click', e => {
+  const card = e.target.closest('[data-recent]');
+  if (!card) return;
+  state.activeCode = card.dataset.recent;
   render();
 });
 
