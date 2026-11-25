@@ -656,7 +656,7 @@ html, body {
   <header class="top-bar">
     <div class="brand">
       <div class="brand-marks"><i class="m-red"></i><i class="m-blue"></i></div>
-      <span class="brand-txt">腓利門 FIND</span>
+      <span class="brand-txt">腓利門 FIND <small style="font-size:10px;color:var(--gray);letter-spacing:0">OCR 2.1</small></span>
     </div>
     <div class="top-right">
       <span class="db-badge num" id="dbStatus">載入中…</span>
@@ -740,7 +740,7 @@ html, body {
 <div class="mask" id="mask"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast">已複製</div>
 
-<script src="ocr-match.js?v=20261125"></script>
+<script src="ocr-match.js?v=20261125b"></script>
 <script>
 const FALLBACK = [
   { code: 'OW-PEN-G01', barcode: '4712938401011', name: 'TJC躲躲筆綠柴犬/黑墨(歐文)', price: 29, qty: 42, spec: '黑墨 0.5mm', unit: '支' },
@@ -1072,8 +1072,26 @@ async function paddleText(file) {
     pending.catch(()=>{if(paddlePromise===pending)paddlePromise=null;});
   }
   const engine=await limitOCR(paddlePromise,45000);
-  const [result]=await engine.predict(file,{textDetLimitSideLen:960,textDetLimitType:'max',textDetMaxSideLimit:1600,textRecScoreThresh:0.35});
-  return (result?.items||[]).map(x=>x.text).filter(Boolean).join('\n');
+  const [result]=await engine.predict(file,{textDetLimitSideLen:1280,textDetLimitType:'max',textDetMaxSideLimit:1600,textDetThresh:0.2,textDetBoxThresh:0.45,textRecScoreThresh:0.25});
+  const items=(result?.items||[]).filter(x=>x.text);
+  const lines=items.map(x=>x.text);
+  // Reconstruct reading order for vertical Chinese covers using detection coordinates.
+  const boxes=items.map(item=>{
+    const pts=Array.isArray(item.poly)?item.poly:[];
+    if(!pts.length||!pts.every(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1])))return null;
+    const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+    return {text:item.text,x:(Math.min(...xs)+Math.max(...xs))/2,y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)};
+  }).filter(Boolean);
+  if(boxes.length>1){
+    const columns=[];
+    for(const box of [...boxes].sort((a,b)=>b.x-a.x)){
+      const col=columns.find(c=>Math.abs(c.x-box.x)<=Math.max(12,Math.min(c.w,box.w)*0.65));
+      if(col)col.items.push(box);else columns.push({x:box.x,w:box.w,items:[box]});
+    }
+    const vertical=columns.map(c=>c.items.sort((a,b)=>a.y-b.y).map(b=>b.text).join('')).filter(Boolean);
+    if(vertical.length)lines.push(...vertical,vertical.join(''));
+  }
+  return lines.join('\n');
 }
 async function tesseractText(file) {
   if (!window.Tesseract) await limitOCR(new Promise((res,rej)=>{
@@ -1090,7 +1108,7 @@ async function runTitleOCR(file) {
   const generation = ocrGeneration;
   ocrBusy = true;
   state.query = ''; state.activeCode = ''; searchInput.value = '';
-  state.ocrNote = 'PaddleOCR 手機辨識中（首次需下載模型）…';
+  state.ocrNote = '辨識中｜首次需載入模型…';
   render();
   try {
     let raw='', engine='PaddleOCR';
@@ -1099,7 +1117,7 @@ async function runTitleOCR(file) {
     }
     if(generation !== ocrGeneration)return;
     if (!raw.trim() || !window.FindOCR || !window.FindOCR.rank(products,raw).totalHits) {
-      state.ocrNote='切換備援文字辨識 Tesseract…';render();
+      state.ocrNote='備援辨識中｜Tesseract…';render();
       const fallback=await tesseractText(file);
       if(fallback.trim()){raw=fallback;engine='Tesseract';}
     }
@@ -1108,7 +1126,7 @@ async function runTitleOCR(file) {
     ocrRaw = raw.slice(0,1600);
     state.query = raw.replace(/\s+/g,' ').trim().slice(0,100);
     searchInput.value = state.query;
-    state.ocrNote = engine+'：辨識完成，請點選正確商品';
+    state.ocrNote = engine+(window.FindOCR.rank(products,ocrRaw).totalHits?'｜請選擇商品':'｜無符合商品，可修改搜尋文字');
     render();
   } catch(e) {
     if(generation !== ocrGeneration)return;
