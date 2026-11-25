@@ -740,7 +740,7 @@ html, body {
 <div class="mask" id="mask"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast">已複製</div>
 
-<script src="ocr-match.js"></script>
+<script src="ocr-match.js?v=20261125"></script>
 <script>
 const FALLBACK = [
   { code: 'OW-PEN-G01', barcode: '4712938401011', name: 'TJC躲躲筆綠柴犬/黑墨(歐文)', price: 29, qty: 42, spec: '黑墨 0.5mm', unit: '支' },
@@ -994,7 +994,7 @@ function render() {
     return;
   }
 
-  let active = items.find(i => i.code === state.activeCode) || items[0] || null;
+  let active = items.find(i => i.code === state.activeCode) || ((!ocrRaw || ocrConfirmed) ? items[0] : null) || null;
   if (active && (!ocrRaw || ocrConfirmed)) {
     state.activeCode = active.code;
     recordRecent(active.code);
@@ -1054,43 +1054,61 @@ function startVoice() {
   rec.start();
 }
 
-// 2. Free Local Book Title OCR (Tesseract.js)
+// 2. Browser-local OCR: PaddleOCR.js with Tesseract fallback
+let paddlePromise = null;
+function limitOCR(promise, ms) {
+  let timer;
+  return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('OCR timeout')),ms);})]).finally(()=>clearTimeout(timer));
+}
+async function paddleText(file) {
+  if (!paddlePromise) {
+    const pending = (async()=>{
+      const {PaddleOCR} = await import('https://cdn.jsdelivr.net/npm/@paddleocr/paddleocr-js@0.4.2/+esm');
+      return PaddleOCR.create({lang:'chinese_cht',ocrVersion:'PP-OCRv5',worker:false,
+        textDetectionBatchSize:1,textRecognitionBatchSize:1,
+        ortOptions:{backend:'wasm',numThreads:1,wasmPaths:'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/'}});
+    })();
+    paddlePromise = pending;
+    pending.catch(()=>{if(paddlePromise===pending)paddlePromise=null;});
+  }
+  const engine=await limitOCR(paddlePromise,45000);
+  const [result]=await engine.predict(file,{textDetLimitSideLen:960,textDetLimitType:'max',textDetMaxSideLimit:1600,textRecScoreThresh:0.35});
+  return (result?.items||[]).map(x=>x.text).filter(Boolean).join('\n');
+}
+async function tesseractText(file) {
+  if (!window.Tesseract) await limitOCR(new Promise((res,rej)=>{
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+    script.onload=res;script.onerror=rej;document.head.appendChild(script);
+  }),30000);
+  const result=await window.Tesseract.recognize(file,'chi_tra+eng');
+  return String(result?.data?.text||'');
+}
 async function runTitleOCR(file) {
   if (ocrBusy) { showToast('辨識進行中'); return; }
   resetOCR();
   const generation = ocrGeneration;
   ocrBusy = true;
   state.query = ''; state.activeCode = ''; searchInput.value = '';
-  state.ocrNote = '正在辨識商品文字…';
+  state.ocrNote = 'PaddleOCR 手機辨識中（首次需下載模型）…';
   render();
   try {
-    let raw = '';
-    // Optional explicitly configured HTTPS or loopback service; no image upload by default.
-    const endpoint = new URLSearchParams(location.search).get('ocr');
-    if (endpoint === 'local') {
-      try {
-        const form = new FormData(); form.append('file', file);
-        const res = await fetch('http://127.0.0.1:8765/ocr', {method:'POST',body:form,signal:AbortSignal.timeout(20000)});
-        if (!res.ok) throw new Error('OCR service unavailable');
-        raw = String((await res.json()).text || '');
-      } catch (e) { if(generation !== ocrGeneration)return; }
+    let raw='', engine='PaddleOCR';
+    if (new URLSearchParams(location.search).get('ocr') !== 'tesseract') {
+      try {raw=await paddleText(file);} catch(e){console.warn('PaddleOCR unavailable',e);}
     }
-    if (!raw.trim()) {
-      if (!window.Tesseract) await new Promise((res,rej)=>{
-        const script=document.createElement('script');
-        script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
-        script.onload=res;script.onerror=rej;document.head.appendChild(script);
-      });
-      if(generation !== ocrGeneration)return;
-      const result=await window.Tesseract.recognize(file,'chi_tra+eng');
-      raw=String(result?.data?.text||'');
+    if(generation !== ocrGeneration)return;
+    if (!raw.trim() || !window.FindOCR || !window.FindOCR.rank(products,raw).totalHits) {
+      state.ocrNote='切換備援文字辨識 Tesseract…';render();
+      const fallback=await tesseractText(file);
+      if(fallback.trim()){raw=fallback;engine='Tesseract';}
     }
     if(generation !== ocrGeneration)return;
     if (!window.FindOCR || !window.FindOCR.norm(raw)) throw new Error('No text');
     ocrRaw = raw.slice(0,1600);
     state.query = raw.replace(/\s+/g,' ').trim().slice(0,100);
     searchInput.value = state.query;
-    state.ocrNote = '辨識完成，請點選正確商品';
+    state.ocrNote = engine+'：辨識完成，請點選正確商品';
     render();
   } catch(e) {
     if(generation !== ocrGeneration)return;
