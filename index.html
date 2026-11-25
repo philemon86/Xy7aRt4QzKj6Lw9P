@@ -649,6 +649,69 @@ html, body {
   opacity: 1;
   transform: translate(-50%, 0);
 }
+
+/* Responsive workstation layout; the mobile thumb-zone remains unchanged. */
+.desktop-panel { display: contents; }
+.desktop-only { display: none; }
+@media (min-width: 900px) {
+  .shell { max-width: 1580px; padding: 26px clamp(24px,3.2vw,52px) 28px; gap: 14px; }
+  .top-bar { order: 0; min-height: 46px; }
+  .brand-txt { font-size: 23px; }
+  .brand-marks i { width: 10px; height: 23px; }
+  .db-badge { font-size: 14px; }
+  .quote-pill { height: 38px; font-size: 14px; }
+  .dock-wrap { order: 1; display: grid; grid-template-columns: minmax(260px,1fr) minmax(300px,400px); align-items: center; gap: 16px; padding: 0; }
+  .big-search-box { height: 58px; }
+  .big-search-box input { font-size: 19px; }
+  .action-grid { gap: 10px; }
+  .big-act { height: 58px; font-size: 15px; }
+  #ocrModelStatus { order: 2; }
+  .ocr-banner { order: 3; min-height: 40px; }
+  .stage { order: 4; display: grid; grid-template-columns: minmax(0,1.55fr) minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); column-gap: 22px; row-gap: 10px; align-items: stretch; }
+  .desktop-panel { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow: auto; padding: 1px 2px 4px; }
+  .desktop-only { display: block; }
+  .desktop-placeholder { background: var(--white); border: 1px solid var(--line); border-radius: 18px; padding: 26px 22px; min-height: 142px; }
+  .desktop-panel:has(.hero.show) .desktop-placeholder { display: none; }
+  .desktop-placeholder strong { display: block; font-size: 19px; margin: 0 0 8px; }
+  .desktop-placeholder p { color: var(--gray); font-size: 14px; line-height: 1.6; }
+  .hero { padding: 24px; }
+  .hero-name { font-size: 25px; overflow-wrap: anywhere; }
+  .hero-code { overflow-wrap: anywhere; }
+  .stock-pill { white-space: nowrap; }
+  .price-big { font-size: clamp(40px,4vw,60px); }
+  .add-btn { height: 48px; white-space: nowrap; }
+  .idle-box { grid-column: 1; grid-row: 1 / 3; border: 1px solid var(--line); border-radius: 18px; background: var(--white); overflow: auto; padding: 32px; justify-content: center; }
+  .idle-title { font-size: 28px; }
+  .idle-sub { font-size: 15px; }
+  .recent-wrap { max-width: 640px; margin-top: 24px; }
+  .list-head { grid-column: 1; grid-row: 1; font-size: 14px; padding: 4px 2px; }
+  #stream { grid-column: 1; grid-row: 2; gap: 10px; padding: 1px 2px 6px; scrollbar-width: thin; }
+  #stream::-webkit-scrollbar, .desktop-panel::-webkit-scrollbar { display: block; width: 7px; }
+  #stream::-webkit-scrollbar-thumb, .desktop-panel::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+  .item-card { padding: 17px 18px; min-height: 76px; transition: border-color .15s, background .15s; }
+  .item-card:hover { border-color: var(--blue); }
+  .ic-name { font-size: 17px; white-space: normal; overflow-wrap: anywhere; }
+  .ic-sub { font-size: 13px; flex-wrap: wrap; }
+  .ic-price { font-size: 21px; }
+  .desktop-quote { display: flex; flex-direction: column; flex: 1 0 210px; min-height: 210px; background: var(--white); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+  .desktop-quote-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .desktop-quote-head strong { font-size: 17px; }
+  .desktop-quote-head button { border: 0; background: transparent; color: var(--red); font-weight: 700; cursor: pointer; }
+  .desktop-quote-list { flex: 1; min-height: 60px; overflow: auto; margin-top: 12px; }
+  .desktop-quote-empty { color: var(--gray); font-size: 13px; padding: 20px 0; line-height: 1.6; }
+  .desktop-quote-total { border-top: 1px solid var(--line); padding-top: 14px; margin: 12px 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .desktop-quote-total strong { font-size: 27px; color: var(--blue); }
+  .desktop-quote button:disabled { opacity: .4; cursor: default; }
+  .mask { align-items: center; }
+  .sheet { max-width: 620px; border-radius: 22px; transform: translateY(12px); padding: 22px 24px; }
+  .sheet-handle { display: none; }
+  .cam-box { max-height: 55vh; }
+}
+@media (min-width: 900px) and (max-height: 660px) {
+  .shell { padding-top: 12px; padding-bottom: 12px; gap: 8px; }
+  .hero { padding: 16px; }
+  .desktop-quote { padding: 14px; }
+}
 </style>
 </head>
 <body>
@@ -656,7 +719,7 @@ html, body {
   <header class="top-bar">
     <div class="brand">
       <div class="brand-marks"><i class="m-red"></i><i class="m-blue"></i></div>
-      <span class="brand-txt">腓利門 FIND <small style="font-size:10px;color:var(--gray);letter-spacing:0">OCR 3.3</small></span>
+      <span class="brand-txt">腓利門 FIND <small style="font-size:10px;color:var(--gray);letter-spacing:0">OCR 3.3 · UI 2</small></span>
     </div>
     <div class="top-right">
       <span class="db-badge num" id="dbStatus">載入中…</span>
@@ -677,7 +740,7 @@ html, body {
     <!-- Clean Idle State (before typing) -->
     <div class="idle-box" id="idleBox">
       <div class="idle-title">快速查商品・看價錢</div>
-      <div class="idle-sub">在下方輸入書名、語音直說、<br>拍書名或直接掃描條碼</div>
+      <div class="idle-sub">輸入書名、代碼、語音描述，<br>或拍商品、掃描條碼</div>
       <div class="recent-wrap" id="recentWrap" style="display:none">
         <div class="recent-label">最近查過</div>
         <div class="stream" id="recentList"></div>
@@ -685,6 +748,8 @@ html, body {
     </div>
 
     <!-- Active Result Hero -->
+    <div class="desktop-panel">
+    <div class="desktop-only desktop-placeholder"><strong>商品詳細資料</strong><p>搜尋或點選候選商品，即可查看售價、庫存及條碼。</p></div>
     <section class="hero" id="heroCard">
       <div class="hero-top">
         <span class="hero-code mono" id="heroCode" title="點擊複製代碼">---</span>
@@ -704,6 +769,13 @@ html, body {
         <span class="mono" style="font-size:12.5px;font-weight:700;color:var(--gray)" id="heroBarcode"></span>
       </div>
     </section>
+    <section class="desktop-only desktop-quote" id="desktopQuote" aria-label="臨時試算">
+      <div class="desktop-quote-head"><strong>臨時試算 <small style="font-size:11px;color:var(--gray)">不記帳</small></strong><button type="button" id="desktopClearQuote">清空</button></div>
+      <div class="desktop-quote-list" id="desktopQuoteList"></div>
+      <div class="desktop-quote-total"><span style="font-size:14px;color:var(--gray)">合計</span><strong class="num" id="desktopQuoteTotal">NT$ 0</strong></div>
+      <button type="button" class="btn-full" id="desktopCopyQuote">複製報價文字</button>
+    </section>
+    </div>
 
     <!-- Compact Top Matches (Max 8) -->
     <div class="list-head" id="listHead">
@@ -939,6 +1011,19 @@ function renderHero(item) {
   document.getElementById('barcodeBars').innerHTML = drawBars(item.barcode);
 }
 
+const desktopMedia = window.matchMedia('(min-width: 900px)');
+function renderDesktopQuote(total) {
+  const list=document.getElementById('desktopQuoteList');
+  const rows=state.quote.map(entry=>{
+    const p=codeIndex.get(entry.code.toLowerCase());
+    if(!p)return '';
+    return `<div class="q-row"><div style="min-width:0;flex:1"><div style="font-weight:700;font-size:14px;overflow-wrap:anywhere">${esc(p.name)}</div><div class="num" style="font-size:12px;color:var(--gray)">${p.price} × ${entry.qty} = ${(p.price*entry.qty).toLocaleString()}</div></div><div class="q-step"><button type="button" aria-label="減少數量" data-desktop-code="${esc(p.code)}" data-delta="-1">−</button><span class="num">${entry.qty}</span><button type="button" aria-label="增加數量" data-desktop-code="${esc(p.code)}" data-delta="1">+</button></div></div>`;
+  }).filter(Boolean);
+  list.innerHTML=rows.join('')||'<div class="desktop-quote-empty">尚未加入商品。選擇商品後按「＋ 試算」即可加入。</div>';
+  document.getElementById('desktopQuoteTotal').textContent='NT$ '+total.toLocaleString();
+  document.getElementById('desktopClearQuote').disabled=!rows.length;
+  document.getElementById('desktopCopyQuote').disabled=!rows.length;
+}
 function renderQuotePill() {
   let cnt = 0, total = 0;
   state.quote.forEach(q => {
@@ -947,7 +1032,8 @@ function renderQuotePill() {
   });
   const pill = document.getElementById('quotePill');
   pill.style.display = cnt > 0 ? 'inline-flex' : 'none';
-  document.getElementById('quotePillTxt').textContent = `${cnt} 件 · $${total.toLocaleString()}`;
+  document.getElementById('quotePillTxt').textContent = `${cnt} 件 · ${total.toLocaleString()}`;
+  if(desktopMedia.matches)renderDesktopQuote(total);
 }
 
 function render() {
@@ -1013,7 +1099,7 @@ function render() {
     document.getElementById('countLabel').textContent = '0 筆';
     stream.style.display = 'flex';
     stream.innerHTML = '<div style="padding:36px 0;text-align:center;color:var(--gray);font-size:14px">找不到符合的商品</div>';
-  } else if (items.length === 1 && (!ocrRaw || ocrConfirmed) && !(ocrRaw && !ocrShowAll && allHits>totalHits)) {
+  } else if (!desktopMedia.matches && items.length === 1 && (!ocrRaw || ocrConfirmed) && !(ocrRaw && !ocrShowAll && allHits>totalHits)) {
     // Only 1 exact match: hero card already shows everything, hide redundant list!
     listHead.classList.remove('show');
     stream.style.display = 'none';
@@ -1397,6 +1483,27 @@ document.getElementById('ocrInput').addEventListener('change', e => {
 });
 document.getElementById('barcodeBtn').addEventListener('click', openBarcodeCam);
 document.getElementById('quotePill').addEventListener('click', openQuoteSheet);
+document.getElementById('desktopQuoteList').addEventListener('click',e=>{
+  const btn=e.target.closest('[data-desktop-code]');
+  if(!btn)return;
+  const i=state.quote.findIndex(q=>q.code===btn.dataset.desktopCode);
+  if(i<0)return;
+  state.quote[i].qty+=Number(btn.dataset.delta);
+  if(state.quote[i].qty<=0)state.quote.splice(i,1);
+  renderQuotePill();
+});
+document.getElementById('desktopClearQuote').addEventListener('click',()=>{state.quote=[];renderQuotePill();showToast('已清空試算');});
+document.getElementById('desktopCopyQuote').addEventListener('click',()=>{
+  let total=0;
+  const lines=state.quote.map(entry=>{
+    const p=codeIndex.get(entry.code.toLowerCase());
+    if(!p)return '';
+    const sub=p.price*entry.qty; total+=sub;
+    return `• ${p.name} × ${entry.qty}（${sub}）`;
+  }).filter(Boolean);
+  if(lines.length)copyText(`【腓利門商品查價】\n${lines.join('\n')}\n總計：NT$ ${total.toLocaleString()}`,'報價');
+});
+desktopMedia.addEventListener('change',render);
 
 document.getElementById('mask').addEventListener('click', e => {
   if (e.target.id === 'mask' || e.target.closest('[data-close]')) { closeMask(); return; }
