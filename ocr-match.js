@@ -42,7 +42,7 @@ const api=(function buildFindOCR(){
       for(const q of phrases)if(q===name){score+=120;break;}
       const best=distinct.reduce((m,k)=>Math.max(m,idx.weights.get(k)||0),0);
       if(!exactHits.has(id)&&!matched.some(k=>idx.postings.get(k).length<=12||k.length>=3)&&distinct.length<2)continue;
-      if(!exactHits.has(id)&&best<3&&distinct.length<2)continue;
+      if(!exactHits.has(id)&&best<3&&distinct.length<2&&!matched.some(k=>idx.postings.get(k).length===1))continue;
       // Only a tiny stock tiebreaker; out-of-stock items remain searchable.
       ranked.push({p:products[id],score:score+(Number(products[id].qty)>0?.05:0)});
     }
