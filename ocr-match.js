@@ -15,6 +15,15 @@ const api=(function buildFindOCR(){
     for(const [k,ids] of postings)weights.set(k,(Math.log((products.length+1)/(ids.length+1))+1)*({2:1,3:1.35,4:1.65}[k.length]));
     const idx={postings,exact,names,weights};cache.set(products,idx);return idx;
   }
+  const prune=function prune(ranked){
+  if(!ranked.length)return ranked;
+  const top=ranked[0];
+  // Never suppress equally plausible variants. Only prune when strong evidence exists.
+  if(top.exact)return ranked.filter(x=>x.exact);
+  const strong=top.longest>=4 || (top.distinct>=2 && top.rare>=1);
+  const cutoff=top.score*(strong?.42:.22);
+  return ranked.filter(x=>x.score>=cutoff || (strong && x.longest>=4 && x.score>=top.score*.30));
+};
   function rank(products,raw){
     const idx=index(products);
     const lines=String(raw||'').slice(0,1600).split(/\r?\n/).map(norm).filter(Boolean).slice(0,32);
@@ -44,10 +53,11 @@ const api=(function buildFindOCR(){
       if(!exactHits.has(id)&&!matched.some(k=>idx.postings.get(k).length<=12||k.length>=3)&&distinct.length<2)continue;
       if(!exactHits.has(id)&&best<3&&distinct.length<2&&!matched.some(k=>idx.postings.get(k).length===1))continue;
       // Only a tiny stock tiebreaker; out-of-stock items remain searchable.
-      ranked.push({p:products[id],score:score+(Number(products[id].qty)>0?.05:0)});
+      ranked.push({p:products[id],score:score+(Number(products[id].qty)>0?.05:0),exact:exactHits.has(id),longest:Math.max(0,...matched.map(k=>k.length)),distinct:distinct.length,rare:distinct.filter(k=>idx.postings.get(k).length<=3).length});
     }
     ranked.sort((a,b)=>b.score-a.score||String(a.p.code).localeCompare(String(b.p.code)));
-    return {items:ranked.slice(0,8).map(x=>x.p),totalHits:ranked.length};
+    const visible=prune(ranked);
+    return {items:visible.slice(0,8).map(x=>x.p),totalHits:visible.length,allItems:ranked.slice(0,8).map(x=>x.p),allHits:ranked.length};
   }
   return {norm,rank,index};
 })();
