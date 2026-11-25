@@ -1,0 +1,26 @@
+name: Build storefront visual index
+on:
+  push:
+    branches:
+      - feature/catalog-visual-index
+    paths:
+      - '.github/workflows/catalog-visual-index.yml'
+      - 'tools/build_catalog_visual_index.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install 'requests>=2.32,<3' 'beautifulsoup4>=4.12,<5' 'Pillow>=11,<13'
+      - run: python tools/build_catalog_visual_index.py --limit 200
+      - uses: actions/upload-artifact@v4
+        with:
+          name: catalog-visual-index
+          path: catalog-visual-index.json
