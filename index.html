@@ -719,7 +719,7 @@ html, body {
   <header class="top-bar">
     <div class="brand">
       <div class="brand-marks"><i class="m-red"></i><i class="m-blue"></i></div>
-      <span class="brand-txt">腓利門 FIND <small style="font-size:10px;color:var(--gray);letter-spacing:0">OCR 3.3 · UI 2</small></span>
+      <span class="brand-txt">腓利門 FIND <small style="font-size:10px;color:var(--gray);letter-spacing:0">4.0 書報組</small></span>
     </div>
     <div class="top-right">
       <span class="db-badge num" id="dbStatus">載入中…</span>
@@ -933,7 +933,7 @@ async function loadData() {
       price: Math.round(Number(r.PRICE1) || 0),
       qty: Math.round(Number(r.CQTY) || 0),
       spec: r.SPEC || '',
-      unit: unitMap[r.UNIT] || '件'
+      unit: unitMap[r.UNIT] || r.UNIT || '件', clas: r.CLAS || '', supp: r.SUPP || ''
     }));
     if (parsed.length) {
       products = parsed;
@@ -945,10 +945,10 @@ async function loadData() {
     }
   } catch (e) {}
 
-  products = [...FALLBACK];
+  products = [];
   buildIndex(products);
   if(window.FindOCR)window.FindOCR.index(products);
-  document.getElementById('dbStatus').textContent = '離線預覽';
+  document.getElementById('dbStatus').textContent = '資料未載入';
   render();
 }
 
@@ -1535,6 +1535,9 @@ document.getElementById('mask').addEventListener('click', e => {
   }
 });
 
+</script>
+<script src="order-mode.js?v=20261126a"></script>
+<script>
 // Start both OCR engines and product CSV concurrently; retain initialized engines for reuse.
 loadData();
 preparePaddle().catch(e=>console.warn('PaddleOCR preload failed',e));
