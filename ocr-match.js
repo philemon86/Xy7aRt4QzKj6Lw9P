@@ -1,38 +1,55 @@
 (function(root){
-function norm(s){return String(s||'').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');}
-function distance(a,b){let prev=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){let row=[i];for(let j=1;j<=b.length;j++)row[j]=Math.min(row[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));prev=row;}return prev[b.length];}
-function rank(products,raw){
- const lines=String(raw||'').slice(0,1600).split(/\r?\n/).map(norm).filter(Boolean).slice(0,32);
- const candidates=[];
- for(const order of [lines,[...lines].reverse()]){
-   for(let i=0;i<order.length;i++){
-     let q='';
-     for(let j=i;j<Math.min(i+8,order.length);j++){
-       q+=order[j]; if(q.length>80)break;
-       if(q.length>=2)candidates.push(q);
-     }
-   }
- }
- const phrases=[...new Set(candidates)].sort((a,b)=>b.length-a.length).slice(0,240);
- const matches=[];
- for(const p of products){
- const name=norm(p.name), code=norm(p.code), bar=norm(p.barcode), spec=norm(p.spec);
- let best=0;
- for(const q of phrases){
- if(q===code||q===bar){best=1000;break;}
- if(!name)continue;
- if(q===name)best=Math.max(best,200);
- else if(q.length>=3&&q.includes(name)&&name.length>=3)best=Math.max(best,150+Math.min(name.length,30));
- else if(q.length>=3&&name.includes(q))best=Math.max(best,65+70*q.length/name.length+Math.min(q.length,20));
- else if(q.length>=4&&name.length>=4&&Math.abs(q.length-name.length)<=Math.max(2,Math.ceil(name.length*.25))){
- const sim=1-distance(q,name)/Math.max(q.length,name.length);if(sim>=.72)best=Math.max(best,sim*115);
- }
- if(q.length>=4&&spec.includes(q))best=Math.max(best,45);
- }
- if(best>=45)matches.push({p,score:best});
- }
- matches.sort((a,b)=>b.score-a.score||String(a.p.code).localeCompare(String(b.p.code)));
- return {items:matches.slice(0,8).map(x=>x.p),totalHits:matches.length};
-}
-const api={norm,rank};if(typeof module==='object'&&module.exports)module.exports=api;else root.FindOCR=api;
+const api=(function buildFindOCR(){
+  const cache=new WeakMap();
+  const norm=s=>String(s??'').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
+  function grams(s){const out=new Set();for(let n=2;n<=4;n++)for(let i=0;i+n<=s.length;i++){const k=s.slice(i,i+n);if(!/^\d+$/.test(k))out.add(k);}return out;}
+  function index(products){
+    if(cache.has(products))return cache.get(products);
+    const postings=new Map(), exact=new Map(), names=[];
+    products.forEach((p,i)=>{
+      const name=norm(p.name);names.push(name);
+      for(const k of [norm(p.code),norm(p.barcode)])if(k){if(!exact.has(k))exact.set(k,[]);exact.get(k).push(i);}
+      for(const k of grams(name)){if(!postings.has(k))postings.set(k,[]);postings.get(k).push(i);}
+    });
+    const weights=new Map();
+    for(const [k,ids] of postings)weights.set(k,(Math.log((products.length+1)/(ids.length+1))+1)*({2:1,3:1.35,4:1.65}[k.length]));
+    const idx={postings,exact,names,weights};cache.set(products,idx);return idx;
+  }
+  function rank(products,raw){
+    const idx=index(products);
+    const lines=String(raw||'').slice(0,1600).split(/\r?\n/).map(norm).filter(Boolean).slice(0,32);
+    const phrases=new Set(lines);
+    for(const order of [lines,[...lines].reverse()])for(let i=0;i<order.length;i++){let q='';for(let j=i;j<Math.min(i+8,order.length);j++){q+=order[j];if(q.length>80)break;if(q.length>=2)phrases.add(q);}}
+    const scores=new Map(), evidence=new Map(), exactHits=new Set(), tokens=new Set();
+    for(const q of phrases){
+      for(const id of idx.exact.get(q)||[])exactHits.add(id);
+      for(const k of grams(q))if(idx.postings.has(k))tokens.add(k);
+    }
+    for(const k of tokens){
+      const ids=idx.postings.get(k), w=idx.weights.get(k);
+      for(const id of ids){
+        scores.set(id,(scores.get(id)||0)+w);
+        if(!evidence.has(id))evidence.set(id,[]);
+        evidence.get(id).push(k);
+      }
+    }
+    for(const id of exactHits)scores.set(id,10000+(scores.get(id)||0));
+    const ranked=[];
+    for(const [id,base] of scores){
+      const matched=evidence.get(id)||[], name=idx.names[id];
+      const distinct=matched.filter(k=>!matched.some(t=>t.length>k.length&&t.includes(k)));
+      let score=base;
+      for(const q of phrases)if(q===name){score+=120;break;}
+      const best=distinct.reduce((m,k)=>Math.max(m,idx.weights.get(k)||0),0);
+      if(!exactHits.has(id)&&!matched.some(k=>idx.postings.get(k).length<=12||k.length>=3)&&distinct.length<2)continue;
+      if(!exactHits.has(id)&&best<3&&distinct.length<2)continue;
+      // Only a tiny stock tiebreaker; out-of-stock items remain searchable.
+      ranked.push({p:products[id],score:score+(Number(products[id].qty)>0?.05:0)});
+    }
+    ranked.sort((a,b)=>b.score-a.score||String(a.p.code).localeCompare(String(b.p.code)));
+    return {items:ranked.slice(0,8).map(x=>x.p),totalHits:ranked.length};
+  }
+  return {norm,rank,index};
+})();
+if(typeof module==='object'&&module.exports)module.exports=api;else root.FindOCR=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
