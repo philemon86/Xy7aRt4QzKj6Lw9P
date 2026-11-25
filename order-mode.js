@@ -104,6 +104,7 @@
   $('desktopCopyQuote').textContent='確認及複製訂單';
   const oldHead=$('listHead').innerHTML;
   $('listHead').innerHTML='<div id="v4Nav" class="v4-nav"></div><details id="v4Guide" class="v4-guide" style="display:none"><summary>聖經規格篩選（展開／收合）</summary><div id="v4Sizes" class="size-row"></div><div id="v4Facets" class="v4-facets"></div><p class="v4-note">尺寸圖為相對大小示意。規格依名稱及已知型號推定；未標示不等於沒有。相同 ISBN 保留各自代碼。</p><button class="v4-close" type="button" id="v4Reset">清除規格</button></details><div class="v4-list-summary">'+oldHead+'</div>';
+  $('expandOcrBtn').addEventListener('click',()=>{ocrShowAll=true;render();});
   function renderNav(){
     $('v4Nav').innerHTML='<button type="button" data-v4-category="">首頁</button>'+Object.entries(cats).map(([k,v])=>'<button type="button" data-v4-category="'+k+'" class="'+(category===k?'active':'')+'">'+v+'</button>').join('');
     const g=$('v4Guide');g.style.display=category==='bible'?'block':'none';
@@ -145,6 +146,7 @@
     $('quotePill').style.display='inline-flex';
     $('quotePillTxt').textContent='訂單 '+r.reduce((s,{q})=>s+q.qty,0)+' 件';
     $('desktopCopyQuote').disabled=false;
+    $('desktopClearQuote').disabled=!state.quote.length;
     if(!r.length&&desktopMedia.matches)$('desktopQuoteList').innerHTML='<div class="desktop-quote-empty">從商品清單按「＋ 訂購」，即可加入訂單。草稿不會直接扣庫存。</div>';
     save();
   };
@@ -173,7 +175,7 @@
     if(!q&&!category&&state.activeCode){const p=findCode(state.activeCode);items=p?[p]:[];result.totalHits=items.length}
     let active=items.find(p=>p.code===state.activeCode)||null;
     if(!active&&!ocrRaw&&q&&items.length===1){active=items[0];state.activeCode=active.code;detail=true;stage.classList.add('v4-detail')}
-    if(!active&&!ocrRaw&&q&&desktopMedia.matches&&items.length>1&&!category){active=items[0];state.activeCode=active.code}
+    if(!active&&!ocrRaw&&q&&desktopMedia.matches&&items.length>1&&!category&&!items.some(p=>p.barcode.toLowerCase()===q.toLowerCase())){active=items[0];state.activeCode=active.code}
     if(active&&(!ocrRaw||ocrConfirmed))recordRecent(active.code);
     renderHero(ocrRaw&&!ocrConfirmed?null:active);
     const expand=$('expandOcrBtn');expand.style.display=ocrRaw&&!ocrShowAll&&result.allHits>result.totalHits?'inline-block':'none';
@@ -210,8 +212,8 @@
   $('v4Facets').addEventListener('change',e=>{const k=e.target.dataset.v4Facet;if(k){filters[k]=e.target.value;state.activeCode='';detail=false;limit=30;render()}});
   $('mask').addEventListener('input',e=>{const k=e.target.dataset.v4Info;if(k&&Object.prototype.hasOwnProperty.call(info,k)){info[k]=e.target.value;updatePreview()}});
   $('mask').addEventListener('change',e=>{if(e.target.id==='v4Format'){info.format=e.target.value;updatePreview()}if(e.target.dataset.v4Qty){qty(e.target.dataset.v4Qty,e.target.value);openQuoteSheet()}});
-  $('stream').addEventListener('click',e=>{if(e.target.closest('[data-code]'))detail=true},true);
-  $('recentList').addEventListener('click',e=>{if(e.target.closest('[data-recent]'))detail=true},true);
+  $('stream').addEventListener('click',e=>{if(e.target.closest('[data-code]')){detail=true;$('v4Guide').open=false}},true);
+  $('recentList').addEventListener('click',e=>{if(e.target.closest('[data-recent]')){detail=true;$('v4Guide').open=false}},true);
   $('searchInput').addEventListener('input',()=>{detail=false;limit=30;if(!$('searchInput').value.trim())category=''},true);
   for(const id of ['clearBtn','clearOcrBtn','voiceBtn','ocrBtn','barcodeBtn'])$(id).addEventListener('click',()=>{category='';detail=false;limit=30},true);
   const oldBarcode=onBarcodeHit;
