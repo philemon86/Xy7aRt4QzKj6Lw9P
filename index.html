@@ -656,7 +656,7 @@ html, body {
   <header class="top-bar">
     <div class="brand">
       <div class="brand-marks"><i class="m-red"></i><i class="m-blue"></i></div>
-      <span class="brand-txt">腓利門 FIND <small style="font-size:10px;color:var(--gray);letter-spacing:0">OCR 3.1</small></span>
+      <span class="brand-txt">腓利門 FIND <small style="font-size:10px;color:var(--gray);letter-spacing:0">OCR 3.2</small></span>
     </div>
     <div class="top-right">
       <span class="db-badge num" id="dbStatus">載入中…</span>
@@ -707,7 +707,7 @@ html, body {
     <!-- Compact Top Matches (Max 8) -->
     <div class="list-head" id="listHead">
       <span>最相符商品</span>
-      <span class="num" id="countLabel">0 筆</span>
+      <span style="display:flex;align-items:center;gap:8px"><button id="expandOcrBtn" type="button" style="display:none;background:none;border:0;color:var(--blue);font-weight:700;cursor:pointer">其他候選</button><span class="num" id="countLabel">0 筆</span></span>
     </div>
     <main class="stream" id="stream" style="display:none"></main>
   </div>
@@ -741,7 +741,7 @@ html, body {
 <div class="mask" id="mask"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast">已複製</div>
 
-<script src="ocr-match.js?v=20261125c"></script>
+<script src="ocr-match.js?v=20261125e"></script>
 <script>
 const FALLBACK = [
   { code: 'OW-PEN-G01', barcode: '4712938401011', name: 'TJC躲躲筆綠柴犬/黑墨(歐文)', price: 29, qty: 42, spec: '黑墨 0.5mm', unit: '支' },
@@ -756,8 +756,8 @@ let products = [];
 let codeIndex = new Map();
 let state = { query: '', activeCode: '', quote: [], recent: [], ocrNote: '' };
 let toastTimer = null;
-let ocrRaw = '', ocrConfirmed = false, ocrGeneration = 0, ocrBusy = false;
-function resetOCR(){ ocrGeneration++; ocrRaw = ''; ocrConfirmed = false; state.ocrNote = ''; }
+let ocrRaw = '', ocrConfirmed = false, ocrGeneration = 0, ocrBusy = false, ocrShowAll = false;
+function resetOCR(){ ocrGeneration++; ocrRaw = ''; ocrConfirmed = false; ocrShowAll = false; state.ocrNote = ''; }
 let camStream = null, camRaf = null, html5Qr = null;
 
 function esc(s) {
@@ -887,7 +887,7 @@ function recordRecent(code) {
 function getFiltered() {
   const q = state.query.trim().toLowerCase();
   if (!q) return { items: [], totalHits: 0 };
-  if (ocrRaw && window.FindOCR) return window.FindOCR.rank(products, ocrRaw);
+  if (ocrRaw && window.FindOCR) { const r=window.FindOCR.rank(products,ocrRaw); return ocrShowAll?{...r,items:r.allItems||r.items,totalHits:r.allHits??r.totalHits}:r; }
   const tokens = q.split(/\s+/).filter(Boolean);
   const scored = [];
   for (let i = 0; i < products.length; i++) {
@@ -986,7 +986,9 @@ function render() {
   }
 
   idleBox.style.display = 'none';
-  const { items, totalHits } = getFiltered();
+  const { items, totalHits, allHits } = getFiltered();
+  const expand=document.getElementById('expandOcrBtn');
+  expand.style.display=ocrRaw && !ocrShowAll && allHits>totalHits?'inline-block':'none';
 
   // If user tapped a recent item while query is empty, just show its hero card cleanly
   if (!q && state.activeCode) {
@@ -1010,7 +1012,7 @@ function render() {
     document.getElementById('countLabel').textContent = '0 筆';
     stream.style.display = 'flex';
     stream.innerHTML = '<div style="padding:36px 0;text-align:center;color:var(--gray);font-size:14px">找不到符合的商品</div>';
-  } else if (items.length === 1 && (!ocrRaw || ocrConfirmed)) {
+  } else if (items.length === 1 && (!ocrRaw || ocrConfirmed) && !(ocrRaw && !ocrShowAll && allHits>totalHits)) {
     // Only 1 exact match: hero card already shows everything, hide redundant list!
     listHead.classList.remove('show');
     stream.style.display = 'none';
@@ -1354,6 +1356,7 @@ document.getElementById('barcodeStrip').addEventListener('click', () => {
 
 document.getElementById('voiceBtn').addEventListener('click', startVoice);
 document.getElementById('ocrBtn').addEventListener('click', () => document.getElementById('ocrInput').click());
+document.getElementById('expandOcrBtn').addEventListener('click',()=>{ocrShowAll=true;render();});
 document.getElementById('retryOcrBtn').addEventListener('click',()=>{if(lastOCRPhoto&&!ocrBusy)runTitleOCR(lastOCRPhoto,true);});
 document.getElementById('ocrInput').addEventListener('change', e => {
   const f = e.target.files[0];
