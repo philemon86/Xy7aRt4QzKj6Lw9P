@@ -656,7 +656,7 @@ html, body {
   <header class="top-bar">
     <div class="brand">
       <div class="brand-marks"><i class="m-red"></i><i class="m-blue"></i></div>
-      <span class="brand-txt">腓利門 FIND <small style="font-size:10px;color:var(--gray);letter-spacing:0">OCR 3.0</small></span>
+      <span class="brand-txt">腓利門 FIND <small style="font-size:10px;color:var(--gray);letter-spacing:0">OCR 3.1</small></span>
     </div>
     <div class="top-right">
       <span class="db-badge num" id="dbStatus">載入中…</span>
@@ -668,6 +668,7 @@ html, body {
 
   <div class="ocr-banner" id="ocrBanner">
     <span id="ocrBannerTxt">辨識中…</span>
+    <button type="button" id="retryOcrBtn" style="display:none;border:1px solid #BFDBFE;border-radius:6px;padding:4px 6px;background:white;color:var(--blue);font-weight:700;white-space:nowrap;cursor:pointer">手寫強化</button>
     <button type="button" style="border:none;background:transparent;color:var(--red);font-weight:800;cursor:pointer" id="clearOcrBtn">清除</button>
   </div>
 
@@ -954,6 +955,7 @@ function render() {
 
   const banner = document.getElementById('ocrBanner');
   banner.classList.toggle('show', Boolean(state.ocrNote));
+  document.getElementById('retryOcrBtn').style.display=lastOCRPhoto && state.ocrNote && !ocrBusy?'inline-block':'none';
   if (state.ocrNote) document.getElementById('ocrBannerTxt').textContent = state.ocrNote;
 
   const idleBox = document.getElementById('idleBox');
@@ -1057,12 +1059,12 @@ function startVoice() {
 }
 
 // 2. Browser-local OCR: PaddleOCR.js with Tesseract fallback
-let paddlePromise = null;
+let paddlePromise = null, lastOCRPhoto = null;
 function limitOCR(promise, ms) {
   let timer;
   return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('OCR timeout')),ms);})]).finally(()=>clearTimeout(timer));
 }
-async function paddleText(file) {
+async function paddleText(file, enhanced=false) {
   if (!paddlePromise) {
     const pending = (async()=>{
       const {PaddleOCR} = await import('https://cdn.jsdelivr.net/npm/@paddleocr/paddleocr-js@0.4.2/+esm');
@@ -1074,7 +1076,7 @@ async function paddleText(file) {
     pending.catch(()=>{if(paddlePromise===pending)paddlePromise=null;});
   }
   const engine=await limitOCR(paddlePromise,45000);
-  const [result]=await engine.predict(file,{textDetLimitSideLen:1280,textDetLimitType:'max',textDetMaxSideLimit:1600,textDetThresh:0.2,textDetBoxThresh:0.45,textRecScoreThresh:0.25});
+  const [result]=await engine.predict(file,{textDetLimitSideLen:1280,textDetLimitType:'max',textDetMaxSideLimit:1600,textDetThresh:0.2,textDetBoxThresh:0.45,textRecScoreThresh:enhanced?0.12:0.25});
   const items=(result?.items||[]).filter(x=>x.text);
   const lines=items.map(x=>x.text);
   // Reconstruct reading order for vertical Chinese covers using detection coordinates.
@@ -1104,28 +1106,68 @@ async function tesseractText(file) {
   const result=await window.Tesseract.recognize(file,'chi_tra+eng');
   return String(result?.data?.text||'');
 }
-async function runTitleOCR(file) {
+// Local adaptive threshold: light lettering becomes black on white.
+async function enhanceHandwriting(file) {
+  const url=URL.createObjectURL(file);
+  try{
+    const img=new Image();
+    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=url;});
+    const scale=Math.min(3,1400/Math.max(img.naturalWidth,img.naturalHeight));
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
+    canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    const w=canvas.width,h=canvas.height, frame=ctx.getImageData(0,0,w,h);
+    const stride=w+1, sums=new Float64Array(stride*(h+1)), gray=new Uint8Array(w*h);
+    for(let y=0;y<h;y++){
+      let row=0;
+      for(let x=0;x<w;x++){
+        const i=y*w+x,j=i*4;
+        gray[i]=Math.round(.299*frame.data[j]+.587*frame.data[j+1]+.114*frame.data[j+2]);
+        row+=gray[i];sums[(y+1)*stride+x+1]=row+sums[y*stride+x+1];
+      }
+    }
+    const r=Math.max(10,Math.round(Math.min(w,h)*.035));
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const x0=Math.max(0,x-r),y0=Math.max(0,y-r),x1=Math.min(w,x+r+1),y1=Math.min(h,y+r+1);
+      const mean=(sums[y1*stride+x1]-sums[y0*stride+x1]-sums[y1*stride+x0]+sums[y0*stride+x0])/((x1-x0)*(y1-y0));
+      const i=y*w+x,j=i*4;
+      const v=Math.max(0,Math.min(255,230-(gray[i]-mean)*5));
+      frame.data[j]=frame.data[j+1]=frame.data[j+2]=v;
+    }
+    ctx.putImageData(frame,0,0);
+    return await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Image processing failed')),'image/png'));
+  }finally{URL.revokeObjectURL(url);}
+}
+async function runTitleOCR(file, enhanced=false) {
   if (ocrBusy) { showToast('辨識進行中'); return; }
   resetOCR();
+  lastOCRPhoto=file;
   const generation = ocrGeneration;
   const started=performance.now();
   ocrBusy = true;
   state.query = ''; state.activeCode = ''; searchInput.value = '';
-  state.ocrNote = '辨識中｜首次需載入模型…';
+  state.ocrNote = enhanced?'手寫強化中｜局部對比與放大…':'辨識中｜首次需載入模型…';
   render();
   try {
     let raw='', engine='PaddleOCR';
+    let input=file;
+    if(enhanced){try{input=await enhanceHandwriting(file);}catch(e){console.warn(e);}}
+    if(generation !== ocrGeneration)return;
     if (new URLSearchParams(location.search).get('ocr') !== 'tesseract') {
-      try {raw=await paddleText(file);} catch(e){console.warn('PaddleOCR unavailable',e);}
+      try {raw=await paddleText(input,enhanced);} catch(e){console.warn('PaddleOCR unavailable',e);}
     }
     if(generation !== ocrGeneration)return;
     if (!raw.trim() || !window.FindOCR || !window.FindOCR.rank(products,raw).totalHits) {
       state.ocrNote='備援辨識中｜Tesseract…';render();
-      const fallback=await tesseractText(file);
-      if(fallback.trim()){raw=fallback;engine='Tesseract';}
+      const fallback=await tesseractText(input);
+      if(fallback.trim()){raw=[raw,fallback].filter(Boolean).join('\n');engine=engine==='PaddleOCR'?'PaddleOCR/Tesseract':'Tesseract';}
     }
     if(generation !== ocrGeneration)return;
-    if (!window.FindOCR || !window.FindOCR.norm(raw)) throw new Error('No text');
+    if (!window.FindOCR || !window.FindOCR.norm(raw)) {
+      state.ocrNote='未讀到文字｜可按手寫強化或重拍書名';render();return;
+    }
     ocrRaw = raw.slice(0,1600);
     state.query = raw.replace(/\s+/g,' ').trim().slice(0,100);
     searchInput.value = state.query;
@@ -1136,8 +1178,8 @@ async function runTitleOCR(file) {
     render();
   } catch(e) {
     if(generation !== ocrGeneration)return;
-    resetOCR(); render(); showToast('文字辨識失敗，請重拍或手動搜尋');
-  } finally { ocrBusy = false; }
+    resetOCR(); state.ocrNote='辨識失敗｜可按手寫強化或手動搜尋';render();
+  } finally { ocrBusy = false; render(); }
 }
 
 // 3. Live Camera Barcode Scanner
@@ -1312,6 +1354,7 @@ document.getElementById('barcodeStrip').addEventListener('click', () => {
 
 document.getElementById('voiceBtn').addEventListener('click', startVoice);
 document.getElementById('ocrBtn').addEventListener('click', () => document.getElementById('ocrInput').click());
+document.getElementById('retryOcrBtn').addEventListener('click',()=>{if(lastOCRPhoto&&!ocrBusy)runTitleOCR(lastOCRPhoto,true);});
 document.getElementById('ocrInput').addEventListener('change', e => {
   const f = e.target.files[0];
   if (f) runTitleOCR(f);
