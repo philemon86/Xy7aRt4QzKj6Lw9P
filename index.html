@@ -656,7 +656,7 @@ html, body {
   <header class="top-bar">
     <div class="brand">
       <div class="brand-marks"><i class="m-red"></i><i class="m-blue"></i></div>
-      <span class="brand-txt">腓利門 FIND <small style="font-size:10px;color:var(--gray);letter-spacing:0">OCR 2.1</small></span>
+      <span class="brand-txt">腓利門 FIND <small style="font-size:10px;color:var(--gray);letter-spacing:0">OCR 3.0</small></span>
     </div>
     <div class="top-right">
       <span class="db-badge num" id="dbStatus">載入中…</span>
@@ -740,7 +740,7 @@ html, body {
 <div class="mask" id="mask"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast">已複製</div>
 
-<script src="ocr-match.js?v=20261125b"></script>
+<script src="ocr-match.js?v=20261125c"></script>
 <script>
 const FALLBACK = [
   { code: 'OW-PEN-G01', barcode: '4712938401011', name: 'TJC躲躲筆綠柴犬/黑墨(歐文)', price: 29, qty: 42, spec: '黑墨 0.5mm', unit: '支' },
@@ -864,6 +864,7 @@ async function loadData() {
     if (parsed.length) {
       products = parsed;
       buildIndex(products);
+      if(window.FindOCR)window.FindOCR.index(products);
       document.getElementById('dbStatus').textContent = `${products.length.toLocaleString()} 筆`;
       render();
       return;
@@ -872,6 +873,7 @@ async function loadData() {
 
   products = [...FALLBACK];
   buildIndex(products);
+  if(window.FindOCR)window.FindOCR.index(products);
   document.getElementById('dbStatus').textContent = '離線預覽';
   render();
 }
@@ -1106,6 +1108,7 @@ async function runTitleOCR(file) {
   if (ocrBusy) { showToast('辨識進行中'); return; }
   resetOCR();
   const generation = ocrGeneration;
+  const started=performance.now();
   ocrBusy = true;
   state.query = ''; state.activeCode = ''; searchInput.value = '';
   state.ocrNote = '辨識中｜首次需載入模型…';
@@ -1126,7 +1129,10 @@ async function runTitleOCR(file) {
     ocrRaw = raw.slice(0,1600);
     state.query = raw.replace(/\s+/g,' ').trim().slice(0,100);
     searchInput.value = state.query;
-    state.ocrNote = engine+(window.FindOCR.rank(products,ocrRaw).totalHits?'｜請選擇商品':'｜無符合商品，可修改搜尋文字');
+    const searchStarted=performance.now();
+    const matches=window.FindOCR.rank(products,ocrRaw);
+    const searchMs=performance.now()-searchStarted;
+    state.ocrNote = engine+' '+((performance.now()-started)/1000).toFixed(2)+'秒｜比對 '+searchMs.toFixed(1)+'ms'+(matches.totalHits?'｜請選擇商品':'｜無符合商品，可修改搜尋文字');
     render();
   } catch(e) {
     if(generation !== ocrGeneration)return;
