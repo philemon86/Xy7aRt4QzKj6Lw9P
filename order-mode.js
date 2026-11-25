@@ -2,8 +2,51 @@
   'use strict';
   const $=id=>document.getElementById(id);
   const cats={all:'全部商品',bible:'聖經',books:'書籍',hymns:'讚美詩／樂譜',calendar:'月曆／週曆',gifts:'文創禮品',church:'教會用品'};
-  const filters={size:'',version:'',material:'',zip:'',thumb:'',color:''};
+  const filters={size:'',version:'',material:'',zip:'',thumb:'',color:'',language:'',feature:''};
+  let bibleGroup='';
   const facets={size:['尺寸',['袖珍／掌型','輕便型','中型','大字版','特大字版','大型（其他）','待核對','未確認']],version:['譯本',['和合本','新標點和合本','和合本修訂版','現代中文譯本','雙語／對照','其他／未確認']],material:['封面材質',['硬面／精裝','漆布','膠皮','皮面','布面','牛仔布','未確認']],zip:['拉鍊',['有','未標示']],thumb:['索引',['有','未標示']],color:['顏色',['黑色','藍色','紅色','咖啡色','紫色','綠色','未確認']]};
+  const bibleGroups={
+    cu:['和合本｜傳統直排','公會 CU 系列，依大小及裝訂選購'],
+    cunp:['新標點和合本','含橫排、串珠及各尺寸'],
+    rcu:['和合本修訂版','和合本 2010 等修訂本'],
+    design:['聖資花色聖經','彩繪、花紋、婚禮及各種封面'],
+    centenary:['百年紀念聖經','臺灣傳教百年紀念系列'],
+    chinese:['其他中文譯本','現代中文、新普及、環球等'],
+    parallel:['雙語／譯本對照','中英、中西與中文譯本對照'],
+    study:['研讀／靈修／註釋','研讀、啟導、靈修及合參'],
+    learning:['注音／拼音／繪圖','學習閱讀、注音、繪圖本'],
+    local:['台語／客語／族語','漢羅、羅馬字、原住民族語'],
+    foreign:['外文／原文聖經','英文、日韓、東南亞及原文'],
+    other:['其他待整理','新上架且尚無足夠分類資料的品項']
+  };
+  facets.language=['語言',['英語','日語','韓語','西班牙語','德語','法語','荷蘭語','泰語','越南語','印尼語','菲律賓語','希臘語','希伯來語','台語／羅馬字','客語','賽德克語','鄒語','泰雅語','中英','中西','中文譯本對照']];
+  facets.feature=['特色',['橫排','串珠','研讀／啟導','靈修','註釋','紅字','注音','拼音','繪圖','婚禮禮盒','新約','舊約','五經','金邊','銀邊']];
+  function groupOf(p){
+    const c=String(p.code||'').toUpperCase(),n=p.name||'';
+    if(['B320','B320-1','CUNPIB63A','TCV19PS63PU','01030002'].includes(c)||/注音|拼音|繪圖本/.test(n))return 'learning';
+    if(/^CM\d/.test(c)||/傳教百年.*聖經/.test(n))return 'centenary';
+    if(/^SR\d/.test(c))return 'design';
+    if(/^(TTV|TTHV|TTYV|AR38|SED\/|COUNT\/)/.test(c)||/台語|臺語|客語|賽德克|鄒語|泰雅|羅馬字/.test(n))return 'local';
+    if(/^(CBT|NRSV\/|ESV\/|RCU\/|TEV\/)/.test(c)||['S13TS01H','S22TS01H','CAT6799'].includes(c)||/中英|中西|譯本對照/.test(n))return 'parallel';
+    if(/^(CCT|322CAL|M324|M325|M333|CAT6844|CAT6794|CAT6680|CAT7199|TCV19SB|S34TS99H)/.test(c))return 'study';
+    if(/^CU\d/.test(c))return 'cu';
+    if(/^CUNP/.test(c))return 'cunp';
+    if(/^RCU/.test(c)||c==='9786267223284')return 'rcu';
+    if(/^(TCV|CAT|S\d)/.test(c))return 'chinese';
+    if(['B308A','B7','THSV62PL','NI53','1501','TPV050P','8184','6010','8147','8173','RVV052','NKR72TH','TB052TI','5119','ESV042','TB2052TI','ESV063','JC63','B308C'].includes(c)||/英文|日文|韓文|西班牙文|德文|法文|荷蘭文|泰文|越南文|印尼文|菲律賓文|希臘|希伯來|七十士/.test(n))return 'foreign';
+    if(/研讀|靈修版|註釋|啟導本/.test(n))return 'study';
+    return 'other';
+  }
+  function featureOf(p){
+    const n=p.name||'',c=String(p.code||'').toUpperCase(),out=[];
+    for(const [v,re] of [['橫排',/橫排|CUNPCS/],['串珠',/串珠/],['研讀／啟導',/研讀|啟導|分析排版/],['靈修',/靈修|生命成長/],['註釋',/註釋/],['紅字',/紅字/],['注音',/注音/],['拼音',/拼音/],['繪圖',/繪圖|彩繪/],['婚禮禮盒',/婚禮/],['新約',/新約/],['舊約',/舊約/],['五經',/五經/],['金邊',/金邊/],['銀邊',/銀邊/]])if(re.test(n+' '+c))out.push(v);
+    return out;
+  }
+  function languageOf(p){
+    const n=p.name||'',c=String(p.code||'').toUpperCase();
+    const rules=[['中西',/中西/],['中英',/中英|中文.*英文|英文.*中文|^(?:ESV\/|RCU\/ESV|NRSV\/|TEV\/|CBT4738)/],['中文譯本對照',/新漢語\/和合|新譯和合/],['台語／羅馬字',/台語|臺語|羅馬字|^TTV|^AR38/],['客語',/客語|^TTHV/],['賽德克語',/賽德克/],['鄒語',/鄒語/],['泰雅語',/泰雅/],['西班牙語',/西班牙文/],['日語',/日文/],['韓語',/韓文/],['德語',/德文/],['法語',/法文/],['荷蘭語',/荷蘭文/],['泰語',/泰文/],['越南語',/越南文/],['印尼語',/印尼文/],['菲律賓語',/菲律賓文/],['希臘語',/希臘|七十士/],['希伯來語',/希伯來/],['英語',/^ESV\d|英文聖經/]];
+    return rules.find(([,re])=>re.test(n)||re.test(c))?.[0]||'';
+  }
   const info={church:'',name:'',phone:'',address:'',tax:'',note:'',format:'name'};
   let category='',limit=12,detail=false,ready=false;
   const key='philemon-find-order-v4';
@@ -25,12 +68,45 @@
     return {size:conflict?'待核對':explicit||implied||'未確認',version,material,color,zip:/拉[鍊鏈]|拉链/.test(n)||suffix.includes('Z')?'有':'未標示',thumb:/索引/.test(n)||suffix.includes('TI')?'有':'未標示',conflict};
   }
   const memo=new WeakMap();
-  function bs(p){if(!memo.has(p))memo.set(p,spec(p));return memo.get(p)}
-  function summary(p){if(!isBible(p))return '';const b=bs(p);return [b.version,b.size,b.material,b.color,b.zip==='有'?'拉鍊':'',b.thumb==='有'?'索引':'',b.conflict?'名稱與型號尺寸不同，需核對':''].filter(x=>x&&x!=='未確認').join('／')}
+  function bs(p){
+    if(!memo.has(p)){
+      const b=spec(p),g=groupOf(p),n=p.name||'';
+      if(g==='cu')b.version='和合本';
+      if(g==='cunp')b.version='新標點和合本';
+      if(g==='rcu')b.version='和合本修訂版';
+      if(g==='design'||g==='centenary'){
+        if(/特大(?!字)/.test(n))b.size='特大字版';
+        if(/仿皮|軟皮|麂皮/.test(n))b.material='皮面（含仿皮）';
+      }
+      if(/黑皮/.test(n))b.color='黑色';
+      if(/白色|雛菊白|星空白/.test(n))b.color='白色';
+      if(/粉紅|玫瑰粉|粉銀/.test(n))b.color='粉色';
+      if(/灰色|古典灰/.test(n))b.color='灰色';
+      if(/新普及/.test(n))b.version='新普及譯本';
+      if(/新漢語/.test(n)&&g!=='parallel')b.version='新漢語譯本';
+      if(/環球聖經譯本/.test(n))b.version='環球聖經譯本';
+      b.language=languageOf(p);b.feature=featureOf(p);b.group=g;
+      memo.set(p,b);
+    }
+    return memo.get(p);
+  }
+  function facetMatch(p,k,v){const a=bs(p)[k];return !v||(Array.isArray(a)?a.includes(v):a===v)}
+  function groupProducts(g=bibleGroup){return products.filter(p=>isBible(p)&&(!g||bs(p).group===g))}
+  function groupTitle(g){return bibleGroups[g]?.[0]||'聖經選購'}
+  function usableFacet(v){return v&&v!=='未確認'&&v!=='未標示'&&v!=='其他／未確認'&&v!=='待核對'}
+  function optionsFor(k){const actual=new Set(groupProducts().flatMap(p=>[bs(p)[k]].flat()).filter(usableFacet));return [...new Set([...facets[k][1],...actual])].filter(v=>actual.has(v))}
+  function visibleFacetKeys(){
+    const base=['size','material','color','zip','thumb','feature'];
+    if(['parallel','foreign','local'].includes(bibleGroup))return ['language',...base];
+    if(['chinese','study','learning','other'].includes(bibleGroup))return ['version',...base,'language'];
+    return base;
+  }
+
+  function summary(p){if(!isBible(p))return '';const b=bs(p);return [...new Set([groupTitle(b.group),b.version,b.language,b.size,b.material,b.color,b.zip==='有'?'拉鍊':'',b.thumb==='有'?'索引':'',...b.feature,b.conflict?'名稱與型號尺寸不同，需核對':''].filter(usableFacet))].join('／')}
   function match(p){
     const cl=p.clas||'',n=p.name||'';
     if(!category||category==='all')return true;
-    if(category==='bible')return isBible(p)&&Object.entries(filters).every(([k,v])=>!v||bs(p)[k]===v);
+    if(category==='bible')return isBible(p)&&(!bibleGroup||bs(p).group===bibleGroup)&&Object.entries(filters).every(([k,v])=>facetMatch(p,k,v));
     if(category==='books')return /^(02|03|07|08)-/.test(cl);
     if(category==='hymns')return /^05-/.test(cl)||/樂譜|琴譜/.test(n);
     if(category==='calendar')return /月曆|週曆|周曆|桌曆|年曆/.test(n);
@@ -43,7 +119,7 @@
   const oldBuild=buildIndex;
   buildIndex=function(list){oldBuild(list);list.forEach(p=>codeIndex.set(p.code.toLowerCase(),p));ready=list.length>0&&list.some(p=>p.clas);};
   function matchesWords(p,q){const words=q.trim().toLowerCase().split(/\s+/).filter(Boolean);const hay=(p.name+' '+p.code+' '+p.barcode+' '+p.spec+' '+summary(p)).toLowerCase();return !words.length||words.every(w=>hay.includes(w));}
-  function bibleCount(ignore='',value=''){return products.filter(p=>isBible(p)&&matchesWords(p,state.query)&&Object.entries(filters).every(([k,v])=>{const chosen=k===ignore?value:v;return !chosen||bs(p)[k]===chosen;})).length;}
+  function bibleCount(ignore='',value=''){return groupProducts().filter(p=>matchesWords(p,state.query)&&Object.entries(filters).every(([k,v])=>facetMatch(p,k,k===ignore?value:v))).length;}
   const oldFilter=getFiltered;
   getFiltered=function(){
     if(ocrRaw)return oldFilter();
@@ -141,6 +217,18 @@ html,body{height:auto;min-height:100%;overflow:visible}
 .mask.open{overflow-y:auto;align-items:flex-start;padding:12px 0}
 .mask .sheet{max-height:none;overflow:visible;margin:auto 0;flex-shrink:0}
 `;
+  style.textContent+=`
+.v4-bible-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:9px 0}
+.v4-bible-groups button{border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--black);padding:12px;text-align:left;cursor:pointer;min-width:0;display:flex;flex-direction:column;gap:5px}
+.v4-bible-groups button strong{font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.v4-bible-groups button small{font-size:11px;color:var(--gray);line-height:1.5}
+.v4-bible-groups button span{font-size:12px;font-weight:800;color:var(--blue)}
+.v4-bible-group-head{background:var(--blue-soft);border:1px solid #bfdbfe;border-radius:11px;padding:11px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0}
+.v4-bible-group-head strong{font-size:15px;color:var(--blue)}
+.v4-bible-group-head small{font-size:11px;color:var(--gray);display:block;margin-top:4px}
+.v4-bible-intro{font-size:13px;line-height:1.6;color:var(--gray);padding:3px}
+@media(min-width:900px){.v4-bible-groups{grid-template-columns:repeat(3,minmax(0,1fr))}}
+`;
   document.head.appendChild(style);
   $('idleBox').insertAdjacentHTML('afterbegin','<div class="order-home"><h2>書報組訂購助手</h2><p>找商品 → 加入訂單 → 複製或傳 LINE。免登入，不直接扣庫存。</p><button type="button" class="bible-entry" data-v4-category="bible"><span><strong>聖經規格選購</strong><small>尺寸、譯本、材質、顏色、拉鍊與索引</small></span><span class="v4-spines" aria-hidden="true"><i style="height:35px">聖經</i><i style="height:46px">聖經</i><i style="height:57px">聖經</i><i style="height:72px">聖經</i></span></button><div class="v4-cats">'+Object.entries(cats).filter(([k])=>k!=='bible').map(([k,v])=>'<button type="button" data-v4-category="'+k+'">'+v+'</button>').join('')+'</div><p>也可直接搜尋品名、ISBN 或商品代碼。價格及供貨以書房確認為準。</p></div>');
   $('idleBox').querySelectorAll('.idle-title,.idle-sub').forEach(e=>e.remove());
@@ -149,15 +237,28 @@ html,body{height:auto;min-height:100%;overflow:visible}
   $('desktopQuote').querySelector('.desktop-quote-head strong').innerHTML='訂購清單 <small style="font-size:11px;color:var(--gray)">草稿</small>';
   $('desktopCopyQuote').textContent='確認及複製訂單';
   const oldHead=$('listHead').innerHTML;
-  $('listHead').innerHTML='<div id="v4Nav" class="v4-nav"></div><details id="v4Guide" class="v4-guide" style="display:none"><summary>聖經規格篩選（展開／收合）</summary><div id="v4Sizes" class="size-row"></div><div id="v4Facets" class="v4-facets"></div><p class="v4-note">尺寸圖為相對大小示意。規格依名稱及已知型號推定；未標示不等於沒有。相同 ISBN 保留各自代碼。</p><div id="v4FilterStatus" class="v4-filter-status" role="status"></div><div class="v4-filter-tools"><button class="v4-close" type="button" id="v4Reset">清除規格</button><button class="v4-close" type="button" id="v4ViewResults">查看商品</button></div></details><div class="v4-list-summary">'+oldHead+'</div>';
+  $('listHead').innerHTML='<div id="v4Nav" class="v4-nav"></div><div id="v4BibleGroups" style="display:none"></div><details id="v4Guide" class="v4-guide" style="display:none"><summary>聖經規格篩選（展開／收合）</summary><div id="v4Sizes" class="size-row"></div><div id="v4Facets" class="v4-facets"></div><p class="v4-note">尺寸圖為相對大小示意。規格依名稱及已知型號推定；未標示不等於沒有。相同 ISBN 保留各自代碼。</p><div id="v4FilterStatus" class="v4-filter-status" role="status"></div><div class="v4-filter-tools"><button class="v4-close" type="button" id="v4Reset">清除規格</button><button class="v4-close" type="button" id="v4ViewResults">查看商品</button></div></details><div class="v4-list-summary">'+oldHead+'</div>';
   $('expandOcrBtn').addEventListener('click',()=>{ocrShowAll=true;render();});
   function renderNav(){
     $('v4Nav').innerHTML='<button type="button" data-v4-category="">首頁</button>'+Object.entries(cats).map(([k,v])=>'<button type="button" data-v4-category="'+k+'" class="'+(category===k?'active':'')+'">'+v+'</button>').join('');
-    const g=$('v4Guide');g.style.display=category==='bible'?'block':'none';
-    if(category==='bible'){
-      if(g.dataset.started!=='1'){g.open=true;g.dataset.started='1'}
+    const g=$('v4Guide'), groupEl=$('v4BibleGroups');
+    const choosing=category==='bible'&&!bibleGroup&&!state.query.trim();
+    groupEl.style.display=category==='bible'?'block':'none';
+    g.style.display=category==='bible'&&bibleGroup?'block':'none';
+    if(choosing){
+      groupEl.innerHTML='<p class="v4-bible-intro">先選擇想要的聖經種類，再依該系列的規格挑選。也可直接輸入商品編號或 ISBN。</p><div class="v4-bible-groups">'+Object.entries(bibleGroups).map(([k,[title,desc]])=>{const n=groupProducts(k).length;return n?'<button type="button" data-v4-bgroup="'+k+'"><strong>'+esc(title)+'</strong><small>'+esc(desc)+'</small><span>'+n+' 款商品</span></button>':''}).join('')+'</div>';
+    }else if(category==='bible'){
+      groupEl.innerHTML='<div class="v4-bible-group-head"><div><strong>'+esc(groupTitle(bibleGroup))+'</strong><small>'+esc(bibleGroups[bibleGroup]?.[1]||'全系列搜尋')+'</small></div><button type="button" class="v4-close" id="v4ChangeGroup">更換種類</button></div>';
+    }else groupEl.innerHTML='';
+    if(category==='bible'&&bibleGroup){
+      if(g.dataset.started!==bibleGroup){g.open=true;g.dataset.started=bibleGroup}
+      $('v4Sizes').style.display=bibleGroup==='cu'?'flex':'none';
       $('v4Sizes').innerHTML=[['輕便型',35,'CU5'],['中型',46,'CU6'],['大字版',57,'CU8'],['特大字版',72,'CU9']].map(([v,h,c])=>'<button type="button" data-v4-size="'+v+'" class="'+(filters.size===v?'active':'')+'"><i style="height:'+h+'px">聖經</i>'+v+'<small>'+c+'</small></button>').join('');
-      $('v4Facets').innerHTML=Object.entries(facets).map(([k,[label,opts]])=>'<label>'+label+'<select data-v4-facet="'+k+'"><option value="">不限</option>'+opts.map(v=>'<option value="'+esc(v)+'" '+(filters[k]===v?'selected':'')+'>'+esc(v)+'（'+bibleCount(k,v)+'）</option>').join('')+'</select></label>').join('');
+      $('v4Facets').innerHTML=visibleFacetKeys().map(k=>{
+        const [label]=facets[k],opts=optionsFor(k);
+        if(!opts.length)return '';
+        return '<label>'+label+'<select data-v4-facet="'+k+'"><option value="">不限</option>'+opts.map(v=>'<option value="'+esc(v)+'" '+(filters[k]===v?'selected':'')+'>'+esc(v)+'（'+bibleCount(k,v)+'）</option>').join('')+'</select></label>';
+      }).join('')||'<p class="v4-note">此系列目前以品名、語言及型號供選擇；未有可靠規格的欄位不顯示。</p>';
     }else g.dataset.started='';
   }
   const originalHero=renderHero;
@@ -196,7 +297,7 @@ html,body{height:auto;min-height:100%;overflow:visible}
     if(!r.length&&desktopMedia.matches)$('desktopQuoteList').innerHTML='<div class="desktop-quote-empty">從商品清單按「＋ 訂購」，即可加入訂單。草稿不會直接扣庫存。</div>';
     save();
   };
-  function browse(c){resetOCR();category=c;state.query='';state.activeCode='';$('searchInput').value='';detail=false;limit=12;Object.keys(filters).forEach(k=>filters[k]='');render();window.scrollTo(0,0)}
+  function browse(c){resetOCR();category=c;bibleGroup='';state.query='';state.activeCode='';$('searchInput').value='';detail=false;limit=12;Object.keys(filters).forEach(k=>filters[k]='');render();window.scrollTo(0,0)}
   render=function(){
     const q=state.query.trim(),home=!q&&!category&&!state.activeCode;
     $('clearBtn').classList.toggle('show',!!q);
@@ -216,8 +317,9 @@ html,body{height:auto;min-height:100%;overflow:visible}
       renderQuotePill();return;
     }
     renderNav();
+    if(category==='bible'&&!bibleGroup&&!q){renderHero(null);$('stream').style.display='none';$('countLabel').textContent=groupProducts('').length+' 款・請選種類';$('expandOcrBtn').style.display='none';renderQuotePill();return;}
     const result=getFiltered();
-    if(category==='bible'){
+    if(category==='bible'&&bibleGroup){
       const n=result.totalHits;
       const status=$('v4FilterStatus');status.textContent=ready?(n?'符合條件：'+n+' 款':'查無此款｜目前商品資料沒有符合全部條件的聖經'):'商品資料載入中或未載入';status.classList.toggle('zero',ready&&n===0);
       $('v4ViewResults').textContent=n?'查看 '+n+' 款商品':'查看查詢結果';
@@ -254,10 +356,12 @@ html,body{height:auto;min-height:100%;overflow:visible}
   };
   // Capture handlers replace only order-related original listeners.
   document.addEventListener('click',e=>{
-    const t=e.target.closest('[data-v4-category],[data-v4-size],[data-v4-add],[data-v4-relax],#v4Reset,#v4ResetAll,#v4EditFilters,#v4ViewResults,#v4More,#heroAddBtn,#quotePill,#desktopCopyQuote,#desktopClearQuote,[data-desktop-code],[data-v4-q],#v4Copy,#v4Line,#v4Clear');
+    const t=e.target.closest('[data-v4-category],[data-v4-bgroup],#v4ChangeGroup,[data-v4-size],[data-v4-add],[data-v4-relax],#v4Reset,#v4ResetAll,#v4EditFilters,#v4ViewResults,#v4More,#heroAddBtn,#quotePill,#desktopCopyQuote,#desktopClearQuote,[data-desktop-code],[data-v4-q],#v4Copy,#v4Line,#v4Clear');
     if(!t)return;
     e.preventDefault();e.stopImmediatePropagation();
     if(t.hasAttribute('data-v4-category'))return browse(t.dataset.v4Category);
+    if(t.dataset.v4Bgroup){bibleGroup=t.dataset.v4Bgroup;state.activeCode='';detail=false;limit=12;Object.keys(filters).forEach(k=>filters[k]='');render();$('v4BibleGroups').scrollIntoView({block:'start',behavior:'auto'});return}
+    if(t.id==='v4ChangeGroup')return browse('bible');
     if(t.dataset.v4Size){filters.size=filters.size===t.dataset.v4Size?'':t.dataset.v4Size;state.activeCode='';detail=false;limit=12;return render()}
     if(t.id==='v4Reset'||t.id==='v4ResetAll'){Object.keys(filters).forEach(k=>filters[k]='');if(t.id==='v4ResetAll'){resetOCR();state.query='';$('searchInput').value='';}state.activeCode='';detail=false;limit=12;$('v4Guide').open=true;return render()}
     if(t.id==='v4EditFilters'){$('v4Guide').open=true;$('v4Guide').scrollIntoView({block:'start',behavior:'auto'});return}
@@ -278,9 +382,9 @@ html,body{height:auto;min-height:100%;overflow:visible}
   $('mask').addEventListener('change',e=>{if(e.target.id==='v4Format'){info.format=e.target.value;updatePreview()}if(e.target.dataset.v4Qty){qty(e.target.dataset.v4Qty,e.target.value);openQuoteSheet()}});
   $('stream').addEventListener('click',e=>{if(e.target.closest('[data-code]')){detail=true;$('v4Guide').open=false}},true);
   $('recentList').addEventListener('click',e=>{if(e.target.closest('[data-recent]')){detail=true;$('v4Guide').open=false}},true);
-  $('searchInput').addEventListener('input',()=>{detail=false;limit=12;if(!$('searchInput').value.trim())category=''},true);
-  for(const id of ['clearBtn','clearOcrBtn','voiceBtn','ocrBtn','barcodeBtn'])$(id).addEventListener('click',()=>{category='';detail=false;limit=12},true);
+  $('searchInput').addEventListener('input',()=>{detail=false;limit=12;if(!$('searchInput').value.trim()&&category!=='bible'){category='';bibleGroup=''}},true);
+  for(const id of ['clearBtn','clearOcrBtn','voiceBtn','ocrBtn','barcodeBtn'])$(id).addEventListener('click',()=>{category='';bibleGroup='';detail=false;limit=12},true);
   const oldBarcode=onBarcodeHit;
-  onBarcodeHit=function(raw){category='';detail=true;limit=12;oldBarcode(raw);const val=String(raw||'').trim().toLowerCase();const matches=products.filter(p=>p.code.toLowerCase()===val||p.barcode.toLowerCase()===val);if(matches.length>1){state.activeCode='';detail=false;render();showToast('同一條碼有多個品項，請核對商品代碼')}};
+  onBarcodeHit=function(raw){category='';bibleGroup='';detail=true;limit=12;oldBarcode(raw);const val=String(raw||'').trim().toLowerCase();const matches=products.filter(p=>p.code.toLowerCase()===val||p.barcode.toLowerCase()===val);if(matches.length>1){state.activeCode='';detail=false;render();showToast('同一條碼有多個品項，請核對商品代碼')}};
   render();
 })();
