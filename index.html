@@ -727,7 +727,7 @@ html, body {
       </button>
       <button type="button" class="big-act" id="ocrBtn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
-        拍書名
+        拍商品
       </button>
       <button type="button" class="big-act primary" id="barcodeBtn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="8" y1="8" x2="8" y2="16"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="16" y1="8" x2="16" y2="16"/></svg>
@@ -740,6 +740,7 @@ html, body {
 <div class="mask" id="mask"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast">已複製</div>
 
+<script src="ocr-match.js?v=20261125"></script>
 <script>
 const FALLBACK = [
   { code: 'OW-PEN-G01', barcode: '4712938401011', name: 'TJC躲躲筆綠柴犬/黑墨(歐文)', price: 29, qty: 42, spec: '黑墨 0.5mm', unit: '支' },
@@ -754,6 +755,8 @@ let products = [];
 let codeIndex = new Map();
 let state = { query: '', activeCode: '', quote: [], recent: [], ocrNote: '' };
 let toastTimer = null;
+let ocrRaw = '', ocrConfirmed = false, ocrGeneration = 0, ocrBusy = false;
+function resetOCR(){ ocrGeneration++; ocrRaw = ''; ocrConfirmed = false; state.ocrNote = ''; }
 let camStream = null, camRaf = null, html5Qr = null;
 
 function esc(s) {
@@ -881,6 +884,7 @@ function recordRecent(code) {
 function getFiltered() {
   const q = state.query.trim().toLowerCase();
   if (!q) return { items: [], totalHits: 0 };
+  if (ocrRaw && window.FindOCR) return window.FindOCR.rank(products, ocrRaw);
   const tokens = q.split(/\s+/).filter(Boolean);
   const scored = [];
   for (let i = 0; i < products.length; i++) {
@@ -990,19 +994,19 @@ function render() {
     return;
   }
 
-  let active = items.find(i => i.code === state.activeCode) || items[0] || null;
-  if (active) {
+  let active = items.find(i => i.code === state.activeCode) || ((!ocrRaw || ocrConfirmed) ? items[0] : null) || null;
+  if (active && (!ocrRaw || ocrConfirmed)) {
     state.activeCode = active.code;
     recordRecent(active.code);
   }
-  renderHero(active);
+  renderHero(ocrRaw && !ocrConfirmed ? null : active);
 
   if (!items.length) {
     listHead.classList.add('show');
     document.getElementById('countLabel').textContent = '0 筆';
     stream.style.display = 'flex';
     stream.innerHTML = '<div style="padding:36px 0;text-align:center;color:var(--gray);font-size:14px">找不到符合的商品</div>';
-  } else if (items.length === 1) {
+  } else if (items.length === 1 && (!ocrRaw || ocrConfirmed)) {
     // Only 1 exact match: hero card already shows everything, hide redundant list!
     listHead.classList.remove('show');
     stream.style.display = 'none';
@@ -1038,7 +1042,7 @@ function startVoice() {
   btn.classList.add('listening');
   rec.onresult = e => {
     const txt = e.results[0][0].transcript.trim();
-    state.ocrNote = '';
+    resetOCR();
     state.query = txt;
     state.activeCode = '';
     document.getElementById('searchInput').value = txt;
@@ -1050,42 +1054,66 @@ function startVoice() {
   rec.start();
 }
 
-// 2. Free Local Book Title OCR (Tesseract.js)
+// 2. Browser-local OCR: PaddleOCR.js with Tesseract fallback
+let paddlePromise = null;
+function limitOCR(promise, ms) {
+  let timer;
+  return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('OCR timeout')),ms);})]).finally(()=>clearTimeout(timer));
+}
+async function paddleText(file) {
+  if (!paddlePromise) {
+    const pending = (async()=>{
+      const {PaddleOCR} = await import('https://cdn.jsdelivr.net/npm/@paddleocr/paddleocr-js@0.4.2/+esm');
+      return PaddleOCR.create({lang:'chinese_cht',ocrVersion:'PP-OCRv5',worker:false,
+        textDetectionBatchSize:1,textRecognitionBatchSize:1,
+        ortOptions:{backend:'wasm',numThreads:1,wasmPaths:'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/'}});
+    })();
+    paddlePromise = pending;
+    pending.catch(()=>{if(paddlePromise===pending)paddlePromise=null;});
+  }
+  const engine=await limitOCR(paddlePromise,45000);
+  const [result]=await engine.predict(file,{textDetLimitSideLen:960,textDetLimitType:'max',textDetMaxSideLimit:1600,textRecScoreThresh:0.35});
+  return (result?.items||[]).map(x=>x.text).filter(Boolean).join('\n');
+}
+async function tesseractText(file) {
+  if (!window.Tesseract) await limitOCR(new Promise((res,rej)=>{
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+    script.onload=res;script.onerror=rej;document.head.appendChild(script);
+  }),30000);
+  const result=await window.Tesseract.recognize(file,'chi_tra+eng');
+  return String(result?.data?.text||'');
+}
 async function runTitleOCR(file) {
-  state.ocrNote = '正在免費辨識書名文字（首次約 3–5 秒）…';
+  if (ocrBusy) { showToast('辨識進行中'); return; }
+  resetOCR();
+  const generation = ocrGeneration;
+  ocrBusy = true;
+  state.query = ''; state.activeCode = ''; searchInput.value = '';
+  state.ocrNote = 'PaddleOCR 手機辨識中（首次需下載模型）…';
   render();
   try {
-    if (!window.Tesseract) {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-        s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
-      });
+    let raw='', engine='PaddleOCR';
+    if (new URLSearchParams(location.search).get('ocr') !== 'tesseract') {
+      try {raw=await paddleText(file);} catch(e){console.warn('PaddleOCR unavailable',e);}
     }
-    const result = await window.Tesseract.recognize(file, 'chi_tra+eng');
-    const raw = (result?.data?.text || '')
-      .replace(/[^\u4e00-\u9fa5A-Za-z0-9\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    const tokens = raw.split(' ').filter(t => t.length >= 2).slice(0, 3).join(' ');
-    if (!tokens) {
-      state.ocrNote = '';
-      render();
-      showToast('未辨識到清楚書名，請拉近重拍');
-      return;
+    if(generation !== ocrGeneration)return;
+    if (!raw.trim() || !window.FindOCR || !window.FindOCR.rank(products,raw).totalHits) {
+      state.ocrNote='切換備援文字辨識 Tesseract…';render();
+      const fallback=await tesseractText(file);
+      if(fallback.trim()){raw=fallback;engine='Tesseract';}
     }
-    state.ocrNote = `書名辨識：「${tokens}」`;
-    state.query = tokens;
-    state.activeCode = '';
-    document.getElementById('searchInput').value = tokens;
+    if(generation !== ocrGeneration)return;
+    if (!window.FindOCR || !window.FindOCR.norm(raw)) throw new Error('No text');
+    ocrRaw = raw.slice(0,1600);
+    state.query = raw.replace(/\s+/g,' ').trim().slice(0,100);
+    searchInput.value = state.query;
+    state.ocrNote = engine+'：辨識完成，請點選正確商品';
     render();
-    showToast(`辨識完成：${tokens}`);
-  } catch (err) {
-    state.ocrNote = '';
-    render();
-    showToast('文字辨識失敗，請改用條碼或語音');
-  }
+  } catch(e) {
+    if(generation !== ocrGeneration)return;
+    resetOCR(); render(); showToast('文字辨識失敗，請重拍或手動搜尋');
+  } finally { ocrBusy = false; }
 }
 
 // 3. Live Camera Barcode Scanner
@@ -1104,7 +1132,7 @@ function onBarcodeHit(raw) {
   const val = String(raw || '').trim();
   if (!val) return;
   closeMask();
-  state.ocrNote = '';
+  resetOCR();
   state.query = val;
   document.getElementById('searchInput').value = val;
   const hit = codeIndex.get(val.toLowerCase());
@@ -1201,6 +1229,8 @@ function openQuoteSheet() {
 // Event bindings
 const searchInput = document.getElementById('searchInput');
 searchInput.addEventListener('input', e => {
+  resetOCR();
+  state.activeCode = '';
   state.query = e.target.value;
   if (!state.query.trim()) {
     state.activeCode = '';
@@ -1210,14 +1240,14 @@ searchInput.addEventListener('input', e => {
 });
 
 document.getElementById('clearBtn').addEventListener('click', () => {
-  state.query = ''; state.activeCode = ''; state.ocrNote = '';
+  resetOCR(); state.query = ''; state.activeCode = '';
   searchInput.value = '';
   searchInput.focus();
   render();
 });
 
 document.getElementById('clearOcrBtn').addEventListener('click', () => {
-  state.query = ''; state.activeCode = ''; state.ocrNote = '';
+  resetOCR(); state.query = ''; state.activeCode = '';
   searchInput.value = '';
   render();
 });
@@ -1225,6 +1255,7 @@ document.getElementById('clearOcrBtn').addEventListener('click', () => {
 document.getElementById('stream').addEventListener('click', e => {
   const card = e.target.closest('.item-card');
   if (!card) return;
+  ocrConfirmed = true;
   state.activeCode = card.dataset.code;
   recordRecent(state.activeCode);
   render();
@@ -1238,7 +1269,7 @@ document.getElementById('recentList').addEventListener('click', e => {
 });
 
 document.getElementById('heroAddBtn').addEventListener('click', () => {
-  if (!state.activeCode) return;
+  if (!state.activeCode || (ocrRaw && !ocrConfirmed)) return;
   const found = state.quote.find(q => q.code === state.activeCode);
   if (found) found.qty += 1;
   else state.quote.unshift({ code: state.activeCode, qty: 1 });
