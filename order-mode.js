@@ -4,6 +4,7 @@
   const cats={all:'全部商品',bible:'聖經',books:'書籍',hymns:'讚美詩／樂譜',calendar:'月曆／週曆',gifts:'文創禮品',church:'教會用品'};
   const filters={size:'',version:'',material:'',zip:'',thumb:'',color:'',language:'',feature:''};
   let bibleGroup='';
+  let chatActive=false, chatQuery='', chatTerms=[], chatBible=false, chatTurns=[], chatPending='', chatBudget=null, chatNeg={};
   const facets={size:['尺寸',['袖珍／掌型','輕便型','中型','大字版','特大字版','大型（其他）','待核對','未確認']],version:['譯本',['和合本','新標點和合本','和合本修訂版','現代中文譯本','雙語／對照','其他／未確認']],material:['封面材質',['硬面／精裝','漆布','膠皮','皮面','布面','牛仔布','未確認']],zip:['拉鍊',['有','未標示']],thumb:['索引',['有','未標示']],color:['顏色',['黑色','藍色','紅色','咖啡色','紫色','綠色','未確認']]};
   const bibleGroups={
     cu:['和合本｜傳統直排','公會 CU 系列，依大小及裝訂選購'],
@@ -120,9 +121,130 @@
   buildIndex=function(list){oldBuild(list);list.forEach(p=>codeIndex.set(p.code.toLowerCase(),p));ready=list.length>0&&list.some(p=>p.clas);};
   function matchesWords(p,q){const words=q.trim().toLowerCase().split(/\s+/).filter(Boolean);const hay=(p.name+' '+p.code+' '+p.barcode+' '+p.spec+' '+summary(p)).toLowerCase();return !words.length||words.every(w=>hay.includes(w));}
   function bibleCount(ignore='',value=''){return groupProducts().filter(p=>matchesWords(p,state.query)&&Object.entries(filters).every(([k,v])=>facetMatch(p,k,k===ignore?value:v))).length;}
+  // Local, explainable conversational catalog search. No remote AI request.
+  const aliases=[
+    ['size','特大字版',/特大字|超大字|最大字/],['size','大字版',/大字|大本/],['size','中型',/中型|中本|中尺寸/],['size','輕便型',/輕便|小本|小型/],['size','袖珍／掌型',/袖珍|掌型|口袋/],
+    ['version','和合本修訂版',/和合本2010|和合本修訂版|和修本/],['version','新標點和合本',/新標點(?:和合本)?/],['version','和合本',/和合本|和合版/],['version','現代中文譯本',/現代中文(?:譯本)?/],['version','新普及譯本',/新普及(?:譯本)?/],['version','新漢語譯本',/新漢語(?:譯本)?/],
+    ['material','皮面',/真皮|皮面|皮革|黑皮|紅皮/],['material','膠皮',/膠皮|塑膠封面|膠面/],['material','硬面／精裝',/硬面|硬殼|精裝/],['material','漆布',/漆布/],['material','布面',/布面/],['material','牛仔布',/牛仔布/],
+    ['zip','有',/拉[鍊鏈]|拉链/],['thumb','有',/拇指索引|手指索引|索引/],
+    ['color','黑色',/黑色|黑皮|黑的|黑面/],['color','藍色',/藍色|藍的|藍皮/],['color','紅色',/紅色|紅皮|紅的/],['color','咖啡色',/咖啡色|棕色|褐色/],['color','紫色',/紫色|紫的/],['color','綠色',/綠色|綠的/],['color','白色',/白色|白的/],['color','粉色',/粉紅色|粉色/],
+    ['feature','橫排',/橫排/],['feature','串珠',/串珠/],['feature','紅字',/紅字/],['feature','注音',/注音/],['feature','拼音',/拼音/],['feature','金邊',/金邊/],['feature','銀邊',/銀邊/],
+    ['language','中英',/中英(?:對照)?/],['language','中西',/中西(?:對照)?/],['language','英語',/英文|英語/],['language','台語／羅馬字',/台語|臺語|羅馬字/],['language','客語',/客語|客家話/],['language','日語',/日文|日語/],['language','韓語',/韓文|韓語/],['language','越南語',/越南文|越南語/]
+  ];
+  const groupAliases=[['cu',/傳統和合本|傳統直排/],['cunp',/新標點和合本/],['rcu',/和合本修訂版|和合本2010/],['design',/聖資|花色聖經/],['centenary',/百年紀念聖經/],['parallel',/雙語|中英對照|中西對照/],['study',/研讀本|研讀聖經|啟導本|註釋聖經/],['learning',/注音聖經|拼音聖經|繪圖聖經/],['local',/族語聖經/],['foreign',/外文聖經|原文聖經/]];
+  function resetChat(){chatActive=false;chatQuery='';chatTerms=[];chatBible=false;chatTurns=[];chatPending='';chatBudget=null;chatNeg={};}
+  function chatParse(raw){
+    const t=raw.normalize('NFKC').trim(),found={},neg={},groups=groupAliases.find(([,re])=>re.test(t))?.[0]||'';
+    let work=t;
+    // Match longest/most specific expression first; color and material may overlap.
+    for(const [k,v,re] of aliases){
+      if(found[k])continue;
+      if(!re.test(t))continue;
+      const hit=t.match(re);
+      if(k==='size'&&v==='大字版'&&/特大字|超大字|最大字/.test(t))continue;
+      if(k==='version'&&v==='和合本'&&/新標點|修訂版|2010/.test(t))continue;
+      if(k==='language'&&v==='英語'&&/中英/.test(t))continue;
+      const before=t.slice(Math.max(0,hit.index-5),hit.index);
+      if(/(?:不要|不用|不需要|不必|無|没有|沒有|不含|不帶|不带)\s*(?:有|帶|带)?$/.test(before)){neg[k]=v;continue}
+      found[k]=v;
+    }
+    const budget=t.match(/(?:預算|不超過|低於|最多)\s*(?:NT\$|\$)?\s*(\d{2,6})|(\d{2,6})\s*(?:元|塊)?\s*(?:以內|以下)/);
+    const max=budget?Number(budget[1]||budget[2]):null;
+    return {t,found,neg,groups,max,bible:/聖經|和合本|和修本|新標點|CU\d/i.test(t)||!!groups};
+  }
+  function isRefinement(a){
+    if(!chatActive||!chatBible)return false;
+    if(/^(?:重新|換找|另外|我還要|再找|清除|新查詢)/.test(a.t))return false;
+    return !!(a.groups||Object.keys(a.found).length||Object.keys(a.neg).length||a.max!==null||/^(不限|都可以|都可|隨便|不拘|不用了)$/.test(a.t));
+  }
+  function beginChat(raw){
+    const a=chatParse(raw);if(!a.t)return;
+    const exact=products.some(p=>p.code.toLowerCase()===a.t.toLowerCase()||p.barcode.toLowerCase()===a.t.toLowerCase());
+    const refine=!exact&&isRefinement(a);
+    if(!refine){resetChat();Object.keys(filters).forEach(k=>filters[k]='');bibleGroup='';category='';}
+    chatActive=true;chatQuery=a.t;chatTurns.push(a.t);chatTurns=chatTurns.slice(-4);
+    chatBible=!exact&&(a.bible||(refine&&chatBible));
+    if(chatBible){
+      category='bible';
+      if(a.groups){bibleGroup=a.groups;if(!a.found.version)filters.version=''}
+      if(a.found.version&&!a.groups)bibleGroup='';
+      if(/^(不限|都可以|都可|隨便|不拘|不用了)$/.test(a.t)&&chatPending){filters[chatPending]='';delete chatNeg[chatPending];}
+      for(const [k,v] of Object.entries(a.found)){filters[k]=v;delete chatNeg[k]}
+      for(const [k,v] of Object.entries(a.neg)){filters[k]='';chatNeg[k]=v;}
+      if(a.max!==null)chatBudget=a.max;
+      // Preserve unsupported terms rather than silently ignoring arbitrary requests.
+      chatTerms=[];
+      const leftovers=a.t.replace(/聖經|請問|請幫我|幫我|我想要|我想找|我想|想要|想找|我要|找一本|買一本|一本|有沒有|有嗎|有的|的|款|版|型|尺寸|封面|材質|顏色|需要|不要|不用|不需要|不必|沒有|无|無|有|請|嗎|呢|就好|即可|都可以|都可|不限|隨便|不拘|不用了|換成|改成|改|換|要|找|買|再|看|一下|傳統直排|傳統和合本/g,'');
+      let rem=a.t;
+      for(const [, , re] of aliases)rem=rem.replace(re,'');
+      for(const [,re] of groupAliases)rem=rem.replace(re,'');
+      rem=rem.replace(/(?:預算|不超過|低於|最多)\s*(?:NT\$|\$)?\s*\d{2,6}|\d{2,6}\s*(?:元|塊)?\s*(?:以內|以下)/g,'').replace(/聖經|請問|請幫我|幫我|我想要|我想找|我想|想要|想找|我要|找一本|買一本|一本|有沒有|有嗎|有的|的|款|版|型|尺寸|封面|材質|顏色|需要|不要|不用|不需要|不必|沒有|無|有|請|嗎|呢|就好|即可|都可以|都可|不限|隨便|不拘|換成|改成|改|換|要|找|買|再|看|一下|[，。！？、\s]+/g,'');
+      if(rem&&rem.length>=2)chatTerms=[rem];
+    }else{
+      chatTerms=[a.t.replace(/^(?:請問|請幫我|幫我找|幫我|我想找|我想買|我要買|我要|想找|找一下|找)\s*/,'').replace(/[？?。]$/,'').trim()].filter(Boolean);
+      if(a.max!==null)chatBudget=a.max;
+    }
+    resetOCR();state.query=a.t;state.activeCode='';detail=false;limit=6;$('searchInput').value='';render();
+    window.scrollTo(0,0);
+  }
+  function chatHay(p){
+    let h=(p.name+' '+p.code+' '+p.barcode+' '+p.spec+' '+summary(p)).normalize('NFKC').toLowerCase();
+    if(/保溫瓶|水瓶|水壺/.test(h))h+=' 水壺 水瓶 保溫杯';
+    if(/棒球帽|鴨舌帽|帽沿/.test(h))h+=' 帽子 鴨舌帽';
+    if(/大冰奶|奶茶|奶油杏/.test(h))h+=' 米色 奶茶色 杏色';
+    if(/柴犬/.test(h))h+=' 狗狗 狗';
+    if(/黑貓|貓咪/.test(h))h+=' 貓咪 小貓';
+    if(/樂譜夾/.test(h))h+=' 資料夾 譜夾';
+    return h;
+  }
+  function chatHits(){
+    const q=chatQuery.toLowerCase();
+    const exact=products.filter(p=>p.code.toLowerCase()===q||p.barcode.toLowerCase()===q);
+    if(exact.length)return exact.sort((a,b)=>Number(b.code.toLowerCase()===q)-Number(a.code.toLowerCase()===q));
+    if(chatBible)return products.filter(p=>isBible(p)&&(!bibleGroup||bs(p).group===bibleGroup)&&Object.entries(filters).every(([k,v])=>facetMatch(p,k,v))&&Object.entries(chatNeg).every(([k,v])=>{const val=bs(p)[k];return val==='無'||val==='沒有';})&&(chatBudget===null||p.price<=chatBudget)&&chatTerms.every(t=>chatHay(p).includes(t.toLowerCase()))).sort((a,b)=>Number(b.qty>0)-Number(a.qty>0)||a.price-b.price);
+    const text=chatTerms.join(' ').trim();
+    const tokens=text.split(/\s+/).filter(Boolean);
+    let hits=products.filter(p=>tokens.length&&tokens.every(t=>chatHay(p).includes(t.toLowerCase()))&&(chatBudget===null||p.price<=chatBudget));
+    if(!hits.length&&text&&window.FindOCR){
+      const ranked=window.FindOCR.rank(products,text);
+      // Only use partial matches as candidates, never claim exact semantic matches.
+      hits=ranked.items.filter(p=>chatBudget===null||p.price<=chatBudget);
+    }
+    return hits;
+  }
+  function nextQuestion(hits){
+    if(!chatBible||hits.length<=5)return null;
+    let best=null;
+    for(const k of ['size','version','material','color','zip','thumb','language','feature']){
+      if(filters[k]||chatNeg[k])continue;
+      const vals=new Map();
+      for(const p of hits)for(const v of [bs(p)[k]].flat())if(usableFacet(v))vals.set(v,(vals.get(v)||0)+1);
+      if(vals.size<2)continue;
+      const opts=[...vals].sort((a,b)=>b[1]-a[1]).slice(0,4);
+      const coverage=[...vals.values()].reduce((a,b)=>a+b,0);
+      const score=opts.length*10+Math.min(coverage,hits.length)/hits.length;
+      if(!best||score>best.score)best={k,opts,score};
+    }
+    return best;
+  }
+  function chatPanel(result){
+    const el=$('v5Conversation');if(!el)return;
+    el.style.display=chatActive?'block':'none';if(!chatActive)return;
+    const hits=chatHits(),question=nextQuestion(hits);chatPending=question?.k||'';
+    const constraints=Object.entries(filters).filter(([,v])=>v).map(([k,v])=>facets[k][0]+'：'+v);
+    for(const [k,v] of Object.entries(chatNeg))constraints.push(facets[k][0]+'：不要'+v);
+    if(chatBudget!==null)constraints.push('預算 '+chatBudget+' 元以下');
+    if(bibleGroup)constraints.unshift(groupTitle(bibleGroup));
+    let answer=!ready?'商品資料尚未載入，請稍後重試。':!hits.length?(chatBible?'查無此款。現有目錄沒有足夠資料確認完全符合的聖經。':'查無完全符合的商品，請換個品名或商品代碼。'):chatBible?'找到 '+hits.length+' 款符合目前條件的聖經。':'找到 '+hits.length+' 筆可能符合的商品，請核對品名及代碼。';
+    if(question)answer+=' 想再縮小範圍，可以告訴我'+facets[question.k][0]+'。';
+    const opts=question?'<div class="v5-answers">'+question.opts.map(([v,n])=>'<button type="button" data-v5-facet="'+question.k+'" data-v5-value="'+esc(v)+'">'+esc(v)+'（'+n+'）</button>').join('')+'</div>':'';
+    const relax=!hits.length&&chatBible?'<div class="v5-answers">'+Object.entries(filters).filter(([,v])=>v).map(([k,v])=>'<button type="button" data-v5-relax="'+k+'">取消'+esc(facets[k][0])+'</button>').join('')+Object.keys(chatNeg).map(k=>'<button type="button" data-v5-relax="'+k+'">取消'+esc(facets[k][0])+'限制</button>').join('')+(chatTerms.length?'<button type="button" id="v5RelaxWords">取消其他文字條件</button>':'')+(chatBudget!==null?'<button type="button" id="v5RelaxBudget">取消預算限制</button>':'')+'</div>':'';
+    el.innerHTML='<div class="v5-turns">'+chatTurns.map(t=>'<div class="v5-user">'+esc(t)+'</div>').join('')+'</div><div class="v5-reply"><strong>FIND 訂購助手</strong><p>'+esc(answer)+'</p>'+(constraints.length?'<p class="v5-conditions">目前條件：'+esc(constraints.join('、'))+'</p>':'')+opts+relax+'<button type="button" class="v5-textlink" id="v5New">重新查詢</button></div>';
+  }
   const oldFilter=getFiltered;
   getFiltered=function(){
     if(ocrRaw)return oldFilter();
+    if(chatActive){const hits=chatHits();return {items:hits.slice(0,limit),totalHits:hits.length};}
     const q=state.query.trim().toLowerCase();
     if(!q&&!category)return {items:[],totalHits:0};
     const words=q.split(/\s+/).filter(Boolean);
@@ -229,15 +351,39 @@ html,body{height:auto;min-height:100%;overflow:visible}
 .v4-bible-intro{font-size:13px;line-height:1.6;color:var(--gray);padding:3px}
 @media(min-width:900px){.v4-bible-groups{grid-template-columns:repeat(3,minmax(0,1fr))}}
 `;
+  style.textContent+=`
+.v5-home{display:flex;flex-direction:column;gap:14px;padding:18px 5px 8px}
+.v5-home h2{font-size:26px;font-weight:850;line-height:1.3}
+.v5-home p{font-size:14px;line-height:1.7;color:var(--gray)}
+.v5-examples{border-top:1px solid var(--line)}
+.v5-examples button,.v5-answers button{display:block;width:100%;border:0;border-bottom:1px solid var(--line);padding:13px 4px;text-align:left;background:transparent;color:var(--blue);font-weight:700;cursor:pointer;font-size:14px;line-height:1.5}
+.v5-examples button:after,.v5-answers button:after{content:' →';float:right;color:var(--gray)}
+.v5-textlink{border:0;background:none;color:var(--blue);font-size:13px;font-weight:700;padding:8px 0;cursor:pointer;text-align:left}
+.v5-secondary{border-top:1px solid var(--line);padding-top:10px}
+.v5-secondary summary{font-size:13px;color:var(--gray);cursor:pointer}
+.v5-secondary .v4-cats{margin-top:12px}
+.v5-turns{display:flex;flex-direction:column;gap:6px;align-items:flex-end;margin:6px 0 12px}
+.v5-user{background:var(--blue);color:white;padding:10px 14px;border-radius:15px 15px 3px 15px;font-size:14px;max-width:90%;overflow-wrap:anywhere}
+.v5-reply{background:white;border:1px solid var(--line);border-radius:3px 15px 15px 15px;padding:14px;line-height:1.65;font-size:14px}
+.v5-reply strong{font-size:12px;color:var(--blue)}
+.v5-reply p{margin:5px 0;color:var(--black)}
+.v5-reply .v5-conditions{font-size:12px;color:var(--gray)}
+.v5-send{border:0;border-radius:10px;background:var(--blue);color:white;font-weight:800;min-width:52px;height:36px;padding:0 10px;cursor:pointer}
+.v5-answers button{padding:9px 0;font-size:13px}
+.v5-answers button:last-child{border-bottom:0}
+@media(max-width:899px){.v5-home h2{font-size:23px}.v5-home{padding-top:15px}.big-search-box{gap:5px}.big-search-box input{font-size:16px}.v5-send{min-width:45px;padding:0 7px;font-size:13px}}
+`;
   document.head.appendChild(style);
-  $('idleBox').insertAdjacentHTML('afterbegin','<div class="order-home"><h2>書報組訂購助手</h2><p>找商品 → 加入訂單 → 複製或傳 LINE。免登入，不直接扣庫存。</p><button type="button" class="bible-entry" data-v4-category="bible"><span><strong>聖經規格選購</strong><small>尺寸、譯本、材質、顏色、拉鍊與索引</small></span><span class="v4-spines" aria-hidden="true"><i style="height:35px">聖經</i><i style="height:46px">聖經</i><i style="height:57px">聖經</i><i style="height:72px">聖經</i></span></button><div class="v4-cats">'+Object.entries(cats).filter(([k])=>k!=='bible').map(([k,v])=>'<button type="button" data-v4-category="'+k+'">'+v+'</button>').join('')+'</div><p>也可直接搜尋品名、ISBN 或商品代碼。價格及供貨以書房確認為準。</p></div>');
+  $('idleBox').insertAdjacentHTML('afterbegin','<div class="v5-home"><h2>今天想找什麼商品？</h2><p>直接說出想買的商品、規格或代碼。找到後加入訂單，再一次複製給書房。</p><div class="v5-examples"><button type="button" data-v5-query="中型和合本拉鍊聖經">中型和合本拉鍊聖經</button><button type="button" data-v5-query="大字版有索引的聖經">大字版有索引的聖經</button><button type="button" data-v5-query="2027年月曆">2027年月曆</button></div><details class="v5-secondary"><summary>依商品分類選購</summary><div class="v4-cats">'+Object.entries(cats).map(([k,v])=>'<button type="button" data-v4-category="'+k+'">'+v+'</button>').join('')+'</div></details></div>');
+  $('searchInput').placeholder='輸入商品需求或代碼…';
+  $('searchInput').insertAdjacentHTML('afterend','<button type="button" id="v5Send" class="v5-send" aria-label="送出查詢">搜尋</button>');
   $('idleBox').querySelectorAll('.idle-title,.idle-sub').forEach(e=>e.remove());
   $('heroName').insertAdjacentHTML('afterend','<div id="v4HeroSpec" class="hero-spec"></div>');
   $('heroAddBtn').textContent='＋ 訂購';
   $('desktopQuote').querySelector('.desktop-quote-head strong').innerHTML='訂購清單 <small style="font-size:11px;color:var(--gray)">草稿</small>';
   $('desktopCopyQuote').textContent='確認及複製訂單';
   const oldHead=$('listHead').innerHTML;
-  $('listHead').innerHTML='<div id="v4Nav" class="v4-nav"></div><div id="v4BibleGroups" style="display:none"></div><details id="v4Guide" class="v4-guide" style="display:none"><summary>聖經規格篩選（展開／收合）</summary><div id="v4Sizes" class="size-row"></div><div id="v4Facets" class="v4-facets"></div><p class="v4-note">尺寸圖為相對大小示意。規格依名稱及已知型號推定；未標示不等於沒有。相同 ISBN 保留各自代碼。</p><div id="v4FilterStatus" class="v4-filter-status" role="status"></div><div class="v4-filter-tools"><button class="v4-close" type="button" id="v4Reset">清除規格</button><button class="v4-close" type="button" id="v4ViewResults">查看商品</button></div></details><div class="v4-list-summary">'+oldHead+'</div>';
+  $('listHead').innerHTML='<div id="v5Conversation" style="display:none"></div><div id="v4Nav" class="v4-nav"></div><div id="v4BibleGroups" style="display:none"></div><details id="v4Guide" class="v4-guide" style="display:none"><summary>聖經規格篩選（展開／收合）</summary><div id="v4Sizes" class="size-row"></div><div id="v4Facets" class="v4-facets"></div><p class="v4-note">尺寸圖為相對大小示意。規格依名稱及已知型號推定；未標示不等於沒有。相同 ISBN 保留各自代碼。</p><div id="v4FilterStatus" class="v4-filter-status" role="status"></div><div class="v4-filter-tools"><button class="v4-close" type="button" id="v4Reset">清除規格</button><button class="v4-close" type="button" id="v4ViewResults">查看商品</button></div></details><div class="v4-list-summary">'+oldHead+'</div>';
   $('expandOcrBtn').addEventListener('click',()=>{ocrShowAll=true;render();});
   function renderNav(){
     $('v4Nav').innerHTML='<button type="button" data-v4-category="">首頁</button>'+Object.entries(cats).map(([k,v])=>'<button type="button" data-v4-category="'+k+'" class="'+(category===k?'active':'')+'">'+v+'</button>').join('');
@@ -297,9 +443,9 @@ html,body{height:auto;min-height:100%;overflow:visible}
     if(!r.length&&desktopMedia.matches)$('desktopQuoteList').innerHTML='<div class="desktop-quote-empty">從商品清單按「＋ 訂購」，即可加入訂單。草稿不會直接扣庫存。</div>';
     save();
   };
-  function browse(c){resetOCR();category=c;bibleGroup='';state.query='';state.activeCode='';$('searchInput').value='';detail=false;limit=12;Object.keys(filters).forEach(k=>filters[k]='');render();window.scrollTo(0,0)}
+  function browse(c){resetChat();resetOCR();category=c;bibleGroup='';state.query='';state.activeCode='';$('searchInput').value='';detail=false;limit=12;Object.keys(filters).forEach(k=>filters[k]='');render();window.scrollTo(0,0)}
   render=function(){
-    const q=state.query.trim(),home=!q&&!category&&!state.activeCode;
+    const q=state.query.trim(),home=!chatActive&&!q&&!category&&!state.activeCode;
     $('clearBtn').classList.toggle('show',!!q);
     $('ocrBanner').classList.toggle('show',!!state.ocrNote);
     $('retryOcrBtn').style.display=lastOCRPhoto&&state.ocrNote&&!ocrBusy?'inline-block':'none';
@@ -317,9 +463,12 @@ html,body{height:auto;min-height:100%;overflow:visible}
       renderQuotePill();return;
     }
     renderNav();
-    if(category==='bible'&&!bibleGroup&&!q){renderHero(null);$('stream').style.display='none';$('countLabel').textContent=groupProducts('').length+' 款・請選種類';$('expandOcrBtn').style.display='none';renderQuotePill();return;}
+    $('v4Nav').style.display=chatActive?'none':'';
+    if(chatActive){$('v4BibleGroups').style.display='none';$('v4Guide').style.display='none';}
+    if(category==='bible'&&!bibleGroup&&!q&&!chatActive){renderHero(null);$('stream').style.display='none';$('countLabel').textContent=groupProducts('').length+' 款・請選種類';$('expandOcrBtn').style.display='none';renderQuotePill();return;}
     const result=getFiltered();
-    if(category==='bible'&&bibleGroup){
+    chatPanel(result);
+    if(category==='bible'&&bibleGroup&&!chatActive){
       const n=result.totalHits;
       const status=$('v4FilterStatus');status.textContent=ready?(n?'符合條件：'+n+' 款':'查無此款｜目前商品資料沒有符合全部條件的聖經'):'商品資料載入中或未載入';status.classList.toggle('zero',ready&&n===0);
       $('v4ViewResults').textContent=n?'查看 '+n+' 款商品':'查看查詢結果';
@@ -335,7 +484,7 @@ html,body{height:auto;min-height:100%;overflow:visible}
     const expand=$('expandOcrBtn');expand.style.display=ocrRaw&&!ocrShowAll&&result.allHits>result.totalHits?'inline-block':'none';
     $('countLabel').textContent=items.length<result.totalHits?'顯示 '+items.length+'／'+result.totalHits+' 筆':result.totalHits+' 筆';
     $('stream').innerHTML=items.map(p=>'<div class="item-card'+(active&&active.code===p.code?' active':'')+'" data-code="'+esc(p.code)+'"><div class="ic-main"><div class="ic-name">'+hi(p.name,q)+'</div>'+(isBible(p)?'<div class="v4-note">'+esc(summary(p))+'</div>':'')+'<div class="ic-sub"><span class="mono">'+esc(p.code)+'</span><span style="color:'+(p.qty<=0?'var(--red)':'var(--gray)')+'">'+stock(p)+'</span></div></div><div class="v4-end"><div class="ic-price num">$'+p.price+'</div><button type="button" class="v4-add" data-v4-add="'+esc(p.code)+'" '+(ready?'':'disabled')+'>＋ 訂購</button></div></div>').join('')||'<div class="v4-note" style="padding:25px;text-align:center">'+(ready?'沒有符合的商品，請放寬搜尋條件。':'商品資料尚未載入，請重新整理。')+'</div>';
-    if(ready&&category==='bible'&&!items.length){
+    if(ready&&category==='bible'&&!items.length&&!chatActive){
       const selected=Object.entries(filters).filter(([,v])=>v);
       const suggestions=selected.map(([k,v])=>({k,v,n:bibleCount(k,'')})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n);
       $('stream').innerHTML='<div class="v4-empty" role="status"><strong>查無此款</strong><p>目前商品目錄中，沒有完全符合你所選條件的聖經。這不代表聖經公會沒有出版此款，也不等同於缺貨。</p>'+
@@ -344,6 +493,7 @@ html,body{height:auto;min-height:100%;overflow:visible}
         (suggestions.length?'<p>放寬以下一項即可找到其他候選商品：</p>'+suggestions.map(x=>'<button type="button" class="v4-close" data-v4-relax="'+esc(x.k)+'">取消'+esc(facets[x.k][0])+'條件（'+x.n+' 款）</button>').join(''):'')+
         '<button type="button" class="v4-close" id="v4EditFilters">調整聖經規格</button><button type="button" class="v4-close" id="v4ResetAll">清除條件及搜尋文字</button></div>';
     }
+    if(chatActive&&!items.length)$('stream').innerHTML='';
     if(!ocrRaw&&items.length<result.totalHits)$('stream').insertAdjacentHTML('beforeend','<button type="button" class="v4-more" id="v4More">顯示更多商品</button>');
     renderQuotePill();
   };
@@ -356,9 +506,16 @@ html,body{height:auto;min-height:100%;overflow:visible}
   };
   // Capture handlers replace only order-related original listeners.
   document.addEventListener('click',e=>{
-    const t=e.target.closest('[data-v4-category],[data-v4-bgroup],#v4ChangeGroup,[data-v4-size],[data-v4-add],[data-v4-relax],#v4Reset,#v4ResetAll,#v4EditFilters,#v4ViewResults,#v4More,#heroAddBtn,#quotePill,#desktopCopyQuote,#desktopClearQuote,[data-desktop-code],[data-v4-q],#v4Copy,#v4Line,#v4Clear');
+    const t=e.target.closest('[data-v5-query],[data-v5-facet],[data-v5-relax],#v5Send,#v5New,#v5RelaxWords,#v5RelaxBudget,[data-v4-category],[data-v4-bgroup],#v4ChangeGroup,[data-v4-size],[data-v4-add],[data-v4-relax],#v4Reset,#v4ResetAll,#v4EditFilters,#v4ViewResults,#v4More,#heroAddBtn,#quotePill,#desktopCopyQuote,#desktopClearQuote,[data-desktop-code],[data-v4-q],#v4Copy,#v4Line,#v4Clear');
     if(!t)return;
     e.preventDefault();e.stopImmediatePropagation();
+    if(t.id==='v5Send')return beginChat($('searchInput').value);
+    if(t.dataset.v5Query)return beginChat(t.dataset.v5Query);
+    if(t.id==='v5New')return browse('');
+    if(t.dataset.v5Facet){const k=t.dataset.v5Facet,v=t.dataset.v5Value;filters[k]=v;delete chatNeg[k];chatTurns.push(v);chatTurns=chatTurns.slice(-4);state.activeCode='';detail=false;limit=6;return render()}
+    if(t.dataset.v5Relax){filters[t.dataset.v5Relax]='';delete chatNeg[t.dataset.v5Relax];state.activeCode='';detail=false;return render()}
+    if(t.id==='v5RelaxWords'){chatTerms=[];state.activeCode='';return render()}
+    if(t.id==='v5RelaxBudget'){chatBudget=null;state.activeCode='';return render()}
     if(t.hasAttribute('data-v4-category'))return browse(t.dataset.v4Category);
     if(t.dataset.v4Bgroup){bibleGroup=t.dataset.v4Bgroup;state.activeCode='';detail=false;limit=12;Object.keys(filters).forEach(k=>filters[k]='');render();$('v4BibleGroups').scrollIntoView({block:'start',behavior:'auto'});return}
     if(t.id==='v4ChangeGroup')return browse('bible');
@@ -382,9 +539,10 @@ html,body{height:auto;min-height:100%;overflow:visible}
   $('mask').addEventListener('change',e=>{if(e.target.id==='v4Format'){info.format=e.target.value;updatePreview()}if(e.target.dataset.v4Qty){qty(e.target.dataset.v4Qty,e.target.value);openQuoteSheet()}});
   $('stream').addEventListener('click',e=>{if(e.target.closest('[data-code]')){detail=true;$('v4Guide').open=false}},true);
   $('recentList').addEventListener('click',e=>{if(e.target.closest('[data-recent]')){detail=true;$('v4Guide').open=false}},true);
-  $('searchInput').addEventListener('input',()=>{detail=false;limit=12;if(!$('searchInput').value.trim()&&category!=='bible'){category='';bibleGroup=''}},true);
-  for(const id of ['clearBtn','clearOcrBtn','voiceBtn','ocrBtn','barcodeBtn'])$(id).addEventListener('click',()=>{category='';bibleGroup='';detail=false;limit=12},true);
+  $('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();beginChat($('searchInput').value)}},true);
+  $('searchInput').addEventListener('input',e=>{if(chatActive||!category){e.stopImmediatePropagation();return;}detail=false;limit=12;},true);
+  for(const id of ['clearBtn','clearOcrBtn','voiceBtn','ocrBtn','barcodeBtn'])$(id).addEventListener('click',()=>{resetChat();category='';bibleGroup='';detail=false;limit=12},true);
   const oldBarcode=onBarcodeHit;
-  onBarcodeHit=function(raw){category='';bibleGroup='';detail=true;limit=12;oldBarcode(raw);const val=String(raw||'').trim().toLowerCase();const matches=products.filter(p=>p.code.toLowerCase()===val||p.barcode.toLowerCase()===val);if(matches.length>1){state.activeCode='';detail=false;render();showToast('同一條碼有多個品項，請核對商品代碼')}};
+  onBarcodeHit=function(raw){resetChat();category='';bibleGroup='';detail=true;limit=12;oldBarcode(raw);const val=String(raw||'').trim().toLowerCase();const matches=products.filter(p=>p.code.toLowerCase()===val||p.barcode.toLowerCase()===val);if(matches.length>1){state.activeCode='';detail=false;render();showToast('同一條碼有多個品項，請核對商品代碼')}};
   render();
 })();
