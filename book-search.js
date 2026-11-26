@@ -16,7 +16,8 @@
     const ss=scriptures.filter(x=>x.re.test(t)||norm(x.title)===norm(t));
     const ts=topics.filter(x=>x.re.test(t)||norm(x.title)===norm(t));
     const ser=data.series.filter(x=>norm(t).includes(norm(x.title)));
-    return {raw,t,ss,ts,ser};
+    const toc=Object.entries(data.tocKeywords||{}).filter(([k])=>t.includes(k)).sort((a,b)=>b[0].length-a[0].length);
+    return {raw,t,ss,ts,ser,toc};
   }
   function directScore(p,q){
     const n=norm(q);if(!n)return 0;
@@ -41,6 +42,7 @@
       if(x.primarySet.has(code)){theme=Math.max(theme,95);reason.push(x.title);}
       else if(x.tocSet.has(code)){theme=Math.max(theme,48);reason.push('目錄涉及'+x.title);}
     }
+    for(const [term,codes] of parsed.toc||[])if(codes.includes(code)){theme=Math.max(theme,70+Math.min(term.length,5));reason.push('目錄：'+term);}
     for(const x of parsed.ser)if(x.codes.includes(code)){series=105;reason.push(x.title+'系列');}
     if(direct>=135)reason.unshift('品名相符');
     return {score:Math.max(direct,scripture,theme,series),reason:[...new Set(reason)].slice(0,2)};
@@ -54,7 +56,7 @@
       if(r.score)found.push({p,score:r.score,reason:r.reason});
     }
     found.sort((a,b)=>b.score-a.score||popularity(b.p,mode)-popularity(a.p,mode)||a.p.code.localeCompare(b.p.code));
-    return {matches:found,hasIntent:!!(parsed.ss.length||parsed.ts.length||parsed.ser.length),parsed};
+    return {matches:found,hasIntent:!!(parsed.ss.length||parsed.ts.length||parsed.ser.length||parsed.toc.length),parsed};
   }
   function related(products,p,mode='church'){
     if(!isBook(p))return [];
