@@ -1,4 +1,4 @@
-(function(root){const create=function makeBookSearch(data,relations={purchase:{},content:{}}){
+(function(root){const create=function makeBookSearch(data,relations={purchase:{},content:{}},cross={}){
   const norm=s=>String(s??'').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
   const cleanTitle=s=>norm(String(s).replace(/^\s*\d+折\s*\/?/,'').replace(/\([^)]*\)|（[^）]*）/g,''));
   const isBook=p=>/^C\d{3}$/i.test(p.code)&&Number(p.code.slice(1))>=1&&Number(p.code.slice(1))<=300;
@@ -86,10 +86,32 @@
     found.sort((a,b)=>b.score-a.score||tie(b)-tie(a)||a.p.code.localeCompare(b.p.code));
     return {matches:found,hasIntent:!!(parsed.ss.length||parsed.ts.length||parsed.ser.length||parsed.toc.length),parsed};
   }
+  const categoryMap=new Map((cross.categories||[]).map(x=>[x[0],x]));
+  const giftRules=(cross.precedence||[]).map(k=>categoryMap.get(k)).filter(Boolean).map(([id,title,pattern])=>({id,title,re:pattern?new RegExp(pattern,'i'):null}));
+  function isGift(p){return /^09-/.test(p?.clas||p?.class||'')}
+  function giftCategory(p){return giftRules.find(x=>x.re?.test(p.name||''))?.id||'other'}
+  function giftLabel(p){return categoryMap.get(giftCategory(p))?.[1]||'其他文創'}
+  const specificTopics=[
+    ['禱告與靈修',/禱告|祈禱|主禱文|不住禱告/],
+    ['心靈關懷與低潮',/療癒|慰問|不孤單|不憂慮|不要憂慮|不要害怕|平靜安穩|你已經夠好了/],
+    ['苦難與信心',/靠主得勝|移山信心|在神凡事都能|不要害怕|靠主天天/],
+    ['兒童繪本',/聖經故事拼圖|兒童|著色本|小朋友/],
+    ['婚姻與家庭教養',/婚禮|新婚|基督是我家之主|我家之主/],
+    ['洗腳禮',/洗腳/],['洗禮',/洗禮/],['安息日',/安息日/],['聖餐',/聖餐/],['聖靈',/靈言禱告|五大教義.*聖靈/]
+  ];
+  function crossTheme(book,gift){
+    const code=book.code.toUpperCase(),name=gift.name||'';
+    if(code==='C296'&&/百年|100周年|百周年/.test(name))return 67;
+    if(data.series.some(t=>t.title==='杏樹枝'&&t.codes.includes(code))&&/杏樹枝藏書盒/.test(name))return 75;
+    if(code==='C166'&&/主禱文/.test(name))return 75;
+    let score=0;
+    for(const [title,re] of specificTopics)if(re.test(name)&&topics.some(t=>t.title===title&&t.primarySet.has(code)))score=Math.max(score,38);
+    return score;
+  }
   function related(products,p,mode='unified'){
     if(!p)return [];
     const code=p.code.toUpperCase(),purchase=relations.purchase?.[code]||[],content=relations.content?.[code]||[];
-    return products.filter(x=>x.code!==p.code&&x.qty>0&&!/絕版/.test(x.name)).map(x=>{
+    const ranked=products.filter(x=>x.code!==p.code&&x.qty>0&&!/絕版/.test(x.name)).map(x=>{
       const c=x.code.toUpperCase(),reasons=[];
       let editorial=0;
       if(isBook(p)&&isBook(x)){
@@ -102,9 +124,25 @@
       // Co-purchase is separate evidence, not a claim of content similarity.
       if(i>=0)reasons.push('型錄文字相關');
       if(j>=0)reasons.push('曾共同訂購');
-      const score=editorial+text+basket;
-      return {p:x,score,reason:[...new Set(reasons)].slice(0,2)};
-    }).filter(x=>x.score).sort((a,b)=>b.score-a.score||(popularity(b.p,mode)*.5+affinity(b.p)+jitter(code+':'+b.p.code)*3)-(popularity(a.p,mode)*.5+affinity(a.p)+jitter(code+':'+a.p.code)*3)||a.p.code.localeCompare(b.p.code)).slice(0,4);
+      const across=(isBook(p)&&isGift(x))||(isGift(p)&&isBook(x));
+      const lookup=(key)=>{const a=cross[key]?.[code]||[],b=cross[key]?.[c]||[];const i=a.indexOf(c),j=b.indexOf(code);return i>=0?i:j>=0?j:-1;};
+      const ci=across?lookup('text'):-1,pi=across?lookup('purchase'):-1,gi=across?lookup('regional'):-1;
+      const motif=across?crossTheme(isBook(p)?p:x,isGift(p)?p:x):0;
+      const contentScore=Math.max(text,motif,ci>=0?45-Math.min(ci,3)*5:0);
+      const purchaseScore=Math.max(basket,pi>=0?48-Math.min(pi,3)*6:0);
+      const regionScore=gi>=0?Math.max(2,9-gi*2):0;
+      if(ci>=0||motif)reasons.push('主題或用途搭配');
+      if(pi>=0)reasons.push('曾共同訂購');
+      if(gi>=0)reasons.push('區域銷售趨勢相近');
+      const score=editorial+contentScore+purchaseScore+regionScore;
+      return {p:x,score,across,geoOnly:regionScore>0&&!editorial&&!contentScore&&!purchaseScore,reason:[...new Set(reasons)].slice(0,2)};
+    }).filter(x=>x.score).sort((a,b)=>b.score-a.score||(popularity(b.p,mode)*.5+affinity(b.p)+jitter(code+':'+b.p.code)*3)-(popularity(a.p,mode)*.5+affinity(a.p)+jitter(code+':'+a.p.code)*3)||a.p.code.localeCompare(b.p.code));
+    const solid=ranked.filter(x=>!x.geoOnly), across=solid.filter(x=>x.across), geo=ranked.find(x=>x.across&&x.geoOnly);
+    const result=solid.slice(0,4);
+    // Keep primary relevance; reserve one discovery slot for strong cross-category evidence.
+    if(across.length&&!result.some(x=>x.across)){if(result.length>=4)result.pop();result.push(across[0]);}
+    if(!result.some(x=>x.across)&&geo&&result.length<4)result.push(geo);
+    return result;
   }
   function common(products,mode='church',books=false){
     const map=new Map(products.map(p=>[p.code,p]));
@@ -113,5 +151,5 @@
     const seasonal=m>=9||m<=1;
     return list.map(c=>map.get(c)).filter(p=>p&&p.qty>0&&(seasonal||!/(月曆|週曆|周曆|桌曆|年曆)/.test(p.name))).slice(0,6);
   }
-  return {isBook,search,related,popularity,common,parse,directScore,note,discoveryOrder};
-};if(typeof module==='object'&&module.exports)module.exports=create;else if(root.FindCatalogGuide)root.FindBookSearch=create(root.FindCatalogGuide,root.FindCatalogRelations);})(typeof globalThis!=='undefined'?globalThis:this);
+  return {isBook,isGift,giftCategory,giftLabel,search,related,popularity,common,parse,directScore,note,discoveryOrder};
+};if(typeof module==='object'&&module.exports)module.exports=create;else if(root.FindCatalogGuide)root.FindBookSearch=create(root.FindCatalogGuide,root.FindCatalogRelations,root.FindCrossCatalog);})(typeof globalThis!=='undefined'?globalThis:this);
