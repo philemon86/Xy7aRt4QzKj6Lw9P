@@ -1,4 +1,4 @@
-(function(root){const create=function makeBookSearch(data){
+(function(root){const create=function makeBookSearch(data,relations={purchase:{},content:{}}){
   const norm=s=>String(s??'').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
   const cleanTitle=s=>norm(String(s).replace(/^\s*\d+折\s*\/?/,'').replace(/\([^)]*\)|（[^）]*）/g,''));
   const isBook=p=>/^C\d{3}$/i.test(p.code)&&Number(p.code.slice(1))>=1&&Number(p.code.slice(1))<=300;
@@ -7,7 +7,7 @@
   function popularity(p,mode){
     const c=p.code.toUpperCase(), m=mode==='reader'?other:church,b=mode==='reader'?bo:bc;
     const shared=(Math.max(church.get(c)||0,bc.get(c)||0)+Math.max(other.get(c)||0,bo.get(c)||0))/2;
-    return shared*4+Math.max(m.get(c)||0,b.get(c)||0)*1.5+(recent.get(c)||0)*2+(p.qty>0?1:0);
+    return shared*5.5+(recent.get(c)||0)*2+(p.qty>0?1:0);
   }
   const topics=data.topics.map(t=>({...t,re:new RegExp(t.pattern,'i'),primarySet:new Set(t.primary),tocSet:new Set(t.toc)}));
   const scriptures=data.scripture.map(t=>({...t,re:new RegExp(t.pattern,'i'),set:new Set(t.codes)}));
@@ -86,18 +86,25 @@
     found.sort((a,b)=>b.score-a.score||tie(b)-tie(a)||a.p.code.localeCompare(b.p.code));
     return {matches:found,hasIntent:!!(parsed.ss.length||parsed.ts.length||parsed.ser.length||parsed.toc.length),parsed};
   }
-  function related(products,p,mode='church'){
-    if(!isBook(p))return [];
-    const code=p.code.toUpperCase();
-    return products.filter(x=>isBook(x)&&x.code!==p.code&&x.qty>0).map(x=>{
-      const c=x.code.toUpperCase(),a=[];
-      let score=0;
-      for(const s of scriptures)if(s.set.has(code)&&s.set.has(c)){score=Math.max(score,100);a.push(s.title);}
-      for(const s of data.series)if(s.codes.includes(code)&&s.codes.includes(c)){score=Math.max(score,95);a.push(s.title);}
-      for(const t of topics)if(t.primarySet.has(code)&&t.primarySet.has(c)){score=Math.max(score,70);a.push(t.title);}
-      // Do not promote two books just because both mention a term in passing.
-      return {p:x,score,reason:[...new Set(a)].slice(0,2)};
-    }).filter(x=>x.score).sort((a,b)=>b.score-a.score||(popularity(b.p,mode)*.65+affinity(b.p)+jitter(code+':'+b.p.code)*4-(visited.has(b.p.code)?3:0))-(popularity(a.p,mode)*.65+affinity(a.p)+jitter(code+':'+a.p.code)*4-(visited.has(a.p.code)?3:0))||a.p.code.localeCompare(b.p.code)).slice(0,3);
+  function related(products,p,mode='unified'){
+    if(!p)return [];
+    const code=p.code.toUpperCase(),purchase=relations.purchase?.[code]||[],content=relations.content?.[code]||[];
+    return products.filter(x=>x.code!==p.code&&x.qty>0&&!/絕版/.test(x.name)).map(x=>{
+      const c=x.code.toUpperCase(),reasons=[];
+      let editorial=0;
+      if(isBook(p)&&isBook(x)){
+        for(const s of scriptures)if(s.set.has(code)&&s.set.has(c)){editorial=Math.max(editorial,82);reasons.push(s.title);}
+        for(const s of data.series)if(s.codes.includes(code)&&s.codes.includes(c)){editorial=Math.max(editorial,76);reasons.push(s.title+'系列');}
+        for(const t of topics)if(t.primarySet.has(code)&&t.primarySet.has(c)){editorial=Math.max(editorial,54);reasons.push(t.title);}
+      }
+      const i=content.indexOf(c),j=purchase.indexOf(c);
+      const text=i<0?0:48-i*7, basket=j<0?0:32-j*5;
+      // Co-purchase is separate evidence, not a claim of content similarity.
+      if(i>=0)reasons.push('型錄文字相關');
+      if(j>=0)reasons.push('曾共同訂購');
+      const score=editorial+text+basket;
+      return {p:x,score,reason:[...new Set(reasons)].slice(0,2)};
+    }).filter(x=>x.score).sort((a,b)=>b.score-a.score||(popularity(b.p,mode)*.5+affinity(b.p)+jitter(code+':'+b.p.code)*3)-(popularity(a.p,mode)*.5+affinity(a.p)+jitter(code+':'+a.p.code)*3)||a.p.code.localeCompare(b.p.code)).slice(0,4);
   }
   function common(products,mode='church',books=false){
     const map=new Map(products.map(p=>[p.code,p]));
@@ -107,4 +114,4 @@
     return list.map(c=>map.get(c)).filter(p=>p&&p.qty>0&&(seasonal||!/(月曆|週曆|周曆|桌曆|年曆)/.test(p.name))).slice(0,6);
   }
   return {isBook,search,related,popularity,common,parse,directScore,note,discoveryOrder};
-};if(typeof module==='object'&&module.exports)module.exports=create;else if(root.FindCatalogGuide)root.FindBookSearch=create(root.FindCatalogGuide);})(typeof globalThis!=='undefined'?globalThis:this);
+};if(typeof module==='object'&&module.exports)module.exports=create;else if(root.FindCatalogGuide)root.FindBookSearch=create(root.FindCatalogGuide,root.FindCatalogRelations);})(typeof globalThis!=='undefined'?globalThis:this);
