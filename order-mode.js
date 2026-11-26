@@ -229,10 +229,14 @@
     if(exact.length)return exact.sort((a,b)=>Number(b.code.toLowerCase()===q)-Number(a.code.toLowerCase()===q));
     if(/^[a-z0-9][a-z0-9._/-]*$/i.test(q)){return products.filter(p=>p.code.toLowerCase().startsWith(q)||p.barcode.toLowerCase().startsWith(q)).sort((a,b)=>a.code.localeCompare(b.code,'zh-Hant',{numeric:true}));}
     const foundBooks=guideQuery(chatQuery);
+    const rawTerm=stripBudget(chatQuery).trim();
+    const directOthers=guide?products.filter(p=>!guide.isBook(p)&&eligible(p)&&guide.directScore(p,rawTerm)>=135&&(chatBudget===null||p.price<=chatBudget)):[];
+    const explicitReading=bookOnly||/找書|推薦.*書|有關.*書|相關.*書|書籍|書單|讀什麼|讀一本|想讀|想看.*書|經卷|釋義|查經|講壇|講義/.test(chatQuery);
+    const physicalGoods=/手機架|手機殼|手機繩|書套|書籤|書衣|保溫瓶|水壺|帽子|原子筆|禮品|傳單|月曆|週曆|周曆|桌曆|筆記本|資料夾|樂譜夾/.test(chatQuery);
     const physicalBible=chatBible&&(['size','material','color','zip','thumb','language','version'].some(k=>filters[k])||Object.keys(chatNeg).length>0||/^(聖經|買聖經|找聖經|我要聖經|和合本|聖經公會|新標點聖經)$/.test(chatQuery.trim()));
     const exactTitle=foundBooks.matches.filter(x=>x.score>=250);
     if(!forceAll&&exactTitle.length){for(const x of exactTitle)bookReasons.set(x.p.code,x.reason.join('・'));return exactTitle.map(x=>x.p)}
-    const bookIntent=bookOnly||(!forceAll&&!physicalBible&&(foundBooks.hasIntent||foundBooks.matches.some(x=>x.score>=135)));
+    const bookIntent=bookOnly||(!forceAll&&!physicalBible&&!physicalGoods&&(explicitReading||!directOthers.length)&&(foundBooks.hasIntent||foundBooks.matches.some(x=>x.score>=135)));
     if(bookIntent&&foundBooks.matches.length){
       for(const x of foundBooks.matches)bookReasons.set(x.p.code,x.reason.join('・'));
       if(bookOnly||foundBooks.hasIntent||chatBible)return foundBooks.matches.map(x=>x.p);
@@ -242,8 +246,9 @@
       return [...foundBooks.matches.map(x=>x.p),...others.sort((a,b)=>salesScore(b)-salesScore(a))];
     }
     if(bookOnly)return [];
+    if(!physicalBible&&directOthers.length&&!explicitReading){const all=products.filter(p=>eligible(p)&&guide.directScore(p,rawTerm)>=135&&(chatBudget===null||p.price<=chatBudget));return all.sort((a,b)=>guide.directScore(b,rawTerm)-guide.directScore(a,rawTerm)||salesScore(b)-salesScore(a));}
     if(chatBible&&!forceAll)return products.filter(p=>isBible(p)&&(!bibleGroup||bs(p).group===bibleGroup)&&Object.entries(filters).every(([k,v])=>facetMatch(p,k,v))&&Object.entries(chatNeg).every(([k,v])=>{const val=bs(p)[k];return val==='無'||val==='沒有'||(k==='zip'&&/無拉[鍊鏈]|不帶拉[鍊鏈]|沒有拉[鍊鏈]/.test(p.name))||(k==='thumb'&&/無索引|沒有索引/.test(p.name));})&&(chatBudget===null||p.price<=chatBudget)&&chatTerms.every(t=>chatHay(p).includes(t.toLowerCase()))).sort((a,b)=>salesScore(b)-salesScore(a)||Number(b.qty>0)-Number(a.qty>0)||a.price-b.price);
-    const text=chatTerms.join(' ').trim();
+    const text=forceAll?rawTerm:chatTerms.join(' ').trim();
     const tokens=text.split(/\s+/).filter(Boolean);
     let hits=products.filter(p=>eligible(p)&&tokens.length&&tokens.every(t=>chatHay(p).includes(t.toLowerCase()))&&(chatBudget===null||p.price<=chatBudget));
     if(hits.length){
@@ -602,6 +607,7 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
     $('v4Guide').hidden=chatActive||category!=='bible'||!bibleGroup;
     $('v5Conversation').hidden=true;
     if(category==='bible'&&!bibleGroup&&!q&&!chatActive){renderHero(null);$('stream').style.display='none';$('countLabel').textContent=groupProducts('').length+' 款・請選種類';$('expandOcrBtn').style.display='none';renderQuotePill();return;}
+    if(bookOnly&&!q)bookReasons=new Map();
     const result=bookOnly&&!q?{items:products.filter(p=>guide?.isBook(p)).sort((a,b)=>salesScore(b)-salesScore(a)||a.code.localeCompare(b.code)).slice(0,limit),totalHits:products.filter(p=>guide?.isBook(p)).length}:getFiltered();
     chatPanel(result);
     if(bookOnly||bookReasons.size){const el=$('v5Conversation');if(result.totalHits){el.hidden=false;el.style.display='';el.innerHTML='<div class="v7-scope"><span>'+(bookOnly?'腓利門書籍':'書籍主題與經卷搜尋')+'</span><button type="button" id="v7AllSearch">查全部商品</button></div>';}else if(bookOnly){el.hidden=false;el.style.display='';el.innerHTML='<div class="v7-scope"><span>書籍查無結果</span><button type="button" id="v7AllSearch">查全部商品</button></div>';}}
