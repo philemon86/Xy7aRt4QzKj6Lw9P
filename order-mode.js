@@ -245,7 +245,7 @@
   }
   function chatPanel(result){
     const el=$('v5Conversation');
-    el.hidden=true;el.innerHTML='';
+    el.hidden=true;el.style.display='';el.innerHTML='';
     if(!chatActive||!ready||!chatBible)return;
     const constraints=Object.entries(filters).filter(([,v])=>v).map(([k,v])=>v==='有'?facets[k][0]:v);
     if(bibleGroup)constraints.unshift(groupTitle(bibleGroup));
@@ -424,8 +424,8 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
 #ocrModelStatus{display:none!important}
 @media(max-width:899px){
  .shell{display:flex;padding:8px 12px 14px;gap:8px}
- .top-bar{order:0;position:sticky;top:0;background:var(--bg);z-index:15;padding:7px 0;min-height:38px}
- .dock-wrap{order:1;position:static!important;box-shadow:none;background:transparent;padding:0}
+ .top-bar{order:0;position:sticky;top:0;background:var(--bg);z-index:15;padding:6px 0;height:48px;min-height:48px}
+ .dock-wrap{order:1;position:sticky!important;top:48px;bottom:auto;z-index:14;box-shadow:none;background:var(--bg);padding:0 0 7px}
  .ocr-banner{order:2}
  .stage{order:3;flex:1 0 auto;display:flex;flex-direction:column;min-height:0}
  .big-search-box{height:49px;border-width:1.5px;box-shadow:none}
@@ -498,8 +498,8 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
     oldPill();const r=rows();
     $('quotePill').style.display='inline-flex';
     $('quotePillTxt').textContent='訂單 '+r.reduce((s,{q})=>s+q.qty,0)+' 件';
-    $('desktopCopyQuote').disabled=false;
-    $('desktopCopyQuote').textContent='查看／複製訂單';
+    $('desktopCopyQuote').disabled=!r.length||!ready;
+    $('desktopCopyQuote').textContent='複製訂單';
     $('desktopClearQuote').disabled=!state.quote.length;
     if(!r.length&&desktopMedia.matches)$('desktopQuoteList').innerHTML='<div class="desktop-quote-empty">勾選商品即可加入訂單。</div>';
     save();
@@ -579,7 +579,7 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
     const t=e.target.closest('[data-v6-toggle],[data-v5-query],[data-v5-facet],[data-v5-relax],#v5Send,#v5New,#v5Skip,#v5RelaxWords,#v5RelaxBudget,[data-v4-category],[data-v4-bgroup],#v4ChangeGroup,[data-v4-size],[data-v4-add],[data-v4-relax],#v4Reset,#v4ResetAll,#v4EditFilters,#v4ViewResults,#v4More,#heroAddBtn,#quotePill,#desktopCopyQuote,#desktopClearQuote,[data-desktop-code],[data-v4-q],#v4Copy,#v4Line,#v4Clear');
     if(!t)return;
     e.preventDefault();e.stopImmediatePropagation();
-    if(t.dataset.v6Toggle)return toggleOrder(t.dataset.v6Toggle);
+    if(t.dataset.v6Toggle){const code=t.dataset.v6Toggle,pos=window.scrollY;toggleOrder(code);window.scrollTo(0,pos);return}
     if(t.id==='v5Send')return beginChat($('searchInput').value);
     if(t.dataset.v5Query){$('searchInput').value=t.dataset.v5Query;return beginChat(t.dataset.v5Query,true)}
     if(t.id==='v5New')return browse('');
@@ -599,7 +599,8 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
     if(t.id==='v4More'){const pos=window.scrollY;limit+=12;render();window.scrollTo(0,pos);return}
     if(t.dataset.v4Add)return add(t.dataset.v4Add);
     if(t.id==='heroAddBtn'){if(state.activeCode&&(!ocrRaw||ocrConfirmed))add(state.activeCode);return}
-    if(t.id==='quotePill'||t.id==='desktopCopyQuote')return openQuoteSheet();
+    if(t.id==='quotePill')return openQuoteSheet();
+    if(t.id==='desktopCopyQuote'){const txt=orderText();if(ready&&txt)copyText(txt,'訂購內容');return}
     if(t.id==='desktopClearQuote'||t.id==='v4Clear'){if(confirm('確定清空訂購草稿？')){state.quote=[];renderQuotePill();if(t.id==='v4Clear')openQuoteSheet()}return}
     const code=t.dataset.v4Q||t.dataset.desktopCode;
     if(code){const q=state.quote.find(x=>x.code===code);if(q)qty(code,q.qty+Number(t.dataset.delta));if(t.dataset.v4Q)openQuoteSheet();return}
@@ -611,13 +612,13 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
   $('mask').addEventListener('change',e=>{if(e.target.id==='v4Format'){info.format=e.target.value;updatePreview()}if(e.target.dataset.v4Qty){qty(e.target.dataset.v4Qty,e.target.value);openQuoteSheet()}});
   $('stream').addEventListener('click',e=>{if(e.target.closest('[data-code]')){detail=true;$('v4Guide').open=false}},true);
   $('recentList').addEventListener('click',e=>{if(e.target.closest('[data-recent]')){detail=true;$('v4Guide').open=false}},true);
-  $('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();beginChat($('searchInput').value,true);$('searchInput').blur()}},true);
+  $('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();clearTimeout(searchTimer);beginChat($('searchInput').value,true);$('searchInput').blur()}},true);
   let searchTimer=null;
   $('searchInput').addEventListener('input',e=>{e.stopImmediatePropagation();clearTimeout(searchTimer);const value=e.target.value;if(e.isComposing)return;if(!value.trim()){browse('');return;}searchTimer=setTimeout(()=>beginChat(value,true),/^[a-z0-9][a-z0-9._/-]*$/i.test(value)?0:100);},true);
   $('searchInput').addEventListener('compositionend',e=>{clearTimeout(searchTimer);if(e.target.value.trim())beginChat(e.target.value,true);},true);
-  for(const id of ['clearBtn','clearOcrBtn','ocrBtn','barcodeBtn'])$(id).addEventListener('click',()=>{resetChat();category='';bibleGroup='';detail=false;limit=12},true);
+  for(const id of ['clearBtn','clearOcrBtn','ocrBtn','barcodeBtn'])$(id).addEventListener('click',()=>{clearTimeout(searchTimer);resetChat();category='';bibleGroup='';detail=false;limit=12},true);
   const oldBarcode=onBarcodeHit;
   onBarcodeHit=function(raw){resetChat();category='';bibleGroup='';detail=true;limit=12;oldBarcode(raw);const val=String(raw||'').trim().toLowerCase();const matches=products.filter(p=>p.code.toLowerCase()===val||p.barcode.toLowerCase()===val);if(matches.length>1){state.activeCode='';detail=false;render();showToast('同一條碼有多個品項，請核對商品代碼')}};
-  window.FindOrderQuery=raw=>beginChat(raw,true);
+  window.FindOrderQuery=raw=>{$('searchInput').value=raw;beginChat(raw,true);};
   render();
 })();
