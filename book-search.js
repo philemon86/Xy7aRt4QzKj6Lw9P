@@ -6,10 +6,37 @@
   const church=rankMap(data.churchTop), other=rankMap(data.otherTop), recent=rankMap(data.recent),bc=rankMap(data.bookChurch),bo=rankMap(data.bookOther);
   function popularity(p,mode){
     const c=p.code.toUpperCase(), m=mode==='reader'?other:church,b=mode==='reader'?bo:bc;
-    return Math.max(m.get(c)||0,b.get(c)||0)*6+(recent.get(c)||0)*2+(p.qty>0?2:0);
+    const shared=(Math.max(church.get(c)||0,bc.get(c)||0)+Math.max(other.get(c)||0,bo.get(c)||0))/2;
+    return shared*4+Math.max(m.get(c)||0,b.get(c)||0)*1.5+(recent.get(c)||0)*2+(p.qty>0?1:0);
   }
   const topics=data.topics.map(t=>({...t,re:new RegExp(t.pattern,'i'),primarySet:new Set(t.primary),tocSet:new Set(t.toc)}));
   const scriptures=data.scripture.map(t=>({...t,re:new RegExp(t.pattern,'i'),set:new Set(t.codes)}));
+  // Ephemeral, per-page recommendation signals. No identifiers, storage or network.
+  const seed=Math.floor(Math.random()*2147483647);
+  const interests=new Map(), visited=new Set();
+  function jitter(key){let h=seed>>>0;for(const c of String(key))h=Math.imul(h^c.charCodeAt(0),16777619)>>>0;return h/4294967296;}
+  function labels(p){
+    const c=p.code.toUpperCase();
+    return [...topics.filter(t=>t.primarySet.has(c)).map(t=>t.title),...scriptures.filter(t=>t.set.has(c)).map(t=>t.title)];
+  }
+  function note(p){
+    if(!p||!isBook(p)||visited.has(p.code))return;
+    visited.add(p.code);
+    for(const tag of labels(p))interests.set(tag,Math.min(3,(interests.get(tag)||0)+1));
+  }
+  function affinity(p){return Math.min(5,labels(p).reduce((n,t)=>n+(interests.get(t)||0),0));}
+  function discoveryOrder(products,mode='church'){
+    const pool=products.filter(p=>isBook(p)&&p.qty>0&&!/絕版/.test(p.name));
+    const ranked=pool.map(p=>({p,tags:labels(p),score:affinity(p)*2+popularity(p,mode)*.65+jitter('discover:'+p.code)*7-(visited.has(p.code)?4:0)}));
+    const counts=new Map(),result=[];
+    while(ranked.length){
+      let best=0,bestScore=-Infinity;
+      for(let i=0;i<ranked.length;i++){const x=ranked[i],penalty=Math.max(0,...x.tags.map(t=>counts.get(t)||0))*2;
+        const score=x.score-penalty;if(score>bestScore){bestScore=score;best=i;}}
+      const [x]=ranked.splice(best,1);result.push(x.p);for(const t of x.tags)counts.set(t,(counts.get(t)||0)+1);
+    }
+    return [...result,...products.filter(p=>isBook(p)&&!pool.includes(p))];
+  }
   function parse(q){
     const raw=String(q||'').normalize('NFKC').trim();
     const t=raw.replace(/^(?:我想找|我想買|請幫我找|幫我找|想找|我要|推薦|請推薦|有沒有|找一本|找書|找)\s*/,'').replace(/(?:有關的書|相關的書|的書籍|的書|書籍推薦|推薦書籍|推薦|有什麼書|書單|有哪些書|有嗎)[。？?！!]*$/,'').trim();
@@ -55,7 +82,8 @@
       const r=relevance(p,parsed);
       if(r.score)found.push({p,score:r.score,reason:r.reason});
     }
-    found.sort((a,b)=>b.score-a.score||popularity(b.p,mode)-popularity(a.p,mode)||a.p.code.localeCompare(b.p.code));
+    const tie=x=>popularity(x.p,mode)+(x.score<135?jitter(parsed.t+':'+x.p.code)*3:0);
+    found.sort((a,b)=>b.score-a.score||tie(b)-tie(a)||a.p.code.localeCompare(b.p.code));
     return {matches:found,hasIntent:!!(parsed.ss.length||parsed.ts.length||parsed.ser.length||parsed.toc.length),parsed};
   }
   function related(products,p,mode='church'){
@@ -69,7 +97,7 @@
       for(const t of topics)if(t.primarySet.has(code)&&t.primarySet.has(c)){score=Math.max(score,70);a.push(t.title);}
       // Do not promote two books just because both mention a term in passing.
       return {p:x,score,reason:[...new Set(a)].slice(0,2)};
-    }).filter(x=>x.score).sort((a,b)=>b.score-a.score||popularity(b.p,mode)-popularity(a.p,mode)||a.p.code.localeCompare(b.p.code)).slice(0,3);
+    }).filter(x=>x.score).sort((a,b)=>b.score-a.score||(popularity(b.p,mode)*.65+affinity(b.p)+jitter(code+':'+b.p.code)*4-(visited.has(b.p.code)?3:0))-(popularity(a.p,mode)*.65+affinity(a.p)+jitter(code+':'+a.p.code)*4-(visited.has(a.p.code)?3:0))||a.p.code.localeCompare(b.p.code)).slice(0,3);
   }
   function common(products,mode='church',books=false){
     const map=new Map(products.map(p=>[p.code,p]));
@@ -78,5 +106,5 @@
     const seasonal=m>=9||m<=1;
     return list.map(c=>map.get(c)).filter(p=>p&&p.qty>0&&(seasonal||!/(月曆|週曆|周曆|桌曆|年曆)/.test(p.name))).slice(0,6);
   }
-  return {isBook,search,related,popularity,common,parse,directScore};
+  return {isBook,search,related,popularity,common,parse,directScore,note,discoveryOrder};
 };if(typeof module==='object'&&module.exports)module.exports=create;else if(root.FindCatalogGuide)root.FindBookSearch=create(root.FindCatalogGuide);})(typeof globalThis!=='undefined'?globalThis:this);
