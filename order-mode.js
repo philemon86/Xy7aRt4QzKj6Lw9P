@@ -667,7 +667,7 @@ body:has(#v9Drawer[open]){overflow:hidden!important}
     renderQuotePill();showToast('已加入訂購清單');
   }
   function toggleOrder(code){if(!ready||!findCode(code))return;const q=state.quote.find(x=>x.code===code);if(q){state.quote=state.quote.filter(x=>x!==q);render();}else{state.quote.push({code,qty:1});guide?.note(findCode(code));render();}}
-  function qty(code,v){const q=state.quote.find(x=>x.code===code);if(!q)return;q.qty=Math.max(0,Math.min(9999,Math.floor(Number(v)||0)));if(!q.qty)state.quote=state.quote.filter(x=>x!==q);renderQuotePill()}
+  function qty(code,v){const q=state.quote.find(x=>x.code===code);if(!q)return;q.qty=Math.max(0,Math.min(9999,Math.floor(Number(v)||0)));if(!q.qty)state.quote=state.quote.filter(x=>x!==q);if(orderPage)renderQuotePill();else render();}
   function orderText(){
     return (churchName?'【'+churchName+' 書報組】\n':'')+rows().map(({q,p})=>p.code+' '+p.name+' × '+q.qty+(p.unit||'件')).join('\n');
   }
@@ -789,7 +789,7 @@ body:has(#v9Drawer[open]){overflow:hidden!important}
     if(t.id==='heroAddBtn'){if(state.activeCode&&(!ocrRaw||ocrConfirmed))add(state.activeCode);return}
     if(t.id==='quotePill')return openQuoteSheet();
     if(t.id==='desktopCopyQuote'){const txt=orderText();if(ready&&txt)copyText(txt,'訂購內容');return}
-    if(t.id==='desktopClearQuote'||t.id==='v4Clear'){if(confirm('確定清空訂購草稿？')){state.quote=[];renderQuotePill();if(t.id==='v4Clear')openQuoteSheet()}return}
+    if(t.id==='desktopClearQuote'||t.id==='v4Clear'){if(confirm('確定清空訂購草稿？')){state.quote=[];if(t.id==='v4Clear'){renderQuotePill();openQuoteSheet()}else render()}return}
     const code=t.dataset.v4Q||t.dataset.desktopCode;
     if(code){const q=state.quote.find(x=>x.code===code);if(q)qty(code,q.qty+Number(t.dataset.delta));if(t.dataset.v4Q)openQuoteSheet();return}
     if(t.id==='v4Copy'){const txt=orderText();if(ready&&txt)copyText(txt,'訂購內容');return}
