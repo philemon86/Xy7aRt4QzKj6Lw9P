@@ -108,7 +108,7 @@
   function usableFacet(v){return v&&v!=='未確認'&&v!=='未標示'&&v!=='其他／未確認'&&v!=='待核對'}
   function optionsFor(k){const actual=new Set(groupProducts().flatMap(p=>[bs(p)[k]].flat()).filter(usableFacet));return [...new Set([...facets[k][1],...actual])].filter(v=>actual.has(v))}
   function selectedValues(k){return Array.isArray(filters[k])?filters[k]:filters[k]?[filters[k]]:[];}
-  function setFacet(k,v){if(!Object.prototype.hasOwnProperty.call(filters,k))return;filters[k]=v;delete chatNeg[k];state.activeCode='';detail=false;limit=12;render();}
+  function setFacet(k,v){if(!Object.prototype.hasOwnProperty.call(filters,k))return;if(k==='version')bibleGroup='';filters[k]=v;delete chatNeg[k];state.activeCode='';detail=false;limit=12;render();}
   function toggleFacet(k,v){const a=selectedValues(k);const next=a.includes(v)?a.filter(x=>x!==v):[...a,v];setFacet(k,next.length?next:'');}
   function visibleFacetKeys(){
     const base=['size','material','color','zip','thumb','feature'];
@@ -565,12 +565,13 @@ body:has(#v9Drawer[open]){overflow:hidden!important}
 }
 `;
   style.textContent+="\n.v9-chip{border-radius:8px;padding:6px 9px;display:inline-flex;align-items:center;gap:5px}\n.v9-chip.active{background:var(--blue-soft);color:var(--blue);border-color:var(--blue)}\n.v9-chip:active{transform:scale(.97)}\n.v10-swatch{display:inline-block;width:13px;height:13px;flex-shrink:0;border:1px solid #0002;border-radius:50%}\n.v10-color{border-radius:18px}\n.v10-group{border-top:1px solid var(--line);padding:11px 0}\n.v10-group summary{display:flex;align-items:center;gap:5px;list-style:none;font-size:13px;font-weight:700;cursor:pointer}\n.v10-group summary::-webkit-details-marker{display:none}\n.v10-group summary:after{content:'＋';color:var(--gray);margin-left:auto;font-weight:400}\n.v10-group[open] summary:after{content:'－'}\n.v10-group summary span{font-size:11px;color:var(--blue)}\n.v10-group .v9-wrapchips{margin-top:9px}\n.v10-product.item-card{padding:0;gap:0;align-items:stretch;position:relative;cursor:pointer;overflow:hidden;transition:background .15s,border-color .15s,box-shadow .15s}\n.v10-product:hover{border-color:#a8b9d3;box-shadow:0 2px 8px #142b500a}\n.v10-product.v6-selected{background:var(--blue-soft);border-color:var(--blue);box-shadow:inset 3px 0 0 var(--blue)}\n.v10-hit{display:flex;align-items:center;gap:10px;flex:1;min-width:0;background:none;border:0;padding:12px 13px;color:inherit;text-align:left;cursor:pointer;font:inherit}\n.v10-hit:focus-visible{outline:2px solid var(--blue);outline-offset:-3px;border-radius:8px}\n.v10-hit .ic-main,.v10-hit .ic-name,.v10-hit .v4-note,.v10-hit .v6-details{display:block}\n.v10-right{display:flex;align-items:flex-end;flex-direction:column;gap:4px;flex-shrink:0}\n.v10-picked,.v10-addhint{font-size:11px;font-weight:700;color:var(--blue);white-space:nowrap}\n.v10-addhint{color:var(--gray)}\n.v10-card-tools{display:flex;align-items:center;padding:0 10px 0 0;flex-shrink:0}\n.v10-related{border-top:1px solid var(--line);margin-top:13px;padding-top:12px;display:flex;flex-direction:column;gap:7px}\n.v10-related-head{font-size:14px;font-weight:800;color:var(--black);padding:0 3px 3px}\n.v10-related-head small{font-size:11px;font-weight:400;color:var(--gray)}\n.v10-related .v10-product{background:white}\n.v10-related .v10-product.v6-selected{background:var(--blue-soft)}\n@media(max-width:899px){.v10-hit{padding:10px 9px;gap:7px}.v10-card-tools{padding-right:7px}.v10-product .v7-shop{font-size:10px}.v10-right{gap:3px}.v10-related{margin-top:8px}}\n";
+  style.textContent+="\n:root{--bg:#f7f8fa;--blue:#1d56d8;--blue-soft:#eef4ff;--line:#e5e7eb}\n.v9-tabs{background:white;border-radius:9px 9px 0 0;padding:0 10px;gap:20px}\n.v9-tabs button{font-size:14px;font-weight:600}\n.v9-tabs button.active{font-weight:750}\n.v9-biblebar{gap:7px;padding:5px 1px}\n.v9-filter-button{display:inline-flex;align-items:center;gap:6px;border-radius:99px;background:#1f2937;color:#fff;padding:8px 12px;flex-shrink:0;position:sticky;left:0;z-index:1}\n.v11-count{background:white;color:#1f2937;border-radius:99px;min-width:19px;text-align:center;font-size:11px;padding:0 4px}\n.v9-biblebar .v9-chip{flex-shrink:0}\n.v11-side-head{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:12px;font-size:14px}\n.v11-side-head button{background:none;border:0;color:var(--gray);font-size:12px;cursor:pointer}\n.v11-quick-title{font-size:13px;font-weight:700;margin-bottom:8px}\n.v9-side{border-radius:12px;padding:16px}\n.v9-active{border:0;background:var(--blue-soft);color:var(--blue);border-radius:99px;padding:4px 9px}\n.v10-product.item-card{border-radius:12px}\n.v10-hit{padding:13px 14px}\n.v10-product .ic-name{font-size:15px;line-height:1.4}\n.v10-product .ic-sub{font-size:12px}\n.v10-product .v6-price{font-size:18px}\n.v10-related-head{padding:5px 2px}\n.v11-handle{width:40px;height:4px;background:#d1d5db;border-radius:99px;margin:0 auto 12px}\n.v9-drawer{padding:10px 18px 0;border-radius:20px 20px 0 0;max-height:88dvh;scrollbar-width:none;overscroll-behavior:contain}\n.v9-drawer::-webkit-scrollbar{display:none}\n.v9-drawer-head{border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px}\n.v9-drawer-head #v9CloseFilters{background:none;color:var(--gray);padding:5px;font-size:18px}\n.v11-drawer-foot{position:sticky;bottom:0;background:white;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 2fr;gap:9px;padding:12px 0 max(12px,env(safe-area-inset-bottom));margin-top:12px}\n.v11-drawer-foot button{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:11px;background:white;color:var(--black);cursor:pointer}\n.v11-drawer-foot #v11Done{background:var(--blue);border-color:var(--blue);color:white}\n@media(min-width:1200px){.stage.v9-bible-layout{grid-template-columns:240px minmax(0,1fr) minmax(280px,.55fr);column-gap:20px}.v9-side{max-height:none!important;overflow:visible!important}.v9-tabs{padding:0 15px}.v9-biblebar{display:none!important}}\n@media(max-width:899px){.v9-tabs{gap:17px;padding:0 6px}.v9-tabs button{font-size:13px}.v10-hit{padding:11px 10px}.v10-product .ic-name{font-size:14px}.v10-product .ic-sub{font-size:11px}.v10-product .v6-price{font-size:16px}.v10-card-tools{padding-right:8px}}\n";
   document.head.appendChild(style);
   $('idleBox').insertAdjacentHTML('afterbegin','<div class="v5-home"><h2>找商品，也找好書</h2><p>輸入品名、代碼、規格或閱讀主題。勾選商品即可製作訂單，也可前往商城。</p><p class="v8-example">例如：中型拉鍊聖經、家庭祭壇、C299</p></div>');
   document.querySelector('.dock-wrap').insertAdjacentHTML('afterend','<nav id="v9Tabs" class="v9-tabs" aria-label="商品分類"></nav><div id="v9BibleBar" class="v9-biblebar" hidden></div>');
-  document.querySelector('.big-search-box').insertAdjacentHTML('beforeend','<button type="button" id="v9OpenFilters" class="v9-filter-button" hidden>篩選</button>');
+
   document.querySelector('.stage').insertAdjacentHTML('afterbegin','<aside id="v9Side" class="v9-side" aria-label="聖經規格篩選" hidden></aside>');
-  document.body.insertAdjacentHTML('beforeend','<dialog id="v9Drawer" class="v9-drawer" aria-labelledby="v9DrawerTitle"><div class="v9-drawer-head"><strong id="v9DrawerTitle">聖經規格</strong><button type="button" id="v9CloseFilters" aria-label="關閉篩選">完成</button></div><div id="v9DrawerBody"></div></dialog>');
+  document.body.insertAdjacentHTML('beforeend','<dialog id="v9Drawer" class="v9-drawer" aria-labelledby="v9DrawerTitle"><div class="v11-handle"></div><div class="v9-drawer-head"><strong id="v9DrawerTitle">篩選規格</strong><button type="button" id="v9CloseFilters" aria-label="關閉篩選">✕</button></div><div id="v9DrawerBody"></div><div class="v11-drawer-foot"><button type="button" data-v11-reset>重置</button><button type="button" id="v11Done">完成・<span id="v11Count">0</span> 款商品</button></div></dialog>');
   const wideFilters=window.matchMedia('(min-width: 1200px)');
   function bibleView(){return category==='bible'&&!bookOnly;}
   function openFilters(){if(!bibleView())return;const el=$('v9Drawer');if(!el.open)el.showModal();renderFilterControls();}
@@ -584,9 +585,12 @@ body:has(#v9Drawer[open]){overflow:hidden!important}
  return '<button type="button" class="v9-chip'+(active?' active':'')+(dot?' v10-color':'')+'" aria-pressed="'+active+'" data-v9-toggle="'+esc(k)+'" data-v9-value="'+esc(v)+'">'+dot+esc(label)+'</button>';
 }
   function quickChips(){return [['zip','有','拉鍊'],['thumb','有','索引'],['feature','紅字','紅字'],['feature','金邊','金邊']].filter(([k,v])=>optionsFor(k).includes(v)||selectedValues(k).includes(v)).map(([k,v,l])=>chip(k,v,l)).join('');}
+  function familyChips(){
+    return '<button type="button" class="v9-chip '+(!bibleGroup?'active':'')+'" data-v9-group="" aria-pressed="'+!bibleGroup+'">不限種類</button>'+Object.entries(bibleGroups).filter(([k])=>groupProducts(k).length).map(([k])=>'<button type="button" class="v9-chip '+(bibleGroup===k?'active':'')+'" data-v9-group="'+k+'" aria-pressed="'+(bibleGroup===k)+'">'+esc(groupShort[k]||groupTitle(k))+'</button>').join('');
+  }
   function filterFields(){
  const keys=['color','size','material','version','language','feature'].filter(k=>k!=='version'||!['cu','cunp','rcu'].includes(bibleGroup));
- return keys.map(k=>{
+ return '<details class="v10-group" data-v10-group="family" '+(expandedGroups.get('family')||bibleGroup?'open':'')+'><summary>聖經種類</summary><div class="v9-wrapchips">'+familyChips()+'</div></details>'+keys.map(k=>{
   const opts=[...new Set([...optionsFor(k),...selectedValues(k)])].filter(v=>k!=='feature'||!['紅字','金邊'].includes(v));
   if(!opts.length)return '';
   const expanded=expandedGroups.has(k)?expandedGroups.get(k):['color','size'].includes(k)||selectedValues(k).length>0;
@@ -596,29 +600,29 @@ body:has(#v9Drawer[open]){overflow:hidden!important}
   const expandedGroups=new Map();
   function rememberGroups(root){root.querySelectorAll('[data-v10-group]').forEach(el=>el.addEventListener('toggle',()=>{if(el.isConnected)expandedGroups.set(el.dataset.v10Group,el.open);}));}
   function renderFilterControls(){
-    const active=bookOnly?'publisher':category||'';
-    const tabBar=$('v9Tabs'), bibleBar=$('v9BibleBar');
-    const tx=tabBar.scrollLeft,bx=bibleBar.scrollLeft;
-    tabBar.innerHTML=tabLabels.map(([k,l])=>'<button type="button" data-v9-tab="'+k+'" class="'+(active===k?'active':'')+'" aria-pressed="'+(active===k)+'">'+l+'</button>').join('');
-    tabBar.scrollLeft=tx;
-    const show=bibleView();
-    document.querySelector('.stage').classList.toggle('v9-bible-layout',show);
-    bibleBar.hidden=!show;
-    $('v9Side').hidden=!show||!wideFilters.matches;
-    $('v9OpenFilters').hidden=!show||wideFilters.matches;
-    if(!show){bibleBar.innerHTML='';$('v9Side').innerHTML='';closeFilters();return;}
-    bibleBar.innerHTML='<div class="v9-groupstrip">'+quickChips()+'</div><span class="v9-separator" aria-hidden="true"></span><div class="v9-groupstrip"><button type="button" class="v9-chip '+(!bibleGroup?'active':'')+'" data-v9-group="" aria-pressed="'+!bibleGroup+'">全部譯本</button>'+Object.entries(bibleGroups).map(([k])=>groupProducts(k).length?'<button type="button" class="v9-chip '+(bibleGroup===k?'active':'')+'" data-v9-group="'+k+'" aria-pressed="'+(bibleGroup===k)+'">'+esc(groupShort[k]||groupTitle(k))+'</button>':'').join('')+'</div>';
-    bibleBar.scrollLeft=bx;
-    const fields=filterFields();
-    $('v9Side').innerHTML='<strong class="v9-side-title">篩選規格</strong><div class="v9-wrapchips v9-side-chips">'+quickChips()+'</div>'+fields;
-    rememberGroups($('v9Side'));
-    if($('v9Drawer').open){$('v9DrawerBody').innerHTML='<div class="v9-wrapchips">'+quickChips()+'</div>'+fields;rememberGroups($('v9DrawerBody'));}
-    const n=Object.keys(filters).reduce((n,k)=>n+selectedValues(k).length,0)+Object.keys(chatNeg).length+(chatBudget!==null?1:0);
-    $('v9OpenFilters').textContent=n?'篩選 '+n:'篩選';
-  }
+ const active=bookOnly?'publisher':category||'';
+ const tabBar=$('v9Tabs'), bibleBar=$('v9BibleBar');
+ const tx=tabBar.scrollLeft,bx=bibleBar.scrollLeft;
+ tabBar.innerHTML=tabLabels.map(([k,l])=>'<button type="button" data-v9-tab="'+k+'" class="'+(active===k?'active':'')+'" aria-pressed="'+(active===k)+'">'+l+'</button>').join('');
+ tabBar.scrollLeft=tx;
+ const show=bibleView(),wide=wideFilters.matches;
+ document.querySelector('.stage').classList.toggle('v9-bible-layout',show);
+ bibleBar.hidden=!show||wide;
+ $('v9Side').hidden=!show||!wide;
+ if(!show){bibleBar.innerHTML='';$('v9Side').innerHTML='';closeFilters();return;}
+ const n=Object.keys(filters).reduce((n,k)=>n+selectedValues(k).length,0)+Object.keys(chatNeg).length+(chatBudget!==null?1:0)+(bibleGroup?1:0);
+ const shortcut=[['zip','有','拉鍊'],['thumb','有','索引'],['size','大字版','大字版'],['version','和合本','和合本'],['feature','紅字','紅字'],['feature','金邊','金邊']].filter(([k,v])=>optionsFor(k).includes(v)||selectedValues(k).includes(v)).map(([k,v,l])=>chip(k,v,l)).join('');
+ bibleBar.innerHTML='<button type="button" id="v9OpenFilters" class="v9-filter-button">篩選規格'+(n?'<span class="v11-count">'+n+'</span>':'')+'</button>'+shortcut;
+ bibleBar.scrollLeft=bx;
+ const fields=filterFields(),quick='<div class="v11-quick-title">常用條件</div><div class="v9-wrapchips v9-side-chips">'+quickChips()+'</div>';
+ $('v9Side').innerHTML=wide?'<div class="v11-side-head"><strong>篩選規格</strong><button type="button" data-v11-reset>清除全部</button></div>'+quick+fields:'';
+ rememberGroups($('v9Side'));
+ if($('v9Drawer').open){$('v9DrawerBody').innerHTML=quick+fields;rememberGroups($('v9DrawerBody'));}
+}
   function activeConditions(){
     if(!bibleView())return '';
     const tags=Object.keys(filters).flatMap(k=>selectedValues(k).map(v=>'<button type="button" class="v9-active" data-v9-remove="'+k+'" data-v9-value="'+esc(v)+'">'+esc(v==='有'?facets[k][0]:v)+' ×</button>'));
+    if(bibleGroup)tags.unshift('<button type="button" class="v9-active" data-v9-group="">'+esc(groupShort[bibleGroup]||groupTitle(bibleGroup))+' ×</button>');
     for(const k of Object.keys(chatNeg))tags.push('<button type="button" class="v9-active" data-v9-neg="'+esc(k)+'">不要'+esc(facets[k][0])+' ×</button>');
     if(chatBudget!==null)tags.push('<button type="button" class="v9-active" id="v5RelaxBudget">'+chatBudget+' 元以下 ×</button>');
     return tags.length?'<div class="v9-activebar">'+tags.join('')+'<button type="button" class="v9-clear" id="v9ClearFilters">清除全部</button></div>':'';
@@ -628,7 +632,7 @@ body:has(#v9Drawer[open]){overflow:hidden!important}
     browse(k);
   }
   function changeGroup(k){
-    bibleGroup=k;Object.keys(filters).forEach(x=>filters[x]='');chatNeg={};chatSkipped.clear();
+    bibleGroup=k;filters.version='';delete chatNeg.version;chatSkipped.clear();
     state.activeCode='';detail=false;limit=12;render();
   }
   wideFilters.addEventListener('change',()=>{if(wideFilters.matches)closeFilters();render();});
@@ -713,6 +717,7 @@ body:has(#v9Drawer[open]){overflow:hidden!important}
     if(bookOnly&&!q)bookReasons=new Map();
     if(bookOnly&&!q&&(!discoveryList||!discoveryList.length))discoveryList=guide?.discoveryOrder(products,audience)||[];
     const result=bookOnly&&!q?{items:discoveryList.slice(0,limit),totalHits:discoveryList.length}:getFiltered();
+    $('v11Count').textContent=result.totalHits;
     chatPanel(result);
     if(bookReasons.size&&category==='bible'){category='';renderFilterControls();}
     if(bookOnly&&!q){const el=$('v5Conversation');el.hidden=false;el.style.display='';el.innerHTML='<div class="v7-scope"><span>探索腓利門書籍</span><button type="button" id="v72Refresh">換個順序</button></div>';}
@@ -750,13 +755,13 @@ body:has(#v9Drawer[open]){overflow:hidden!important}
   // Capture handlers replace only order-related original listeners.
   document.addEventListener('click',e=>{
     if(e.target.closest('a.v7-shop')){e.stopPropagation();return;}
-    const t=e.target.closest('[data-v10-pick],[data-v10-card],#v9OpenFilters,#v9CloseFilters,#v9ClearFilters,[data-v9-tab],[data-v9-group],[data-v9-toggle],[data-v9-remove],[data-v9-neg],#v72Refresh,[data-v7-store],[data-v7-code],[data-v7-bookquery],#v7AllSearch,[data-v6-toggle],[data-v5-query],[data-v5-facet],[data-v5-relax],#v5Send,#v5New,#v5Skip,#v5RelaxWords,#v5RelaxBudget,[data-v4-category],[data-v4-bgroup],#v4ChangeGroup,[data-v4-size],[data-v4-add],[data-v4-relax],#v4Reset,#v4ResetAll,#v4EditFilters,#v4ViewResults,#v4More,#heroAddBtn,#quotePill,#desktopCopyQuote,#desktopClearQuote,[data-desktop-code],[data-v4-q],#v4Copy,#v4Line,#v4Clear');
+    const t=e.target.closest('[data-v10-pick],[data-v10-card],#v9OpenFilters,#v9CloseFilters,#v11Done,[data-v11-reset],#v9ClearFilters,[data-v9-tab],[data-v9-group],[data-v9-toggle],[data-v9-remove],[data-v9-neg],#v72Refresh,[data-v7-store],[data-v7-code],[data-v7-bookquery],#v7AllSearch,[data-v6-toggle],[data-v5-query],[data-v5-facet],[data-v5-relax],#v5Send,#v5New,#v5Skip,#v5RelaxWords,#v5RelaxBudget,[data-v4-category],[data-v4-bgroup],#v4ChangeGroup,[data-v4-size],[data-v4-add],[data-v4-relax],#v4Reset,#v4ResetAll,#v4EditFilters,#v4ViewResults,#v4More,#heroAddBtn,#quotePill,#desktopCopyQuote,#desktopClearQuote,[data-desktop-code],[data-v4-q],#v4Copy,#v4Line,#v4Clear');
     if(!t)return;
     e.preventDefault();e.stopImmediatePropagation();
     if(t.dataset.v10Pick||t.dataset.v10Card){const card=t.closest('[data-v10-card]'),code=card.dataset.v10Card;if(!ready)return;const pos=window.scrollY;if(card.dataset.v10Related!=='1'){state.activeCode=code;detail=true;}toggleOrder(code);window.scrollTo(0,pos);const next=[...document.querySelectorAll('[data-v10-pick]')].find(x=>x.dataset.v10Pick===code);if(e.detail===0)next?.focus({preventScroll:true});return;}
     if(t.id==='v9OpenFilters'){openFilters();return;}
-    if(t.id==='v9CloseFilters'){closeFilters();return;}
-    if(t.id==='v9ClearFilters'){Object.keys(filters).forEach(k=>filters[k]='');chatNeg={};chatBudget=null;chatSkipped.clear();state.activeCode='';detail=false;limit=12;render();return;}
+    if(t.id==='v9CloseFilters'||t.id==='v11Done'){closeFilters();return;}
+    if(t.id==='v9ClearFilters'||t.hasAttribute('data-v11-reset')){bibleGroup='';Object.keys(filters).forEach(k=>filters[k]='');chatNeg={};chatBudget=null;chatSkipped.clear();state.activeCode='';detail=false;limit=12;render();return;}
     if(t.hasAttribute('data-v9-tab')){selectTab(t.dataset.v9Tab);return;}
     if(t.hasAttribute('data-v9-group')){changeGroup(t.dataset.v9Group);return;}
     if(t.dataset.v9Toggle){toggleFacet(t.dataset.v9Toggle,t.dataset.v9Value);return;}
