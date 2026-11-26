@@ -157,6 +157,15 @@
     if(/^(?:重新|換找|另外|我還要|再找|清除|新查詢)/.test(a.t))return false;
     return !!(a.groups||Object.keys(a.found).length||Object.keys(a.neg).length||a.max!==null||/^(不限|都可以|都可|隨便|不拘|不用了)$/.test(a.t));
   }
+  function stripBudget(t){return t.replace(/(?:預算|不超過|低於|最多)\s*(?:NT\$|\$)?\s*\d{2,6}\s*(?:元|塊)?\s*(?:以內|以下)?|\d{2,6}\s*(?:元|塊)?\s*(?:以內|以下)/g,'');}
+  function genericTerms(t){
+    let rest=stripBudget(t).replace(/^(?:請問|請幫我|幫我找|幫我|我想找|我想買|我要買|我要|想找|找一下|找)\s*/,'').replace(/[？?。]$/,'').trim();
+    const found=[];
+    const patterns=[['米色',/米色|奶茶色|杏色/],['藍色',/藍色/],['綠色',/綠色/],['紫色',/紫色/],['紅色',/紅色/],['黑色',/黑色/],['白色',/白色/],['帽子',/棒球帽|鴨舌帽|帽子|帽$/],['保溫瓶',/保溫杯|水壺|保溫瓶|水瓶/],['資料夾',/資料夾|樂譜夾|譜夾/],['狗狗',/狗狗|柴犬/],['鴿子',/鴿子/]];
+    for(const [v,re] of patterns)if(re.test(rest)){found.push(v);rest=rest.replace(re,'');}
+    rest=rest.replace(/^[有的\s]+|[有的\s]+$/g,'').trim();
+    return [...found,...rest.split(/\s+/).filter(Boolean)];
+  }
   function beginChat(raw){
     const a=chatParse(raw);if(!a.t)return;
     const exact=products.some(p=>p.code.toLowerCase()===a.t.toLowerCase()||p.barcode.toLowerCase()===a.t.toLowerCase());
@@ -178,10 +187,10 @@
       let rem=a.t;
       for(const [, , re] of aliases)rem=rem.replace(re,'');
       for(const [,re] of groupAliases)rem=rem.replace(re,'');
-      rem=rem.replace(/(?:預算|不超過|低於|最多)\s*(?:NT\$|\$)?\s*\d{2,6}|\d{2,6}\s*(?:元|塊)?\s*(?:以內|以下)/g,'').replace(/聖經|請問|請幫我|幫我|我想要|我想找|我想|想要|想找|我要|找一本|買一本|一本|有沒有|有嗎|有的|的|款|版|型|尺寸|封面|材質|顏色|需要|不要|不用|不需要|不必|沒有|無|有|請|嗎|呢|就好|即可|都可以|都可|不限|隨便|不拘|換成|改成|改|換|要|找|買|再|看|一下|[，。！？、\s]+/g,'');
+      rem=stripBudget(rem).replace(/聖經|請問|請幫我|幫我|我想要|我想找|我想|想要|想找|我要|找一本|買一本|一本|有沒有|有嗎|有的|的|款|版|型|尺寸|封面|材質|顏色|需要|不要|不用|不需要|不必|沒有|無|有|請|嗎|呢|就好|即可|都可以|都可|不限|隨便|不拘|換成|改成|改|換|要|找|買|再|看|一下|[，。！？、\s]+/g,'');
       if(rem&&rem.length>=2)chatTerms=[...new Set([...chatTerms,rem])];
     }else{
-      chatTerms=[a.t.replace(/^(?:請問|請幫我|幫我找|幫我|我想找|我想買|我要買|我要|想找|找一下|找)\s*/,'').replace(/[？?。]$/,'').trim()].filter(Boolean);
+      chatTerms=genericTerms(a.t);
       if(a.max!==null)chatBudget=a.max;
     }
     resetOCR();state.query=a.t;state.activeCode='';detail=false;limit=6;$('searchInput').value='';render();
@@ -189,7 +198,10 @@
   }
   function chatHay(p){
     let h=(p.name+' '+p.code+' '+p.barcode+' '+p.spec+' '+summary(p)).normalize('NFKC').toLowerCase();
-    if(/保溫瓶|水瓶|水壺/.test(h))h+=' 水壺 水瓶 保溫杯';
+    if(/保溫瓶|水瓶|水壺/.test(h))h+=' 水壺 水瓶 保溫杯 保溫瓶';
+    if(/靜謐藍|海鹽藍|藍桿|鴿子藍/.test(h))h+=' 藍色';
+    if(/綠桿|森林綠/.test(h))h+=' 綠色';
+    if(/鴿子紫/.test(h))h+=' 紫色';
     if(/棒球帽|鴨舌帽|帽沿/.test(h))h+=' 帽子 鴨舌帽';
     if(/大冰奶|奶茶|奶油杏/.test(h))h+=' 米色 奶茶色 杏色';
     if(/柴犬/.test(h))h+=' 狗狗 狗';
@@ -201,11 +213,11 @@
     const q=chatQuery.toLowerCase();
     const exact=products.filter(p=>p.code.toLowerCase()===q||p.barcode.toLowerCase()===q);
     if(exact.length)return exact.sort((a,b)=>Number(b.code.toLowerCase()===q)-Number(a.code.toLowerCase()===q));
-    if(chatBible)return products.filter(p=>isBible(p)&&(!bibleGroup||bs(p).group===bibleGroup)&&Object.entries(filters).every(([k,v])=>facetMatch(p,k,v))&&Object.entries(chatNeg).every(([k,v])=>{const val=bs(p)[k];return val==='無'||val==='沒有';})&&(chatBudget===null||p.price<=chatBudget)&&chatTerms.every(t=>chatHay(p).includes(t.toLowerCase()))).sort((a,b)=>Number(b.qty>0)-Number(a.qty>0)||a.price-b.price);
+    if(chatBible)return products.filter(p=>isBible(p)&&(!bibleGroup||bs(p).group===bibleGroup)&&Object.entries(filters).every(([k,v])=>facetMatch(p,k,v))&&Object.entries(chatNeg).every(([k,v])=>{const val=bs(p)[k];return val==='無'||val==='沒有'||(k==='zip'&&/無拉[鍊鏈]|不帶拉[鍊鏈]|沒有拉[鍊鏈]/.test(p.name))||(k==='thumb'&&/無索引|沒有索引/.test(p.name));})&&(chatBudget===null||p.price<=chatBudget)&&chatTerms.every(t=>chatHay(p).includes(t.toLowerCase()))).sort((a,b)=>Number(b.qty>0)-Number(a.qty>0)||a.price-b.price);
     const text=chatTerms.join(' ').trim();
     const tokens=text.split(/\s+/).filter(Boolean);
     let hits=products.filter(p=>tokens.length&&tokens.every(t=>chatHay(p).includes(t.toLowerCase()))&&(chatBudget===null||p.price<=chatBudget));
-    if(!hits.length&&text&&window.FindOCR){
+    if(!hits.length&&text&&window.FindOCR&&tokens.length===1){
       const ranked=window.FindOCR.rank(products,text);
       // Only use partial matches as candidates, never claim exact semantic matches.
       hits=ranked.items.filter(p=>chatBudget===null||p.price<=chatBudget);
@@ -542,7 +554,7 @@ html,body{height:auto;min-height:100%;overflow:visible}
   $('recentList').addEventListener('click',e=>{if(e.target.closest('[data-recent]')){detail=true;$('v4Guide').open=false}},true);
   $('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();beginChat($('searchInput').value)}},true);
   $('searchInput').addEventListener('input',e=>{if(chatActive||!category){e.stopImmediatePropagation();return;}detail=false;limit=12;},true);
-  for(const id of ['clearBtn','clearOcrBtn','voiceBtn','ocrBtn','barcodeBtn'])$(id).addEventListener('click',()=>{resetChat();category='';bibleGroup='';detail=false;limit=12},true);
+  for(const id of ['clearBtn','clearOcrBtn','ocrBtn','barcodeBtn'])$(id).addEventListener('click',()=>{resetChat();category='';bibleGroup='';detail=false;limit=12},true);
   const oldBarcode=onBarcodeHit;
   onBarcodeHit=function(raw){resetChat();category='';bibleGroup='';detail=true;limit=12;oldBarcode(raw);const val=String(raw||'').trim().toLowerCase();const matches=products.filter(p=>p.code.toLowerCase()===val||p.barcode.toLowerCase()===val);if(matches.length>1){state.activeCode='';detail=false;render();showToast('同一條碼有多個品項，請核對商品代碼')}};
   window.FindOrderQuery=beginChat;
