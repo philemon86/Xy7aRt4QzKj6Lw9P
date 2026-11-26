@@ -2,12 +2,12 @@
   'use strict';
   const $=id=>document.getElementById(id);
   const guide=window.FindBookSearch, guideData=window.FindCatalogGuide;
-  let audience=new URLSearchParams(location.search).get('mode')==='reader'?'reader':'church';
+  const audience='unified';
   let churchName='', bookOnly=false, forceAll=false, bookReasons=new Map(), discoveryList=null;
   function salesScore(p){return guide?guide.popularity(p,audience):Number(p.qty>0)}
   function eligible(p){return !/^(?:紅利|折扣|禮券|運費|刷卡手續費|折讓)/.test(p.name||'')}
   function storefront(p){return guideData?.verifiedUrls?.[p.code.toUpperCase()]||'https://www.pbooks.com.tw/'}
-  function shopLink(p){const verified=guideData?.verifiedUrls?.[p.code.toUpperCase()];return verified?'<a class="v7-shop" href="'+esc(verified)+'" target="_blank" rel="noopener noreferrer">商城購買</a>':'<button type="button" class="v7-shop" data-v7-store="'+esc(p.code)+'">複製代碼・逛商城</button>'}
+  function shopLink(p){const verified=guideData?.verifiedUrls?.[p.code.toUpperCase()];return verified?'<a class="v7-shop" href="'+esc(verified)+'" target="_blank" rel="noopener noreferrer">商城購買</a>':'<button type="button" class="v7-shop" data-v7-store="'+esc(p.code)+'">商城查詢</button>'}
   function guideQuery(q){
     return guide?guide.search(products,stripBudget(q),audience,chatBudget):{matches:[],hasIntent:false};
   }
@@ -289,7 +289,7 @@
     }
     const question=nextQuestion(chatHits());chatPending=question?.k||'';
     if(!question)return;
-    el.hidden=false;el.innerHTML='<details class="v6-assist"><summary>縮小聖經範圍：'+esc(facets[question.k][0])+'</summary><div class="v6-refine">'+question.opts.map(([v,n])=>'<button type="button" data-v5-facet="'+question.k+'" data-v5-value="'+esc(v)+'">'+esc(v)+'（'+n+'）</button>').join('')+'<button type="button" id="v5Skip">不限</button></div></details>';
+    el.hidden=false;el.innerHTML='<label class="v8-bible-label">再選'+esc(facets[question.k][0])+'<select id="v8Question" data-facet="'+esc(question.k)+'"><option value="">不限</option>'+question.opts.map(([v,n])=>'<option value="'+esc(v)+'">'+esc(v)+'（'+n+'）</option>').join('')+'<option value="__skip">暫不篩選</option></select></label>';
   }
   const oldFilter=getFiltered;
   getFiltered=function(){
@@ -496,23 +496,26 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
 .v7-reader #heroAddBtn{display:none!important}
 @media(max-width:899px){#v7Mode{order:2}.ocr-banner{order:3}.stage{order:4}.v7-home-title{margin-top:9px}.v7-mode{font-size:11px}} @media(min-width:900px){#v7Mode{order:2}.ocr-banner{order:3}.stage{order:4}}
 `;
+  style.textContent+=`
+.v8-filter{order:2;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gray);padding:2px 0}
+.v8-filter select,.v8-bible-label select{font:inherit;color:var(--black);background:#fff;border:1px solid var(--line);border-radius:7px;padding:7px 9px;min-width:0;max-width:100%;flex:1}
+.v8-filter select{max-width:260px}
+.v8-bible-label{display:flex;align-items:center;gap:8px;color:var(--gray);font-size:13px;margin:3px 0}
+.v8-example{font-size:12px!important;color:var(--gray)}
+.v5-home{gap:5px;padding-top:16px}
+.v7-related summary{font-size:13px}
+.v4-end .v7-shop{font-size:11px;white-space:nowrap}
+@media(max-width:899px){.ocr-banner{order:3}.stage{order:4}.v8-filter select{max-width:none}.v4-end{gap:4px}}
+@media(min-width:900px){.ocr-banner{order:3}.stage{order:4}}
+`;
   document.head.appendChild(style);
-  $('idleBox').insertAdjacentHTML('afterbegin','<div class="v5-home"><h2 id="v7HomeTitle">搜尋商品，勾選訂購</h2><p id="v7HomeHelp">輸入即顯示結果，可跨次搜尋勾選。</p><div id="v7Common"></div><details class="v5-secondary" id="v7Books"><summary>依閱讀需求找書</summary><div class="v7-book-quick">'+['心靈關懷與低潮','禱告與靈修','婚姻與家庭教養','青年與成長','慕道與福音','教義與信仰根基','聖經導讀與背景','教會歷史與見證','兒童繪本','科技與信仰'].map(t=>'<button type="button" data-v7-bookquery="'+esc(t)+'">'+esc(t)+' →</button>').join('')+'<button type="button" data-v7-bookquery="__all">瀏覽全部腓利門書籍（C001–C300）</button></div></details><details class="v5-secondary"><summary>依商品分類選購</summary><div class="v4-cats">'+Object.entries(cats).map(([k,v])=>'<button type="button" data-v4-category="'+k+'">'+v+'</button>').join('')+'</div></details></div>');
-  document.querySelector('.dock-wrap').insertAdjacentHTML('afterend','<div id="v7Mode" class="v7-mode"><span id="v7ModeLabel"></span><button type="button" id="v7ModeSwitch"></button></div>');
+  $('idleBox').insertAdjacentHTML('afterbegin','<div class="v5-home"><h2>找商品，也找好書</h2><p>輸入品名、代碼、規格或閱讀主題。勾選商品即可製作訂單，也可前往商城。</p><p class="v8-example">例如：中型拉鍊聖經、家庭祭壇、C299</p></div>');
+  document.querySelector('.dock-wrap').insertAdjacentHTML('afterend','<div id="v8Filter" class="v8-filter"><label for="v8Category">瀏覽</label><select id="v8Category" aria-label="瀏覽商品分類"><option value="">全部商品／搜尋</option><option value="publisher">腓利門書籍（C001–C300）</option>'+Object.entries(cats).filter(([k])=>k!=='all').map(([k,v])=>'<option value="'+k+'">'+esc(v)+'</option>').join('')+'<option value="all">全部商品清單</option></select></div>');
   function miniRow(p,reason=''){
     const chosen=state.quote.some(x=>x.code===p.code);
-    return '<div class="v7-common-row">'+(audience==='church'?'<button type="button" class="v6-check" role="checkbox" aria-checked="'+chosen+'" aria-label="'+esc('訂購 '+p.name)+'" data-v6-toggle="'+esc(p.code)+'" '+(ready?'':'disabled')+'>✓</button>':'')+'<div class="ic-main"><button type="button" class="v7-name" data-v7-code="'+esc(p.code)+'">'+esc(p.name)+'</button><small>'+esc(p.code)+(reason?'・'+esc(reason):'')+'</small></div><div class="v4-end"><span class="v6-price">$'+p.price+'</span>'+(audience==='reader'?shopLink(p):'')+'</div></div>';
+    return '<div class="v7-common-row">'+'<button type="button" class="v6-check" role="checkbox" aria-checked="'+chosen+'" aria-label="'+esc('訂購 '+p.name)+'" data-v6-toggle="'+esc(p.code)+'" '+(ready?'':'disabled')+'>✓</button>'+'<div class="ic-main"><button type="button" class="v7-name" data-v7-code="'+esc(p.code)+'">'+esc(p.name)+'</button><small>'+esc(p.code)+(reason?'・'+esc(reason):'')+'</small></div><div class="v4-end"><span class="v6-price">$'+p.price+'</span>'+(shopLink(p))+'</div></div>';
   }
-  function renderHomeGuide(){
-    document.body.classList.toggle('v7-reader',audience==='reader');
-    $('v7ModeLabel').textContent=audience==='church'?'書報組訂購':'一般找書';
-    $('v7ModeSwitch').textContent=audience==='church'?'切換一般找書':'切換書報組';
-    $('v7HomeTitle').textContent=audience==='church'?'搜尋商品，勾選訂購':'找一本適合你的書';
-    $('v7HomeHelp').textContent=audience==='church'?'輸入即顯示結果，可跨次搜尋勾選。':'輸入書名、經卷、作者或閱讀需求，找到後前往商城。';
-    // No bestseller or church buying list on the home page.
-    $('v7Common').innerHTML=guide&&ready?'<button type="button" class="v7-text" data-v7-bookquery="__all">探索腓利門書籍 →</button>':'';
-
-  }
+  function renderHomeGuide(){document.body.classList.remove('v7-reader');}
   $('searchInput').placeholder='商品名稱、代碼、規格…';
   $('searchInput').setAttribute('enterkeyhint','search');
   $('searchInput').type='text';
@@ -530,14 +533,12 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
     const choosing=category==='bible'&&!bibleGroup&&!state.query.trim();
     groupEl.style.display=category==='bible'?'block':'none';
     g.style.display=category==='bible'&&bibleGroup?'block':'none';
-    if(choosing){
-      groupEl.innerHTML='<p class="v4-bible-intro">先選擇想要的聖經種類，再依該系列的規格挑選。也可直接輸入商品編號或 ISBN。</p><div class="v4-bible-groups">'+Object.entries(bibleGroups).map(([k,[title,desc]])=>{const n=groupProducts(k).length;return n?'<button type="button" data-v4-bgroup="'+k+'"><strong>'+esc(title)+'</strong><small>'+esc(desc)+'</small><span>'+n+' 款商品</span></button>':''}).join('')+'</div>';
-    }else if(category==='bible'){
-      groupEl.innerHTML='<div class="v4-bible-group-head"><div><strong>'+esc(groupTitle(bibleGroup))+'</strong><small>'+esc(bibleGroups[bibleGroup]?.[1]||'全系列搜尋')+'</small></div><button type="button" class="v4-close" id="v4ChangeGroup">更換種類</button></div>';
+    if(category==='bible'){
+      groupEl.innerHTML='<label class="v8-bible-label">聖經種類<select id="v8BibleGroup" aria-label="聖經種類"><option value="">請選種類</option>'+Object.entries(bibleGroups).map(([k,[title]])=>{const n=groupProducts(k).length;return n?'<option value="'+esc(k)+'" '+(bibleGroup===k?'selected':'')+'>'+esc(title)+'（'+n+'）</option>':''}).join('')+'</select></label>';
     }else groupEl.innerHTML='';
     if(category==='bible'&&bibleGroup){
       if(g.dataset.started!==bibleGroup){g.open=true;g.dataset.started=bibleGroup}
-      $('v4Sizes').style.display=bibleGroup==='cu'?'flex':'none';
+      $('v4Sizes').style.display='none';
       $('v4Sizes').innerHTML=[['輕便型',35,'CU5'],['中型',46,'CU6'],['大字版',57,'CU8'],['特大字版',72,'CU9']].map(([v,h,c])=>'<button type="button" data-v4-size="'+v+'" class="'+(filters.size===v?'active':'')+'"><i style="height:'+h+'px">聖經</i>'+v+'<small>'+c+'</small></button>').join('');
       $('v4Facets').innerHTML=visibleFacetKeys().map(k=>{
         const [label]=facets[k],opts=optionsFor(k);
@@ -579,9 +580,8 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
   };
   function browse(c){discoveryList=null;bookOnly=false;forceAll=false;resetChat();resetOCR();category=c;bibleGroup='';state.query='';state.activeCode='';$('searchInput').value='';detail=false;limit=12;Object.keys(filters).forEach(k=>filters[k]='');render();window.scrollTo(0,0)}
   render=function(){
-    document.body.classList.toggle('v7-reader',audience==='reader');
-    $('v7ModeLabel').textContent=audience==='church'?'書報組訂購':'一般找書';
-    $('v7ModeSwitch').textContent=audience==='church'?'切換一般找書':'切換書報組';
+    document.body.classList.remove('v7-reader');
+    $('v8Category').value=bookOnly?'publisher':(category||'');
     const q=state.query.trim(),home=!chatActive&&!q&&!category&&!state.activeCode&&!bookOnly;
     $('clearBtn').classList.toggle('show',!!q);
     $('ocrBanner').classList.toggle('show',!!state.ocrNote);
@@ -601,7 +601,7 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
       renderQuotePill();return;
     }
     renderNav();
-    $('v4Nav').hidden=chatActive||bookOnly;
+    $('v4Nav').hidden=true;
     $('v4BibleGroups').hidden=chatActive||category!=='bible';
     $('v4Guide').hidden=chatActive||category!=='bible'||!bibleGroup;
     $('v5Conversation').hidden=true;
@@ -629,7 +629,7 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
     $('countLabel').textContent=items.length<result.totalHits?'顯示 '+items.length+'／'+result.totalHits+' 筆':result.totalHits+' 筆';
     $('stream').innerHTML=items.map(p=>{
       const selected=state.quote.find(x=>x.code===p.code);
-      return '<div class="item-card'+(selected&&audience==='church'?' v6-selected':'')+'" data-code="'+esc(p.code)+'">'+(audience==='church'?'<button type="button" role="checkbox" aria-checked="'+!!selected+'" aria-label="'+esc('訂購 '+p.name)+'" class="v6-check" data-v6-toggle="'+esc(p.code)+'" '+(ready?'':'disabled')+'>✓</button>':'')+'<div class="ic-main"><div class="ic-name">'+esc(p.name)+'</div>'+(bookReasons.has(p.code)?'<span class="v7-reason">'+esc(bookReasons.get(p.code))+'</span>':'')+(isBible(p)?'<div class="v4-note">'+esc(summary(p))+'</div>':'')+'<div class="ic-sub"><span class="mono">'+esc(p.code)+'</span><span style="color:'+(p.qty<=0?'var(--red)':'var(--gray)')+'">'+stock(p)+'</span></div>'+(detail&&active?.code===p.code?'<div class="v6-details">條碼／ISBN：'+esc(p.barcode)+(p.spec?'　規格：'+esc(p.spec):'')+'</div>':'')+'</div><div class="v4-end"><div class="v6-price">$'+p.price+'</div>'+(audience==='reader'?shopLink(p):selected?'<span class="v6-in-cart">已選 '+selected.qty+'</span>':'')+'</div></div>';
+      return '<div class="item-card'+(selected?' v6-selected':'')+'" data-code="'+esc(p.code)+'">'+'<button type="button" role="checkbox" aria-checked="'+!!selected+'" aria-label="'+esc('訂購 '+p.name)+'" class="v6-check" data-v6-toggle="'+esc(p.code)+'" '+(ready?'':'disabled')+'>✓</button>'+'<div class="ic-main"><div class="ic-name">'+esc(p.name)+'</div>'+(bookReasons.has(p.code)?'<span class="v7-reason">'+esc(bookReasons.get(p.code))+'</span>':'')+(isBible(p)?'<div class="v4-note">'+esc(summary(p))+'</div>':'')+'<div class="ic-sub"><span class="mono">'+esc(p.code)+'</span><span style="color:'+(p.qty<=0?'var(--red)':'var(--gray)')+'">'+stock(p)+'</span></div>'+(detail&&active?.code===p.code?'<div class="v6-details">條碼／ISBN：'+esc(p.barcode)+(p.spec?'　規格：'+esc(p.spec):'')+'</div>':'')+'</div><div class="v4-end"><div class="v6-price">$'+p.price+'</div>'+(selected?'<span class="v6-in-cart">已選 '+selected.qty+'</span>':'')+shopLink(p)+'</div></div>';
     }).join('')||'<div class="v4-note" style="padding:25px;text-align:center">'+(ready?'查無商品，請換個品名或代碼。':'商品資料尚未載入，請重新整理。')+'</div>';
     if(ready&&category==='bible'&&!items.length&&!chatActive){
       const selected=Object.entries(filters).filter(([,v])=>v);
@@ -642,7 +642,7 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
     }
     if(chatActive&&chatBible&&!items.length&&!bookOnly&&!forceAll)$('stream').innerHTML='';
     const focused=items.length===1?items[0]:(detail?active:null);
-    if(guide&&focused&&guide.isBook(focused)){const related=guide.related(products,focused,audience);if(related.length)$('stream').insertAdjacentHTML('beforeend','<details class="v7-related"><summary>延伸閱讀（'+related.length+' 本）</summary>'+related.map(x=>miniRow(x.p,x.reason.join('・'))).join('')+'</details>');}
+    if(guide&&focused&&(!ocrRaw||ocrConfirmed)){const related=guide.related(products,focused,audience).filter(x=>!items.some(p=>p.code===x.p.code)&&eligible(x.p)).slice(0,3);if(related.length)$('stream').insertAdjacentHTML('beforeend','<details class="v7-related"><summary>相關商品（'+related.length+'）</summary>'+related.map(x=>miniRow(x.p)).join('')+'</details>');}
     if(!ocrRaw&&items.length<result.totalHits)$('stream').insertAdjacentHTML('beforeend','<button type="button" class="v4-more" id="v4More">顯示更多商品</button>');
     renderQuotePill();
   };
@@ -660,12 +660,11 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
   };
   // Capture handlers replace only order-related original listeners.
   document.addEventListener('click',e=>{
-    const t=e.target.closest('#v72Refresh,[data-v7-store],[data-v7-code],[data-v7-bookquery],#v7ModeSwitch,#v7AllSearch,[data-v6-toggle],[data-v5-query],[data-v5-facet],[data-v5-relax],#v5Send,#v5New,#v5Skip,#v5RelaxWords,#v5RelaxBudget,[data-v4-category],[data-v4-bgroup],#v4ChangeGroup,[data-v4-size],[data-v4-add],[data-v4-relax],#v4Reset,#v4ResetAll,#v4EditFilters,#v4ViewResults,#v4More,#heroAddBtn,#quotePill,#desktopCopyQuote,#desktopClearQuote,[data-desktop-code],[data-v4-q],#v4Copy,#v4Line,#v4Clear');
+    const t=e.target.closest('#v72Refresh,[data-v7-store],[data-v7-code],[data-v7-bookquery],#v7AllSearch,[data-v6-toggle],[data-v5-query],[data-v5-facet],[data-v5-relax],#v5Send,#v5New,#v5Skip,#v5RelaxWords,#v5RelaxBudget,[data-v4-category],[data-v4-bgroup],#v4ChangeGroup,[data-v4-size],[data-v4-add],[data-v4-relax],#v4Reset,#v4ResetAll,#v4EditFilters,#v4ViewResults,#v4More,#heroAddBtn,#quotePill,#desktopCopyQuote,#desktopClearQuote,[data-desktop-code],[data-v4-q],#v4Copy,#v4Line,#v4Clear');
     if(!t)return;
     e.preventDefault();e.stopImmediatePropagation();
     if(t.dataset.v7Store){copyText(t.dataset.v7Store,'商品代碼');window.open('https://www.pbooks.com.tw/','_blank','noopener,noreferrer');return}
     if(t.id==='v72Refresh'){if(guide&&discoveryList){discoveryList=guide.discoveryOrder(products,audience);const n=Math.min(12,discoveryList.length);if(n>1)discoveryList=[...discoveryList.slice(n),...discoveryList.slice(0,n)];limit=12;render();window.scrollTo(0,0);}return;}
-    if(t.id==='v7ModeSwitch'){audience=audience==='church'?'reader':'church';bookOnly=false;return browse('')}
     if(t.id==='v7AllSearch'){bookOnly=false;forceAll=true;const val=$('searchInput').value;if(val.trim())beginChat(val,true);else browse('');return}
     if(t.dataset.v7Code){guide?.note(findCode(t.dataset.v7Code));bookOnly=false;forceAll=false;$('searchInput').value=t.dataset.v7Code;beginChat(t.dataset.v7Code,true);window.scrollTo(0,0);return}
     if(t.dataset.v7Bookquery){forceAll=false;const val=t.dataset.v7Bookquery;if(val==='__all'){browse('');bookOnly=true;render();return}bookOnly=true;$('searchInput').value=val;beginChat(val,true);return}
@@ -697,6 +696,11 @@ html,body{height:auto!important;min-height:100%;overflow:visible!important}
     if(t.id==='v4Copy'){const txt=orderText();if(ready&&txt)copyText(txt,'訂購內容');return}
     if(t.id==='v4Line'){const txt=orderText('name',false);if(!ready||!txt)return;if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent))window.open('https://line.me/R/share?text='+encodeURIComponent(txt),'_blank','noopener,noreferrer');else copyText(txt,'商品明細，請貼到 LINE')}
   },true);
+  $('v8Category').addEventListener('change',e=>{const value=e.target.value;if(value==='publisher'){browse('');bookOnly=true;render();}else browse(value);});
+  $('listHead').addEventListener('change',e=>{
+    if(e.target.id==='v8BibleGroup'){bibleGroup=e.target.value;Object.keys(filters).forEach(k=>filters[k]='');state.activeCode='';detail=false;limit=12;render();}
+    if(e.target.id==='v8Question'){const k=e.target.dataset.facet,v=e.target.value;if(v==='__skip')chatSkipped.add(k);else if(v){filters[k]=v;delete chatNeg[k];chatSkipped.delete(k);}state.activeCode='';detail=false;limit=12;render();}
+  });
   $('v4Facets').addEventListener('change',e=>{const k=e.target.dataset.v4Facet;if(k){filters[k]=e.target.value;state.activeCode='';detail=false;limit=12;render()}});
   $('mask').addEventListener('input',e=>{if(e.target.id==='v7ChurchName'){churchName=e.target.value.trim().slice(0,50);const preview=$('sheet').querySelector('.v6-order-text');if(preview)preview.textContent=orderText();return;}const k=e.target.dataset.v4Info;if(k&&Object.prototype.hasOwnProperty.call(info,k)){info[k]=e.target.value;updatePreview()}});
   $('mask').addEventListener('change',e=>{if(e.target.id==='v4Format'){info.format=e.target.value;updatePreview()}if(e.target.dataset.v4Qty){qty(e.target.dataset.v4Qty,e.target.value);openQuoteSheet()}});
