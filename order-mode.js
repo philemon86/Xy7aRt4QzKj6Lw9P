@@ -4,7 +4,7 @@
   const cats={all:'全部商品',bible:'聖經',books:'書籍',hymns:'讚美詩／樂譜',calendar:'月曆／週曆',gifts:'文創禮品',church:'教會用品'};
   const filters={size:'',version:'',material:'',zip:'',thumb:'',color:'',language:'',feature:''};
   let bibleGroup='';
-  let chatActive=false, chatQuery='', chatTerms=[], chatBible=false, chatTurns=[], chatPending='', chatBudget=null, chatNeg={};
+  let chatActive=false, chatQuery='', chatTerms=[], chatBible=false, chatTurns=[], chatPending='', chatBudget=null, chatNeg={}, chatSkipped=new Set();
   const facets={size:['尺寸',['袖珍／掌型','輕便型','中型','大字版','特大字版','大型（其他）','待核對','未確認']],version:['譯本',['和合本','新標點和合本','和合本修訂版','現代中文譯本','雙語／對照','其他／未確認']],material:['封面材質',['硬面／精裝','漆布','膠皮','皮面','布面','牛仔布','未確認']],zip:['拉鍊',['有','未標示']],thumb:['索引',['有','未標示']],color:['顏色',['黑色','藍色','紅色','咖啡色','紫色','綠色','未確認']]};
   const bibleGroups={
     cu:['和合本｜傳統直排','公會 CU 系列，依大小及裝訂選購'],
@@ -132,7 +132,7 @@
     ['language','中英',/中英(?:對照)?/],['language','中西',/中西(?:對照)?/],['language','英語',/英文|英語/],['language','台語／羅馬字',/台語|臺語|羅馬字/],['language','客語',/客語|客家話/],['language','日語',/日文|日語/],['language','韓語',/韓文|韓語/],['language','越南語',/越南文|越南語/]
   ];
   const groupAliases=[['cu',/傳統和合本|傳統直排/],['cunp',/新標點和合本/],['rcu',/和合本修訂版|和合本2010/],['design',/聖資|花色聖經/],['centenary',/百年紀念聖經/],['parallel',/雙語|中英對照|中西對照/],['study',/研讀本|研讀聖經|啟導本|註釋聖經/],['learning',/注音聖經|拼音聖經|繪圖聖經/],['local',/族語聖經/],['foreign',/外文聖經|原文聖經/]];
-  function resetChat(){chatActive=false;chatQuery='';chatTerms=[];chatBible=false;chatTurns=[];chatPending='';chatBudget=null;chatNeg={};}
+  function resetChat(){chatActive=false;chatQuery='';chatTerms=[];chatBible=false;chatTurns=[];chatPending='';chatBudget=null;chatNeg={};chatSkipped.clear();}
   function chatParse(raw){
     const t=raw.normalize('NFKC').trim(),found={},neg={},groups=groupAliases.find(([,re])=>re.test(t))?.[0]||'';
     let work=t;
@@ -168,18 +168,18 @@
       category='bible';
       if(a.groups){bibleGroup=a.groups;if(!a.found.version)filters.version=''}
       if(a.found.version&&!a.groups)bibleGroup='';
-      if(/^(不限|都可以|都可|隨便|不拘|不用了)$/.test(a.t)&&chatPending){filters[chatPending]='';delete chatNeg[chatPending];}
-      for(const [k,v] of Object.entries(a.found)){filters[k]=v;delete chatNeg[k]}
+      if(/^(不限|都可以|都可|隨便|不拘|不用了)$/.test(a.t)&&chatPending){filters[chatPending]='';delete chatNeg[chatPending];chatSkipped.add(chatPending);}
+      for(const [k,v] of Object.entries(a.found)){filters[k]=v;delete chatNeg[k];chatSkipped.delete(k)}
       for(const [k,v] of Object.entries(a.neg)){filters[k]='';chatNeg[k]=v;}
       if(a.max!==null)chatBudget=a.max;
       // Preserve unsupported terms rather than silently ignoring arbitrary requests.
-      chatTerms=[];
+      if(!refine)chatTerms=[];
       const leftovers=a.t.replace(/聖經|請問|請幫我|幫我|我想要|我想找|我想|想要|想找|我要|找一本|買一本|一本|有沒有|有嗎|有的|的|款|版|型|尺寸|封面|材質|顏色|需要|不要|不用|不需要|不必|沒有|无|無|有|請|嗎|呢|就好|即可|都可以|都可|不限|隨便|不拘|不用了|換成|改成|改|換|要|找|買|再|看|一下|傳統直排|傳統和合本/g,'');
       let rem=a.t;
       for(const [, , re] of aliases)rem=rem.replace(re,'');
       for(const [,re] of groupAliases)rem=rem.replace(re,'');
       rem=rem.replace(/(?:預算|不超過|低於|最多)\s*(?:NT\$|\$)?\s*\d{2,6}|\d{2,6}\s*(?:元|塊)?\s*(?:以內|以下)/g,'').replace(/聖經|請問|請幫我|幫我|我想要|我想找|我想|想要|想找|我要|找一本|買一本|一本|有沒有|有嗎|有的|的|款|版|型|尺寸|封面|材質|顏色|需要|不要|不用|不需要|不必|沒有|無|有|請|嗎|呢|就好|即可|都可以|都可|不限|隨便|不拘|換成|改成|改|換|要|找|買|再|看|一下|[，。！？、\s]+/g,'');
-      if(rem&&rem.length>=2)chatTerms=[rem];
+      if(rem&&rem.length>=2)chatTerms=[...new Set([...chatTerms,rem])];
     }else{
       chatTerms=[a.t.replace(/^(?:請問|請幫我|幫我找|幫我|我想找|我想買|我要買|我要|想找|找一下|找)\s*/,'').replace(/[？?。]$/,'').trim()].filter(Boolean);
       if(a.max!==null)chatBudget=a.max;
@@ -216,7 +216,7 @@
     if(!chatBible||hits.length<=5)return null;
     let best=null;
     for(const k of ['size','version','material','color','zip','thumb','language','feature']){
-      if(filters[k]||chatNeg[k])continue;
+      if(filters[k]||chatNeg[k]||chatSkipped.has(k))continue;
       const vals=new Map();
       for(const p of hits)for(const v of [bs(p)[k]].flat())if(usableFacet(v))vals.set(v,(vals.get(v)||0)+1);
       if(vals.size<2)continue;
@@ -237,7 +237,7 @@
     if(bibleGroup)constraints.unshift(groupTitle(bibleGroup));
     let answer=!ready?'商品資料尚未載入，請稍後重試。':!hits.length?(chatBible?'查無此款。現有目錄沒有足夠資料確認完全符合的聖經。':'查無完全符合的商品，請換個品名或商品代碼。'):chatBible?'找到 '+hits.length+' 款符合目前條件的聖經。':'找到 '+hits.length+' 筆可能符合的商品，請核對品名及代碼。';
     if(question)answer+=' 想再縮小範圍，可以告訴我'+facets[question.k][0]+'。';
-    const opts=question?'<div class="v5-answers">'+question.opts.map(([v,n])=>'<button type="button" data-v5-facet="'+question.k+'" data-v5-value="'+esc(v)+'">'+esc(v)+'（'+n+'）</button>').join('')+'</div>':'';
+    const opts=question?'<div class="v5-answers">'+question.opts.map(([v,n])=>'<button type="button" data-v5-facet="'+question.k+'" data-v5-value="'+esc(v)+'">'+esc(v)+'（'+n+'）</button>').join('')+'<button type="button" id="v5Skip">不限，先看商品</button></div>':'';
     const relax=!hits.length&&chatBible?'<div class="v5-answers">'+Object.entries(filters).filter(([,v])=>v).map(([k,v])=>'<button type="button" data-v5-relax="'+k+'">取消'+esc(facets[k][0])+'</button>').join('')+Object.keys(chatNeg).map(k=>'<button type="button" data-v5-relax="'+k+'">取消'+esc(facets[k][0])+'限制</button>').join('')+(chatTerms.length?'<button type="button" id="v5RelaxWords">取消其他文字條件</button>':'')+(chatBudget!==null?'<button type="button" id="v5RelaxBudget">取消預算限制</button>':'')+'</div>':'';
     el.innerHTML='<div class="v5-turns">'+chatTurns.map(t=>'<div class="v5-user">'+esc(t)+'</div>').join('')+'</div><div class="v5-reply"><strong>FIND 訂購助手</strong><p>'+esc(answer)+'</p>'+(constraints.length?'<p class="v5-conditions">目前條件：'+esc(constraints.join('、'))+'</p>':'')+opts+relax+'<button type="button" class="v5-textlink" id="v5New">重新查詢</button></div>';
   }
@@ -506,13 +506,14 @@ html,body{height:auto;min-height:100%;overflow:visible}
   };
   // Capture handlers replace only order-related original listeners.
   document.addEventListener('click',e=>{
-    const t=e.target.closest('[data-v5-query],[data-v5-facet],[data-v5-relax],#v5Send,#v5New,#v5RelaxWords,#v5RelaxBudget,[data-v4-category],[data-v4-bgroup],#v4ChangeGroup,[data-v4-size],[data-v4-add],[data-v4-relax],#v4Reset,#v4ResetAll,#v4EditFilters,#v4ViewResults,#v4More,#heroAddBtn,#quotePill,#desktopCopyQuote,#desktopClearQuote,[data-desktop-code],[data-v4-q],#v4Copy,#v4Line,#v4Clear');
+    const t=e.target.closest('[data-v5-query],[data-v5-facet],[data-v5-relax],#v5Send,#v5New,#v5Skip,#v5RelaxWords,#v5RelaxBudget,[data-v4-category],[data-v4-bgroup],#v4ChangeGroup,[data-v4-size],[data-v4-add],[data-v4-relax],#v4Reset,#v4ResetAll,#v4EditFilters,#v4ViewResults,#v4More,#heroAddBtn,#quotePill,#desktopCopyQuote,#desktopClearQuote,[data-desktop-code],[data-v4-q],#v4Copy,#v4Line,#v4Clear');
     if(!t)return;
     e.preventDefault();e.stopImmediatePropagation();
     if(t.id==='v5Send')return beginChat($('searchInput').value);
     if(t.dataset.v5Query)return beginChat(t.dataset.v5Query);
     if(t.id==='v5New')return browse('');
-    if(t.dataset.v5Facet){const k=t.dataset.v5Facet,v=t.dataset.v5Value;filters[k]=v;delete chatNeg[k];chatTurns.push(v);chatTurns=chatTurns.slice(-4);state.activeCode='';detail=false;limit=6;return render()}
+    if(t.id==='v5Skip'){if(chatPending)chatSkipped.add(chatPending);return render()}
+    if(t.dataset.v5Facet){const k=t.dataset.v5Facet,v=t.dataset.v5Value;filters[k]=v;delete chatNeg[k];chatSkipped.delete(k);chatTurns.push(v);chatTurns=chatTurns.slice(-4);state.activeCode='';detail=false;limit=6;return render()}
     if(t.dataset.v5Relax){filters[t.dataset.v5Relax]='';delete chatNeg[t.dataset.v5Relax];state.activeCode='';detail=false;return render()}
     if(t.id==='v5RelaxWords'){chatTerms=[];state.activeCode='';return render()}
     if(t.id==='v5RelaxBudget'){chatBudget=null;state.activeCode='';return render()}
@@ -544,5 +545,6 @@ html,body{height:auto;min-height:100%;overflow:visible}
   for(const id of ['clearBtn','clearOcrBtn','voiceBtn','ocrBtn','barcodeBtn'])$(id).addEventListener('click',()=>{resetChat();category='';bibleGroup='';detail=false;limit=12},true);
   const oldBarcode=onBarcodeHit;
   onBarcodeHit=function(raw){resetChat();category='';bibleGroup='';detail=true;limit=12;oldBarcode(raw);const val=String(raw||'').trim().toLowerCase();const matches=products.filter(p=>p.code.toLowerCase()===val||p.barcode.toLowerCase()===val);if(matches.length>1){state.activeCode='';detail=false;render();showToast('同一條碼有多個品項，請核對商品代碼')}};
+  window.FindOrderQuery=beginChat;
   render();
 })();
