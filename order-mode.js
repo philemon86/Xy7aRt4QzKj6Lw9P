@@ -821,6 +821,13 @@ body:has(#v9Drawer[open]){overflow:hidden!important}
   for(const id of ['clearBtn','clearOcrBtn','ocrBtn','barcodeBtn'])$(id).addEventListener('click',()=>{clearTimeout(searchTimer);bookOnly=false;resetChat();category='';bibleGroup='';detail=false;limit=12},true);
   const oldBarcode=onBarcodeHit;
   onBarcodeHit=function(raw){bookOnly=false;resetChat();category='';bibleGroup='';detail=true;limit=12;oldBarcode(raw);const val=String(raw||'').trim().toLowerCase();const matches=products.filter(p=>p.code.toLowerCase()===val||p.barcode.toLowerCase()===val);if(matches.length>1){state.activeCode='';detail=false;render();showToast('同一條碼有多個品項，請核對商品代碼')}};
+  window.FindBatchOrderAdd=entries=>{
+    if(!ready||!Array.isArray(entries)||!entries.length)return false;
+    const validated=entries.map(e=>({code:String(e.code),qty:Number(e.qty),p:findCode(String(e.code))}));
+    if(validated.some(e=>!e.p||!/^C\d{3}$/i.test(e.code)||Number(e.code.slice(1))<1||Number(e.code.slice(1))>300||!Number.isInteger(e.qty)||e.qty<1||e.qty>9999)){showToast('書籍或數量需重新確認');return false;}
+    for(const e of validated){const q=state.quote.find(q=>q.code===e.code);if(q)q.qty=Math.min(9999,q.qty+e.qty);else state.quote.push({code:e.code,qty:e.qty});guide?.note(e.p);}
+    render();return true;
+  };
   window.FindOrderQuery=raw=>{bookOnly=false;$('searchInput').value=raw;beginChat(raw,true);};
   render();
 })();
